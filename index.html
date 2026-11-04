@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WettRadar</title>
+<meta name="theme-color" content="#0f1720">
+<style>
+:root{
+  --bg:#f4f6f8;--card:#ffffff;--text:#15202b;--muted:#5b6b7a;--line:#e2e8ee;
+  --accent:#0a7cff;--good:#0f9d58;--warn:#e08a00;--bad:#d93025;--chip:#eef2f6;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0f1720;--card:#17212c;--text:#e6edf3;--muted:#8b9bab;--line:#243241;
+    --accent:#4da3ff;--good:#34c27a;--warn:#f0a630;--bad:#ff6b5e;--chip:#1f2b38;}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line)}
+.top{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;max-width:1000px;margin:auto}
+.logo{font-weight:800;font-size:19px;letter-spacing:-.3px}.logo span{color:var(--accent)}
+nav{display:flex;gap:4px;overflow-x:auto;padding:0 12px 8px;max-width:1000px;margin:auto}
+nav button{flex:none;border:0;background:var(--chip);color:var(--text);padding:8px 14px;border-radius:999px;font-weight:600;cursor:pointer}
+nav button.on{background:var(--accent);color:#fff}
+main{max-width:1000px;margin:auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+h2{font-size:17px;margin:0 0 10px}h3{font-size:15px;margin:0 0 6px}
+.muted{color:var(--muted);font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input,select{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 10px;min-width:0}
+input[type=number]{width:90px}
+.btn{border:0;background:var(--accent);color:#fff;font-weight:700;padding:10px 16px;border-radius:10px;cursor:pointer}
+.btn.sec{background:var(--chip);color:var(--text)}
+.btn:disabled{opacity:.5}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700}
+.p-top{background:color-mix(in srgb,var(--good) 20%,transparent);color:var(--good)}
+.p-val{background:color-mix(in srgb,var(--good) 12%,transparent);color:var(--good)}
+.p-ok{background:color-mix(in srgb,var(--warn) 15%,transparent);color:var(--warn)}
+.p-no{background:color-mix(in srgb,var(--bad) 12%,transparent);color:var(--bad)}
+.bet{display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:center}
+.bet .odds{font-size:22px;font-weight:800;text-align:right}
+.bar{height:6px;background:var(--chip);border-radius:6px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--accent)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-weight:600;font-size:12px}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.scroll{overflow-x:auto}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips label{background:var(--chip);border-radius:999px;padding:6px 10px;font-size:13px;cursor:pointer;display:flex;gap:6px;align-items:center}
+.hide{display:none}
+.banner{border-left:4px solid var(--warn)}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:10px}
+.kpi div{background:var(--chip);border-radius:10px;padding:10px}
+.kpi b{display:block;font-size:20px}
+footer{max-width:1000px;margin:auto;padding:8px 16px 40px;color:var(--muted);font-size:12px}
+.pos{color:var(--good);font-weight:700}.neg{color:var(--bad);font-weight:700}
+</style>
+</head>
+<body>
+<header>
+  <div class="top"><div class="logo">Wett<span>Radar</span></div><div id="status" class="muted"></div></div>
+  <nav id="tabs">
+    <button data-t="value" class="on">🔥 Value-Wetten</button>
+    <button data-t="safe">🛡️ Wahrscheinlichste</button>
+    <button data-t="games">📋 Alle Spiele</button>
+    <button data-t="calc">🧮 Quoten-Rechner</button>
+    <button data-t="combo">🔗 Kombi</button>
+    <button data-t="settings">⚙️ Einstellungen</button>
+  </nav>
+</header>
+
+<main>
+  <div id="demoBanner" class="card banner hide">
+    <b>Demo-Modus:</b> Das sind Beispieldaten. Für echte Live-Quoten (inkl. Tipico) trage unter
+    <a href="#" data-goto="settings">Einstellungen</a> einen kostenlosen API-Key von the-odds-api.com ein.
+  </div>
+
+  <section id="t-value">
+    <div class="card">
+      <h2>Value-Wetten</h2>
+      <div class="muted">Wetten, bei denen die Quote deines Buchmachers höher ist als die faire Quote laut Marktkonsens
+        (marge-bereinigter Schnitt vieler Anbieter, scharfe Buchmacher wie Pinnacle zählen stärker).</div>
+      <div class="row" style="margin-top:10px">
+        <label class="muted">Min. Value <input id="minEv" type="number" value="1" step="0.5"> %</label>
+        <label class="muted">Max. Quote <input id="maxOdds" type="number" value="10" step="0.5"></label>
+        <button class="btn" id="reload">Quoten laden</button>
+      </div>
+    </div>
+    <div id="valueList"></div>
+  </section>
+
+  <section id="t-safe" class="hide">
+    <div class="card"><h2>Wahrscheinlichste Ausgänge</h2>
+      <div class="muted">Sortiert nach fairer Wahrscheinlichkeit. Hohe Wahrscheinlichkeit ≠ gute Wette – achte auf den Value-Wert.</div></div>
+    <div id="safeList"></div>
+  </section>
+
+  <section id="t-games" class="hide">
+    <div class="card row"><input id="search" placeholder="Team suchen…" style="flex:1"></div>
+    <div id="gameList"></div>
+  </section>
+
+  <section id="t-calc" class="hide">
+    <div class="card">
+      <h2>Quoten → Wahrscheinlichkeit</h2>
+      <div class="muted">Quoten eines Marktes eingeben (z. B. 1 / X / 2 von Tipico). Du bekommst Wahrscheinlichkeiten, Buchmacher-Marge und faire Quoten.</div>
+      <div class="row" style="margin-top:10px">
+        <input id="c1" type="number" step="0.01" placeholder="1" value="2.10">
+        <input id="c2" type="number" step="0.01" placeholder="X" value="3.40">
+        <input id="c3" type="number" step="0.01" placeholder="2 (optional)" value="3.50">
+      </div>
+      <div id="calcOut" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <h2>Lohnt sich die Wette? (Erwartungswert)</h2>
+      <div class="row">
+        <label class="muted">Quote <input id="evOdds" type="number" step="0.01" value="2.20"></label>
+        <label class="muted">Deine Wahrscheinlichkeit <input id="evProb" type="number" step="0.5" value="50"> %</label>
+        <label class="muted">Bankroll <input id="evBank" type="number" step="10" value="200"> €</label>
+      </div>
+      <div id="evOut" style="margin-top:12px"></div>
+    </div>
+  </section>
+
+  <section id="t-combo" class="hide">
+    <div class="card">
+      <h2>Kombi-Rechner</h2>
+      <div class="muted">Füge Tipps aus den Listen per „+ Kombi“ hinzu oder trage sie manuell ein.</div>
+      <div class="row" style="margin-top:10px">
+        <input id="kName" placeholder="Tipp" style="flex:1">
+        <input id="kOdds" type="number" step="0.01" placeholder="Quote">
+        <input id="kProb" type="number" step="0.5" placeholder="Wahrsch. %">
+        <button class="btn sec" id="kAdd">Hinzufügen</button>
+      </div>
+      <label class="muted" style="display:block;margin-top:10px">Einsatz <input id="kStake" type="number" value="10"> €</label>
+      <div id="comboOut" style="margin-top:12px"></div>
+    </div>
+  </section>
+
+  <section id="t-settings" class="hide">
+    <div class="card">
+      <h2>Datenquelle</h2>
+      <p class="muted">Tipico bietet keine öffentliche Schnittstelle, und direktes Auslesen der Website verstößt gegen deren AGB.
+        WettRadar nutzt deshalb <b>The Odds API</b>, die Quoten von vielen Portalen bündelt (u. a. Tipico, Pinnacle, Unibet, Betfair, Bwin-Gruppe, William Hill …).
+        Kostenloser Key (500 Abrufe/Monat): <a href="https://the-odds-api.com/" target="_blank" rel="noopener">the-odds-api.com</a>.
+        Der Key wird nur in deinem Browser gespeichert.</p>
+      <div class="row"><input id="apiKey" placeholder="API-Key" style="flex:1"><button class="btn" id="saveKey">Speichern</button></div>
+      <div class="row" style="margin-top:10px">
+        <label class="muted">Region <select id="region">
+          <option value="eu">Europa (inkl. Tipico)</option><option value="eu,uk">Europa + UK</option><option value="eu,uk,us">EU + UK + US</option></select></label>
+        <label class="muted">Märkte <select id="markets">
+          <option value="h2h">Sieger / 1X2</option><option value="h2h,totals">1X2 + Über/Unter</option><option value="h2h,totals,spreads">1X2 + Ü/U + Handicap</option></select></label>
+        <label class="muted">Mein Buchmacher <select id="myBook"><option value="tipico_de">Tipico</option></select></label>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Sportarten</h2>
+      <div class="muted" style="margin-bottom:8px">Jede gewählte Liga kostet pro Abruf Kontingent (Anzahl Märkte × Regionen).</div>
+      <div id="sportChips" class="chips"></div>
+    </div>
+  </section>
+</main>
+<footer>
+  Alle Angaben ohne Gewähr. Wahrscheinlichkeiten sind Schätzungen aus Marktquoten – kein Tipp garantiert einen Gewinn,
+  langfristig verlieren die meisten Spieler. Nur mit Geld wetten, dessen Verlust du verkraftest. 18+.
+  Hilfe bei Glücksspielproblemen: <b>0800 1 37 27 00</b> (kostenlos, anonym) · check-dein-spiel.de
+</footer>
+
+<script>
+const $ = s => document.querySelector(s);
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem('wr_'+k); return v===null? d : JSON.parse(v);}catch{ return d; } },
+  set(k, v){ try{ localStorage.setItem('wr_'+k, JSON.stringify(v)); }catch{} }
+};
+const SHARP = {pinnacle:3, betfair_ex_eu:2.5, betfair_ex_uk:2.5, matchbook:2, smarkets:2};
+const DEFAULT_SPORTS = ['soccer_germany_bundesliga','soccer_germany_bundesliga2','soccer_epl','soccer_spain_la_liga','soccer_italy_serie_a','soccer_uefa_champs_league','basketball_nba','icehockey_nhl','americanfootball_nfl'];
+const FALLBACK_SPORTS = [
+  ['soccer_germany_bundesliga','Bundesliga'],['soccer_germany_bundesliga2','2. Bundesliga'],['soccer_germany_liga3','3. Liga'],
+  ['soccer_epl','Premier League'],['soccer_spain_la_liga','La Liga'],['soccer_italy_serie_a','Serie A'],['soccer_france_ligue_one','Ligue 1'],
+  ['soccer_uefa_champs_league','Champions League'],['soccer_uefa_europa_league','Europa League'],['basketball_nba','NBA'],
+  ['basketball_euroleague','Euroleague'],['icehockey_nhl','NHL'],['americanfootball_nfl','NFL'],['mma_mixed_martial_arts','MMA'],['boxing_boxing','Boxen']];
+
+let state = { events: [], demo: true, combo: store.get('combo', []) };
+
+/* ---------- Tabs ---------- */
+function show(t){
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on', b.dataset.t===t));
+  document.querySelectorAll('main > section').forEach(s=>s.classList.toggle('hide', s.id!=='t-'+t));
+  store.set('tab', t);
+}
+$('#tabs').onclick = e => { const t = e.target.closest('button')?.dataset.t; if(t) show(t); };
+document.addEventListener('click', e => { const g = e.target.dataset?.goto; if(g){ e.preventDefault(); show(g);} });
+
+/* ---------- Math ---------- */
+const pct = (x, d=1) => (x*100).toFixed(d).replace('.', ',') + ' %';
+const num = (x, d=2) => Number(x).toFixed(d).replace('.', ',');
+function devig(prices){ const inv = prices.map(p=>1/p); const s = inv.reduce((a,b)=>a+b,0); return {probs: inv.map(i=>i/s), margin: s-1}; }
+function kelly(p, o){ return Math.max(0, (p*o-1)/(o-1)); }
+function rating(ev){
+  if(ev >= .05) return ['Top-Value','p-top'];
+  if(ev >= .02) return ['Value','p-val'];
+  if(ev >= 0)   return ['Leicht positiv','p-ok'];
+  return ['Kein Value','p-no'];
+}
+function verdict(p, ev){
+  const conf = p>=.7?'sehr wahrscheinlich':p>=.5?'wahrscheinlich':p>=.33?'offen':'Außenseiter';
+  if(ev >= .05) return `Ausgang ${conf}; Quote deutlich über fairem Wert – starke Value-Wette.`;
+  if(ev >= .02) return `Ausgang ${conf}; Quote leicht über fairem Wert – solide Value-Wette.`;
+  if(ev >= 0)   return `Ausgang ${conf}; Quote etwa fair – kaum Vorteil.`;
+  return `Ausgang ${conf}; Quote unter fairem Wert – Buchmacher im Vorteil.`;
+}
+
+/* ---------- Analyse ---------- */
+const marketName = (m, pt) => m==='h2h' ? 'Sieger/1X2' : m==='totals' ? `Über/Unter ${num(pt,1)}` : `Handicap`;
+function outcomeLabel(ev, m, o){
+  if(m==='h2h') return o.name==='Draw' ? 'Unentschieden' : o.name;
+  if(m==='totals') return (o.name==='Over'?'Über ':'Unter ') + num(o.point,1);
+  return `${o.name} ${o.point>0?'+':''}${num(o.point,1)}`;
+}
+function analyse(events, myBook){
+  const bets = [], games = [];
+  for(const ev of events){
+    const groups = {}; // key: market|point -> {book -> outcomes}
+    for(const bk of ev.bookmakers||[]) for(const mk of bk.markets||[]){
+      const pt = mk.key==='h2h' ? '' : Math.abs(mk.outcomes[0]?.point ?? 0);
+      const gk = mk.key+'|'+pt;
+      (groups[gk] ||= {market: mk.key, point: pt, books: {}}).books[bk.key] = {title: bk.title, outcomes: mk.outcomes};
+    }
+    const gameMarkets = [];
+    for(const g of Object.values(groups)){
+      const keys = Object.keys(g.books);
+      if(keys.length < 3) continue;
+      const names = g.books[keys[0]].outcomes.map(o=>o.name+'|'+(o.point??''));
+      const fair = {}; let wsum = 0;
+      for(const k of keys){
+        const outs = g.books[k].outcomes;
+        if(outs.length !== names.length) continue;
+        const map = Object.fromEntries(outs.map(o=>[o.name+'|'+(o.point??''), o.price]));
+        if(!names.every(n=>map[n]>1)) continue;
+        const {probs} = devig(names.map(n=>map[n]));
+        const w = SHARP[k] || 1; wsum += w;
+        names.forEach((n,i)=> fair[n] = (fair[n]||0) + probs[i]*w);
+      }
+      if(!wsum) continue;
+      names.forEach(n=> fair[n] /= wsum);
+      const rows = names.map(n=>{
+        const o = g.books[keys[0]].outcomes.find(x=>x.name+'|'+(x.point??'')===n);
+        let best = null, mine = null;
+        for(const k of keys){
+          const oo = g.books[k].outcomes.find(x=>x.name+'|'+(x.point??'')===n); if(!oo) continue;
+          if(!best || oo.price > best.price) best = {price: oo.price, book: g.books[k].title};
+          if(k === myBook) mine = {price: oo.price, book: g.books[k].title};
+        }
+        const use = mine || best;
+        const p = fair[n], evv = p*use.price - 1;
+        return {label: outcomeLabel(ev, g.market, o), p, fairOdds: 1/p, mine, best, use, ev: evv, kelly: kelly(p, use.price)};
+      });
+      gameMarkets.push({name: marketName(g.market, g.point), books: keys.length, rows,
+        margin: g.books[myBook] ? devig(g.books[myBook].outcomes.map(o=>o.price)).margin : null});
+      for(const r of rows) bets.push({ev, market: marketName(g.market, g.point), ...r, ev: r.ev, books: keys.length, game: ev});
+    }
+    if(gameMarkets.length) games.push({ev, markets: gameMarkets});
+  }
+  return {bets, games};
+}
+
+/* ---------- Render ---------- */
+const when = t => new Date(t).toLocaleString('de-DE', {weekday:'short', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+const esc = s => String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function betCard(b){
+  const [lbl, cls] = rating(b.ev);
+  const bookTxt = b.mine ? b.mine.book : `${b.best.book} <span class="muted">(nicht bei Tipico)</span>`;
+  return `<div class="card"><div class="bet">
+    <div><div class="muted">${esc(b.game.sport_title)} · ${when(b.game.commence_time)}</div>
+      <h3>${esc(b.game.home_team)} – ${esc(b.game.away_team)}</h3>
+      <div><b>${esc(b.label)}</b> <span class="muted">· ${b.market}</span> <span class="pill ${cls}">${lbl}</span></div></div>
+    <div class="odds">${num(b.use.price)}<div class="muted" style="font-weight:400;font-size:12px">${bookTxt}</div></div>
+  </div>
+  <div class="kpi">
+    <div><span class="muted">Wahrscheinlichkeit</span><b>${pct(b.p)}</b></div>
+    <div><span class="muted">Faire Quote</span><b>${num(b.fairOdds)}</b></div>
+    <div><span class="muted">Value (EV)</span><b class="${b.ev>=0?'pos':'neg'}">${b.ev>=0?'+':''}${pct(b.ev)}</b></div>
+    <div><span class="muted">Einsatz (¼ Kelly)</span><b>${pct(b.kelly/4)}</b></div>
+  </div>
+  <div class="bar"><i style="width:${(b.p*100).toFixed(1)}%"></i></div>
+  <div class="row" style="justify-content:space-between;margin-top:8px">
+    <span class="muted">${verdict(b.p, b.ev)} Basis: ${b.books} Anbieter.</span>
+    <button class="btn sec" data-add='${esc(JSON.stringify({n: b.game.home_team+' – '+b.game.away_team+': '+b.label, o: b.use.price, p: +(b.p*100).toFixed(1)}))}'>+ Kombi</button>
+  </div></div>`;
+}
+let analysis = {bets: [], games: []};
+function render(){
+  analysis = analyse(state.events, store.get('myBook','tipico_de'));
+  const minEv = (+$('#minEv').value||0)/100, maxO = +$('#maxOdds').value || 99;
+  const val = analysis.bets.filter(b=>b.ev>=minEv && b.use.price<=maxO).sort((a,b)=>b.ev-a.ev).slice(0,40);
+  $('#valueList').innerHTML = val.length ? val.map(betCard).join('') :
+    `<div class="card muted">${state.events.length? 'Aktuell keine Wetten über dem Mindest-Value. Filter lockern oder später nochmal laden.' : 'Noch keine Daten geladen.'}</div>`;
+  const safe = analysis.bets.filter(b=>b.p>=.55).sort((a,b)=>b.p-a.p).slice(0,30);
+  $('#safeList').innerHTML = safe.map(betCard).join('') || '<div class="card muted">Keine Daten.</div>';
+  renderGames();
+  updateBookOptions();
+}
+function renderGames(){
+  const q = $('#search').value.toLowerCase();
+  const gs = analysis.games.filter(g=>!q || (g.ev.home_team+g.ev.away_team).toLowerCase().includes(q))
+    .sort((a,b)=>new Date(a.ev.commence_time)-new Date(b.ev.commence_time));
+  $('#gameList').innerHTML = gs.map(g=>`<div class="card">
+    <div class="muted">${esc(g.ev.sport_title)} · ${when(g.ev.commence_time)}</div>
+    <h3>${esc(g.ev.home_team)} – ${esc(g.ev.away_team)}</h3>
+    ${g.markets.map(m=>`<div class="scroll" style="margin-top:8px"><table>
+      <tr><th>${m.name}${m.margin!=null?` · Marge ${pct(m.margin)}`:''}</th><th class="n">Wahrsch.</th><th class="n">Fair</th><th class="n">Meine Q.</th><th class="n">Beste Q.</th><th class="n">Value</th></tr>
+      ${m.rows.map(r=>`<tr><td>${esc(r.label)}</td><td class="n">${pct(r.p)}</td><td class="n">${num(r.fairOdds)}</td>
+        <td class="n">${r.mine?num(r.mine.price):'–'}</td><td class="n" title="${esc(r.best.book)}">${num(r.best.price)}</td>
+        <td class="n ${r.ev>=0?'pos':'neg'}">${r.ev>=0?'+':''}${pct(r.ev)}</td></tr>`).join('')}
+    </table></div>`).join('')}
+  </div>`).join('') || '<div class="card muted">Keine Spiele.</div>';
+}
+$('#search').oninput = renderGames;
+$('#minEv').oninput = $('#maxOdds').oninput = render;
+function updateBookOptions(){
+  const books = new Map([['tipico_de','Tipico']]);
+  state.events.forEach(e=>e.bookmakers?.forEach(b=>books.set(b.key, b.title)));
+  const cur = store.get('myBook','tipico_de');
+  $('#myBook').innerHTML = [...books].sort((a,b)=>a[1].localeCompare(b[1])).map(([k,t])=>`<option value="${k}" ${k===cur?'selected':''}>${esc(t)}</option>`).join('');
+}
+$('#myBook').onchange = e => { store.set('myBook', e.target.value); render(); };
+
+/* ---------- Daten laden ---------- */
+async function loadSports(key){
+  let list = FALLBACK_SPORTS.map(([k,t])=>({key:k, title:t}));
+  if(key){
+    try{
+      const r = await fetch(`https://api.the-odds-api.com/v4/sports?apiKey=${encodeURIComponent(key)}`);
+      if(r.ok){ const d = await r.json(); list = d.filter(s=>s.active && !s.has_outrights).map(s=>({key:s.key, title:`${s.title}`, group:s.group})); }
+    }catch{}
+  }
+  const sel = new Set(store.get('sports', DEFAULT_SPORTS));
+  $('#sportChips').innerHTML = list.map(s=>`<label><input type="checkbox" value="${s.key}" ${sel.has(s.key)?'checked':''}>${esc(s.title)}</label>`).join('');
+}
+$('#sportChips').onchange = () => store.set('sports', [...document.querySelectorAll('#sportChips input:checked')].map(i=>i.value));
+
+async function loadOdds(){
+  const key = store.get('apiKey','');
+  if(!key){ state.events = demoData(); state.demo = true; $('#demoBanner').classList.remove('hide'); $('#status').textContent = 'Demo'; render(); return; }
+  $('#demoBanner').classList.add('hide');
+  const sports = store.get('sports', DEFAULT_SPORTS), region = store.get('region','eu'), markets = store.get('markets','h2h');
+  $('#reload').disabled = true; $('#status').textContent = 'Lade…';
+  const all = []; let remaining = null, errors = 0;
+  await Promise.all(sports.map(async s=>{
+    try{
+      const r = await fetch(`https://api.the-odds-api.com/v4/sports/${s}/odds?apiKey=${encodeURIComponent(key)}&regions=${region}&markets=${markets}&oddsFormat=decimal`);
+      remaining = r.headers.get('x-requests-remaining') ?? remaining;
+      if(!r.ok){ errors++; return; }
+      all.push(...await r.json());
+    }catch{ errors++; }
+  }));
+  state.events = all.filter(e=>new Date(e.commence_time) > Date.now() - 3*3600e3); state.demo = false;
+  $('#reload').disabled = false;
+  $('#status').textContent = `${state.events.length} Spiele` + (remaining?` · ${remaining} Abrufe übrig`:'') + (errors?` · ${errors} Fehler`:'');
+  store.set('cache', {t: Date.now(), events: state.events});
+  render();
+}
+$('#reload').onclick = loadOdds;
+$('#saveKey').onclick = () => { store.set('apiKey', $('#apiKey').value.trim()); loadSports(store.get('apiKey','')); loadOdds(); show('value'); };
+$('#region').onchange = e => store.set('region', e.target.value);
+$('#markets').onchange = e => store.set('markets', e.target.value);
+
+/* ---------- Demo ---------- */
+function demoData(){
+  const books = [['tipico_de','Tipico'],['pinnacle','Pinnacle'],['unibet_eu','Unibet'],['betfair_ex_eu','Betfair Exchange'],['williamhill','William Hill'],['marathonbet','Marathon Bet'],['betsson','Betsson']];
+  const games = [
+    ['Bundesliga','FC Bayern München','Borussia Dortmund',[.55,.22,.23]],['Bundesliga','VfB Stuttgart','SC Freiburg',[.47,.26,.27]],
+    ['Bundesliga','RB Leipzig','1. FC Union Berlin',[.60,.22,.18]],['Premier League','Arsenal','Chelsea',[.50,.26,.24]],
+    ['Champions League','Real Madrid','Inter Mailand',[.48,.26,.26]],['NBA','Boston Celtics','Miami Heat',[.68,.32]]];
+  let seed = 7; const rnd = () => (seed = (seed*9301+49297)%233280)/233280;
+  return games.map(([lg,h,a,p],gi)=>({
+    sport_title: lg, home_team: h, away_team: a, commence_time: new Date(Date.now()+(gi+1)*86400e3/1.5).toISOString(),
+    bookmakers: books.map(([k,t])=>{
+      const m = k==='pinnacle'?1.025:k.startsWith('betfair')?1.02:k==='tipico_de'?1.035:1.06+rnd()*.03;
+      const nz = k==='tipico_de'?.16:.1;
+      const names = p.length===3?[h,'Draw',a]:[h,a];
+      const mk = [{key:'h2h', outcomes: names.map((n,i)=>({name:n, price:+(1/(p[i]*(1+(rnd()-.5)*nz)*m)).toFixed(2)}))}];
+      const po = .55+(gi%3-1)*.06;
+      mk.push({key:'totals', outcomes:[{name:'Over',point:2.5,price:+(1/(po*(1+(rnd()-.5)*nz)*m)).toFixed(2)},{name:'Under',point:2.5,price:+(1/((1-po)*(1+(rnd()-.5)*nz)*m)).toFixed(2)}]});
+      return {key:k, title:t, markets: mk};
+    })
+  }));
+}
+
+/* ---------- Rechner ---------- */
+function calc(){
+  const o = ['#c1','#c2','#c3'].map(s=>+$(s).value).filter(x=>x>1);
+  if(o.length<2){ $('#calcOut').innerHTML = '<span class="muted">Mindestens zwei Quoten > 1 eingeben.</span>'; return; }
+  const {probs, margin} = devig(o);
+  $('#calcOut').innerHTML = `<table><tr><th>Quote</th><th class="n">Implizit</th><th class="n">Fair (ohne Marge)</th><th class="n">Faire Quote</th></tr>
+    ${o.map((x,i)=>`<tr><td>${num(x)}</td><td class="n">${pct(1/x)}</td><td class="n"><b>${pct(probs[i])}</b></td><td class="n">${num(1/probs[i])}</td></tr>`).join('')}</table>
+    <p class="muted">Buchmacher-Marge: <b>${pct(margin)}</b> ${margin<.04?'(niedrig – gut)':margin<.07?'(normal)':'(hoch – schlechte Quoten)'}</p>`;
+}
+function evCalc(){
+  const o = +$('#evOdds').value, p = (+$('#evProb').value)/100, bank = +$('#evBank').value;
+  if(!(o>1 && p>0 && p<1)){ $('#evOut').innerHTML=''; return; }
+  const ev = p*o-1, k = kelly(p,o), [lbl,cls] = rating(ev);
+  $('#evOut').innerHTML = `<div class="kpi">
+    <div><span class="muted">Erwartungswert</span><b class="${ev>=0?'pos':'neg'}">${ev>=0?'+':''}${pct(ev)}</b></div>
+    <div><span class="muted">Faire Quote für dich</span><b>${num(1/p)}</b></div>
+    <div><span class="muted">Empf. Einsatz (¼ Kelly)</span><b>${num(bank*k/4)} €</b></div>
+    <div><span class="muted">Bewertung</span><b><span class="pill ${cls}">${lbl}</span></b></div></div>
+    <p class="muted">Bei 100 solchen Wetten à 10 € wären im Schnitt ${ev>=0?'+':''}${num(ev*1000)} € zu erwarten.</p>`;
+}
+['#c1','#c2','#c3'].forEach(s=>$(s).oninput=calc);
+['#evOdds','#evProb','#evBank'].forEach(s=>$(s).oninput=evCalc);
+
+/* ---------- Kombi ---------- */
+function renderCombo(){
+  store.set('combo', state.combo);
+  const c = state.combo, stake = +$('#kStake').value || 0;
+  if(!c.length){ $('#comboOut').innerHTML = '<span class="muted">Noch keine Tipps.</span>'; return; }
+  const odds = c.reduce((a,x)=>a*x.o,1), prob = c.reduce((a,x)=>a*(x.p/100),1), ev = prob*odds-1;
+  $('#comboOut').innerHTML = `<table><tr><th>Tipp</th><th class="n">Quote</th><th class="n">Wahrsch.</th><th></th></tr>
+    ${c.map((x,i)=>`<tr><td>${esc(x.n)}</td><td class="n">${num(x.o)}</td><td class="n">${num(x.p,1)} %</td><td class="n"><button class="btn sec" data-del="${i}">✕</button></td></tr>`).join('')}</table>
+    <div class="kpi">
+      <div><span class="muted">Gesamtquote</span><b>${num(odds)}</b></div>
+      <div><span class="muted">Trefferchance</span><b>${pct(prob)}</b></div>
+      <div><span class="muted">Möglicher Gewinn</span><b>${num(stake*odds)} €</b></div>
+      <div><span class="muted">Value (EV)</span><b class="${ev>=0?'pos':'neg'}">${ev>=0?'+':''}${pct(ev)}</b></div></div>
+    <p class="muted">${c.length>3?'Hinweis: Mit jedem Tipp steigt die Marge des Buchmachers – große Kombis sind fast immer negativ.':''}
+      Annahme: Tipps sind unabhängig voneinander.</p>`;
+}
+document.addEventListener('click', e=>{
+  const a = e.target.dataset?.add; if(a){ state.combo.push(JSON.parse(a)); e.target.textContent='✓ In Kombi'; renderCombo(); }
+  const d = e.target.dataset?.del; if(d!==undefined){ state.combo.splice(+d,1); renderCombo(); }
+});
+$('#kAdd').onclick = () => {
+  const o = +$('#kOdds').value, p = +$('#kProb').value || +(100/o).toFixed(1);
+  if(o>1){ state.combo.push({n: $('#kName').value || `Tipp ${state.combo.length+1}`, o, p}); $('#kName').value=$('#kOdds').value=$('#kProb').value=''; renderCombo(); }
+};
+$('#kStake').oninput = renderCombo;
+
+/* ---------- Start ---------- */
+$('#apiKey').value = store.get('apiKey','');
+$('#region').value = store.get('region','eu');
+$('#markets').value = store.get('markets','h2h');
+const cache = store.get('cache', null);
+if(store.get('apiKey','') && cache && Date.now()-cache.t < 30*60e3){ state.events = cache.events; state.demo=false; $('#status').textContent = `${cache.events.length} Spiele (Cache)`; render(); }
+else loadOdds();
+loadSports(store.get('apiKey',''));
+calc(); evCalc(); renderCombo();
+show(store.get('tab','value'));
+</script>
+</body>
+</html>
