@@ -513,7 +513,7 @@ const STORY = [
     mid: { 2: ['eowyn', 'theoden'] }, midLine: { 2: [['theoden', 'Rohan reitet mit euch. Zur Hornburg!'], ['eowyn', 'Und ich reite an der Seite meines Königs.']] },
     boss: ['saruman', 'uruk'], bossLine: [['e:saruman', 'Ihr Narren. Gegen die Macht von Mordor gibt es keinen Sieg.'], ['gandalf', 'Dein Stab ist zerbrochen, Saruman.']],
     outro: [['baumbart', 'Isengart steht unter Wasser. Die Bäume kehren zurück.']] },
-  { part: 'Teil II · Der Ringkrieg', n: 'Ithilien & Cirith Ungol', map: [68, 60], bg: 'cirith', lvl: 14, join: ['faramir'],
+  { part: 'Teil II · Der Ringkrieg', n: 'Ithilien & Cirith Ungol', map: [66, 55], bg: 'cirith', lvl: 14, join: ['faramir'],
     intro: [['faramir', 'Ich bin Faramir, Hauptmann Gondors. Was tragt ihr da bei euch, Halblinge?'], ['sam', 'Nichts, was Euch etwas angeht!'], ['faramir', 'Dann geht in Frieden. Und mein Bogen geht mit euch.']],
     waves: [['orc', 'orc', 'orc_archer'], ['haradrim', 'haradrim'], ['spiderling', 'spiderling', 'spiderling'], ['uruk', 'orc_archer', 'orc'], ['mordor_troll', 'orc']],
     boss: ['shelob', 'spiderling'], bossLine: [['narr', 'Der Tunnel riecht nach Fäulnis. Aus der Dunkelheit kriecht etwas mit vielen Augen.'], ['sam', 'Lass ihn los, du Ungeheuer!']],
@@ -523,7 +523,7 @@ const STORY = [
     waves: [['haradrim', 'haradrim', 'orc'], ['orc', 'orc', 'mordor_troll'], ['olifant', 'haradrim'], ['uruk', 'haradrim', 'orc_archer'], ['nazgul', 'orc', 'orc']],
     boss: ['witch_king', 'orc', 'orc'], bossLine: [['e:witch_king', 'Kein lebender Mann kann mich aufhalten.'], ['eowyn', 'Ich bin kein Mann!']],
     outro: [['aragorn', 'Die Stadt ist gerettet. Doch solange der Ring besteht, ist nichts gewonnen.']] },
-  { part: 'Teil II · Der Ringkrieg', n: 'Der Schicksalsberg', map: [74, 60], bg: 'doom', lvl: 20,
+  { part: 'Teil II · Der Ringkrieg', n: 'Der Schicksalsberg', map: [77, 61], bg: 'doom', lvl: 20,
     intro: [['aragorn', 'Für Frodo. Wir ziehen zum Schwarzen Tor und lenken das Auge ab.'], ['gandalf', 'Jede Stunde, die wir ihm abringen, ist ein Schritt für den Ringträger.']],
     waves: [['mordor_troll', 'orc', 'orc'], ['nazgul', 'orc_archer', 'orc'], ['uruk', 'uruk', 'berserker'], ['mordor_troll', 'mordor_troll'], ['nazgul', 'nazgul']],
     boss: ['sauron'], bossLine: [['narr', 'Der Himmel über Mordor färbt sich rot. Eine Gestalt in schwarzer Rüstung tritt hervor.'], ['e:sauron', 'Ihr könnt mich nicht besiegen. Alles, was lebt, wird sich mir beugen.']],
@@ -735,7 +735,7 @@ const SETS = [
 
 /* ---------------- Nebenquests (nach einem Story-Kapitel freigeschaltet, beliebig wiederholbar) ---------------- */
 const SIDE = [
-  { id: 'wald', n: 'Der Alte Wald', after: 6, bg: 'mirkwood', map: [26, 38],
+  { id: 'wald', n: 'Der Alte Wald', after: 6, bg: 'mirkwood', map: [30, 41],
     intro: [['narr', 'Hinter Bockland liegt der Alte Wald. Die Bäume hier sind wach, und sie mögen keine Fremden.'], ['merry', 'Der Alte Weidenmann! Weg von dem Baum!']],
     waves: [['wolf', 'wolf'], ['wight', 'wolf'], ['wolf', 'wolf', 'wight']], boss: ['willow'],
     outro: [['tom', 'Hey dol! Fröhlich dol! Alter Weidenmann, lass sie gehen!'], ['tom', 'Tom Bombadil geht ein Stück mit euch. Und mein Pony auch.']], hero: 'tom', comp: 'dicker' },

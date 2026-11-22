@@ -656,10 +656,10 @@ const RIG = (() => {
     s = Math.max(1, Math.round(s * 4) / 4);
     const ck = key + '@' + s; if (layerCache.has(ck)) return layerCache.get(ck);
     const T = BACKGROUNDS[key] || BACKGROUNDS.shire, HZ = 90, R = rng(key + 'L');
-    const mk = (hgt) => { const cv = document.createElement('canvas'); cv.width = Math.round(TW * s); cv.height = Math.round(hgt * s); const c = cv.getContext('2d'); c.scale(s, s); return [cv, c, P(c)]; };
+    const mk = (hgt, q = 1) => { const cv = document.createElement('canvas'); cv.width = Math.round(TW * s * q); cv.height = Math.round(hgt * s * q); const c = cv.getContext('2d'); c.scale(s * q, s * q); return [cv, c, P(c)]; };
     const fq = k => k * TAU / TW;
     // Himmel
-    const [sky, sc, sg] = mk(HZ + 4);
+    const [sky, sc, sg] = mk(HZ + 4, .5);
     const grd = sc.createLinearGradient(0, 0, 0, HZ); T.sky.forEach((x, i) => grd.addColorStop(i / (T.sky.length - 1), x)); sc.fillStyle = grd; sc.fillRect(0, 0, TW, HZ + 4);
     if (T.stars || T.moon) for (let i = 0; i < 160; i++) { sc.fillStyle = `rgba(255,255,255,${.3 + R() * .7})`; sc.beginPath(); sc.arc(R() * TW, R() * 55, R() * .45 + .12, 0, TAU); sc.fill(); }
     if (T.sun) { sg.glow(210, 26, 46, T.sun, .55); sg.ell(210, 26, 8, 8, sg.rad(208, 24, 9, ['#ffffff', T.sun]), 0); }
@@ -672,11 +672,11 @@ const RIG = (() => {
       if (snow) { c.save(); c.clip(); c.fillStyle = 'rgba(255,255,255,.55)'; c.fillRect(0, 0, TW, base - amp * .9); c.restore(); }
     };
     const snowy = ['weather', 'snow', 'amonhen', 'helm', 'rhun', 'khazad'].includes(key);
-    const [far, fc, fg] = mk(HZ + 4);
+    const [far, fc, fg] = mk(HZ + 4, .38);
     ridge(fc, fg, 60, 13, [5, 11, 29], R() * 9, sh(T.far, .12), T.sky[T.sky.length - 1], snowy);
     fc.fillStyle = fg.lin(0, 46, 0, HZ, ['rgba(255,255,255,0)', rgba(T.sky[T.sky.length - 1], .55)]); fc.fillRect(0, 46, TW, HZ - 46);
     if (key === 'doom') { for (const x0 of [128, 128 + TW]) { fg.fill(() => { fc.moveTo(x0 - 48, HZ); fc.lineTo(x0 - 6, 18); fc.lineTo(x0 + 6, 18); fc.lineTo(x0 + 48, HZ); }, fg.lin(0, 18, 0, HZ, ['#3a120a', '#1a0806']), 0); fg.glow(x0, 18, 30, '#ff5a1a', .8); } }
-    const [mid, mc, mg] = mk(HZ + 4);
+    const [mid, mc, mg] = mk(HZ + 4, .7);
     ridge(mc, mg, 78, 6, [8, 19, 41], R() * 9, sh(T.mid, .1), sh(T.mid, -.15), false);
     for (const dx of [0, -TW]) { mc.save(); mc.translate(dx, 0); props(mc, mg, key, T, rng(key + 'P'), HZ); mc.restore(); mc.save(); mc.translate(dx + 256, 0); props(mc, mg, key, T, rng(key + 'Q'), HZ); mc.restore(); }
     const [ground, gc, gg] = mk(144 - HZ + 2);

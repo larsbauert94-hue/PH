@@ -536,12 +536,14 @@ function openSettings() {
   const S = G.settings;
   const tg = (id, on, label) => `<div class="opt"><span>${label}</span><button class="btn small ${on ? 'on' : ''}" id="${id}">${on ? 'An' : 'Aus'}</button></div>`;
   openSheet('Optionen', `${tg('o-mus', S.music !== false, 'Musik')}${tg('o-snd', S.sound, 'Soundeffekte')}${tg('o-eq', S.autoEquip, 'Beste Ausrüstung automatisch anlegen')}${tg('o-party', S.autoParty, 'Gruppe automatisch aufstellen')}
+    <div class="opt"><span>Grafik <small class="muted">${(S.gfx || 'auto') === 'auto' ? (W.lowFps ? '(Auto: gerade Normal für flüssiges Spiel)' : '(Auto: gerade Hoch)') : ''}</small></span><span class="seg">${[['auto', 'Auto'], ['hoch', 'Hoch'], ['normal', 'Normal']].map(([v, l]) => `<button class="btn small ${(S.gfx || 'auto') === v ? 'on' : ''}" data-gfx="${v}">${l}</button>`).join('')}</span></div>
     <h3 class="sect">Spielstand sichern</h3>
     <p class="muted small">Kopiere den Code und bewahre ihn auf. Mit ihm stellst du deinen Fortschritt jederzeit wieder her, auch auf einem anderen Gerät.</p>
     <div class="opt"><button class="btn small" id="o-exp">Code anzeigen & kopieren</button><button class="btn small" id="o-imp">Code einfügen</button></div>
     <textarea id="o-code" hidden rows="3" spellcheck="false"></textarea><div id="o-impbox" hidden class="opt"><button class="btn small gold" id="o-imp2">Spielstand laden</button><span id="o-msg" class="muted small"></span></div>
     <div class="opt"><span>Spielstand</span><button class="btn small danger" id="o-del">Neu beginnen</button></div><div id="o-conf" hidden class="opt warn"><span>Der gesamte Fortschritt wird gelöscht.</span><button class="btn small danger" id="o-del2">Ja, löschen</button></div>
     <p class="muted small">Inoffizielles Fan-Spiel nach J.R.R. Tolkien und „Die Ringe der Macht“. Alle Grafiken, Texte und Mechaniken sind eigene Umsetzungen.</p>`, s => {
+    s.querySelectorAll('[data-gfx]').forEach(b => b.onclick = () => { S.gfx = b.dataset.gfx; W.lowFps = false; W._pf = null; save(); openSettings(); });
     s.querySelector('#o-snd').onclick = () => { S.sound = !S.sound; save(); openSettings(); };
     s.querySelector('#o-mus').onclick = () => { S.music = S.music === false; save(); MUSIC.sync(); openSettings(); };
     const ta = s.querySelector('#o-code');

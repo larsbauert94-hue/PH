@@ -12,6 +12,19 @@ const FX_COL = {
   leaf: ['#6ab03a', '#a8d860', '#3a7a2a'], bite: ['#ffffff', '#e04040'], web: ['#e8e8f0', '#c8c8d8'], holy: ['#ffe080', '#ffffff', '#ffd040']
 };
 const DIFF_E = { hp: 1, dmg: 1 };
+/* Szenenlicht: Farbe & Richtung des Kantenlichts, Farbstimmung (oben/unten) */
+const LIGHT = {
+  _: { c: '220,230,255', a: .22, from: 'right' },
+  shire: { c: '255,236,190', a: .3, from: 'right', grade: ['#ffe8b0', '#2a4a20'] }, weather: { c: '180,200,255', a: .28, from: 'left', grade: ['#6a80c0', '#101828'] },
+  moria: { c: '255,120,50', a: .38, from: 'below', grade: ['#1a1010', '#ff5a20'] }, amonhen: { c: '230,255,210', a: .24, from: 'right', grade: ['#d8f0c0', '#1a2a1a'] },
+  helm: { c: '190,205,230', a: .22, from: 'left', grade: ['#8090a8', '#1a1c22'] }, cirith: { c: '200,150,255', a: .3, from: 'left', grade: ['#6a40a0', '#100818'] },
+  pelennor: { c: '255,150,80', a: .32, from: 'below', grade: ['#ffb070', '#3a1a10'] }, doom: { c: '255,90,40', a: .42, from: 'below', grade: ['#3a0a06', '#ff4010'] },
+  snow: { c: '210,235,255', a: .3, from: 'right', grade: ['#e0f0ff', '#4a6080'] }, sea: { c: '200,230,255', a: .26, from: 'right', grade: ['#a8c8f0', '#1a2a40'] },
+  south: { c: '255,210,150', a: .3, from: 'right', grade: ['#ffd8a0', '#4a2a10'] }, rhun: { c: '255,190,220', a: .26, from: 'left', grade: ['#e0a0c0', '#20142a'] },
+  khazad: { c: '140,220,255', a: .32, from: 'left', grade: ['#5a8ab0', '#0a1018'] }, eregion: { c: '255,180,110', a: .32, from: 'right', grade: ['#ffc080', '#2a1410'] },
+  mirkwood: { c: '200,255,170', a: .22, from: 'left', grade: ['#4a6a3a', '#060c06'] }, lake: { c: '255,225,190', a: .28, from: 'right', grade: ['#f0d8b0', '#1a2a38'] },
+  erebor: { c: '255,200,120', a: .34, from: 'right', grade: ['#ffc070', '#2a1a10'] }, dolguldur: { c: '150,255,180', a: .3, from: 'left', grade: ['#3a6a4a', '#060a08'] }
+};
 STATUS.fly = { n: 'Fliegt', l: 'FLUG', c: '#c8e8ff', d: 'Nahkampfangriffe verfehlen zu 50 %.' };
 
 class World {
@@ -85,7 +98,8 @@ class World {
   wait(ms) { return new Promise(res => this.timers.push({ t: this.time + ms, res })); }
   loop(now) {
     if (this.dead) return;
-    const dt = Math.min(60, now - this.last); this.last = now;
+    let dt = Math.min(60, now - this.last); this.last = now; this.perf(now - this._lastRaw || 0); this._lastRaw = now;
+    if (this.hitstop > 0) { this.hitstop -= dt; dt *= .1; }
     this.update(dt * this.speed); this.render();
     this.raf = requestAnimationFrame(t => this.loop(t));
   }
@@ -311,7 +325,7 @@ class World {
       this.h.ultUsed?.(u);
     }
     this.h.log?.(u, sk);
-    if (isUlt) { this.focus(u, 1.26, 1100); sfx('ult'); this.flash(u.side === 'hero' ? '#ffe9a8' : '#ff3a1a', 500); this.fxs.push({ k: 'pillar', x: u.x, y: u.y, c: '#ffe080', t: 0, dur: 800 }); this.shake(2); this.h.ult?.(u, sk); await this.wait(500); }
+    if (isUlt) { this.hitstop = 140; this.speedFx = { x: u.x, y: u.y - u.h * .5, t: this.time, c: u.side === 'hero' ? '255,236,180' : '255,90,60' }; this.focus(u, 1.26, 1100); sfx('ult'); this.flash(u.side === 'hero' ? '#ffe9a8' : '#ff3a1a', 500); this.fxs.push({ k: 'pillar', x: u.x, y: u.y, c: '#ffe080', t: 0, dur: 800 }); this.shake(2); this.h.ult?.(u, sk); await this.wait(500); }
     const hits = sk.hits || 1, hitSet = new Set(), counters = [];
     const doHit = (t, mult = 1) => { const r = this.hit(u, t, sk, mult); if (r > 0) hitSet.add(t); if (r === -2) counters.push(t); };
     if (sk.dmg) {
@@ -422,6 +436,7 @@ class World {
     if (sh) { const ab = Math.min(sh.val, dmg); sh.val -= ab; dmg -= ab; if (sh.val <= 0) rmS(t, 'shield'); if (ab) this.burst(t.x + t.ox, t.y + t.oy - t.h * .5, 'ice', 4); }
     t.hp = Math.max(0, t.hp - dmg);
     if (crit && a.side === 'hero') this.h.crit?.();
+    if (crit || t.boss) this.hitstop = Math.max(this.hitstop || 0, crit ? 70 : 35);
     this.num(t, dmg === 0 ? 'Schild' : (crit ? dmg + '!' : dmg), dmg === 0 ? '#a8d4ff' : crit ? '#ffd040' : t.side === 'hero' ? '#ff9a8a' : '#ffffff', crit ? 2 : 1);
     t.flash = 110; t.kb = (t.side === 'hero' ? -1 : 1) * (crit ? 3.5 : 2); if (t.anim.n === 'idle' || t.anim.n === 'hurt') this.setAnim(t, 'hurt');
     this.shake(crit ? 2.5 : 1.1); sfx(crit ? 'crit' : 'hit');
@@ -514,10 +529,20 @@ class World {
       ctx.globalAlpha = k > .7 ? (1 - k) / .3 : 1;
       ctx.font = `700 ${(n.sc > 1 ? 9.5 : 6.4) * pop}px Cinzel, Georgia, serif`; ctx.lineWidth = 1.4; ctx.strokeStyle = 'rgba(10,6,12,.9)';
       const y = n.y - RIG.easeOut(Math.min(1, k * 1.3)) * 12;
-      ctx.strokeText(n.txt, n.x, y); ctx.fillStyle = n.c; ctx.fillText(n.txt, n.x, y);
+      ctx.strokeText(n.txt, n.x, y);
+      if (n.sc > 1) { const gg = ctx.createLinearGradient(0, y - 5, 0, y + 5); gg.addColorStop(0, '#fffbe0'); gg.addColorStop(.5, '#ffd34a'); gg.addColorStop(1, '#ff9a2a'); ctx.fillStyle = gg; ctx.shadowColor = 'rgba(255,190,60,.9)'; ctx.shadowBlur = 6 * this.s; } else ctx.fillStyle = n.c;
+      ctx.fillText(n.txt, n.x, y); ctx.shadowBlur = 0;
+    }
+    // Speedlines bei Ultimates
+    if (this.speedFx && this.time - this.speedFx.t < 650) {
+      const sf = this.speedFx, k = (this.time - sf.t) / 650; ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = (1 - k) * .38; ctx.strokeStyle = `rgba(${sf.c},1)`;
+      for (let i = 0; i < 26; i++) { const a = i / 26 * Math.PI * 2 + sf.t, r0 = 16 + k * 30 + (i % 3) * 6, r1 = r0 + 60 + (i % 4) * 20; ctx.lineWidth = .5 + (i % 3) * .3; ctx.beginPath(); ctx.moveTo(sf.x + Math.cos(a) * r0, sf.y + Math.sin(a) * r0 * .7); ctx.lineTo(sf.x + Math.cos(a) * r1, sf.y + Math.sin(a) * r1 * .7); ctx.stroke(); }
+      ctx.restore();
     }
     ctx.globalAlpha = 1;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const LG = LIGHT[this.bgKey] || LIGHT._;
+    if (LG.grade) { ctx.save(); ctx.globalCompositeOperation = 'soft-light'; ctx.globalAlpha = .35; const gr = ctx.createLinearGradient(0, 0, 0, this.cv.height); gr.addColorStop(0, LG.grade[0]); gr.addColorStop(1, LG.grade[1]); ctx.fillStyle = gr; ctx.fillRect(0, 0, this.cv.width, this.cv.height); ctx.restore(); }
     // Vignette
     const vg = ctx.createRadialGradient(this.cv.width / 2, this.cv.height * .55, this.cv.height * .4, this.cv.width / 2, this.cv.height * .55, this.cv.width * .75);
     vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.5)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, this.cv.width, this.cv.height);
@@ -546,17 +571,58 @@ class World {
   drawUnit(u, gt) {
     const ctx = this.ctx, x = u.x + u.ox + u.kb, y = u.y + u.oy;
     const fly = hasS(u, 'fly') ? 14 + Math.sin(gt / 260) * 3 : 0;
-    ctx.save(); ctx.translate(x, y - fly); if (u.side === 'enemy') ctx.scale(-1, 1);
-    ctx.globalAlpha = u.fade * (hasS(u, 'invis') ? .38 : 1) * (u.look.ghost ? .62 : 1);
-    if (u.look.ghost) { ctx.shadowColor = 'rgba(160,255,210,.9)'; ctx.shadowBlur = 8 * this.s; }
-    RIG.draw(ctx, u.type, u.look, u.anim.n, u.anim.el, gt + u.gt0);
-    ctx.shadowBlur = 0;
-    if (u.flash > 0) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.min(1, u.flash / 110) * .55; RIG.draw(ctx, u.type, u.look, u.anim.n, u.anim.el, gt + u.gt0); ctx.globalCompositeOperation = 'source-over'; }
-    ctx.restore(); ctx.globalAlpha = 1;
+    if (this.hq()) {
+      const img = this.litSprite(u, gt);
+      ctx.save(); ctx.globalAlpha = u.fade * (hasS(u, 'invis') ? .38 : 1) * (u.look.ghost ? .62 : 1);
+      if (u.look.ghost) { ctx.shadowColor = 'rgba(160,255,210,.9)'; ctx.shadowBlur = 8 * this.s; }
+      ctx.drawImage(img.cv, x - img.ax, y - fly - img.ay, img.bw, img.bh);
+      ctx.restore(); ctx.globalAlpha = 1;
+    } else {
+      ctx.save(); ctx.translate(x, y - fly); if (u.side === 'enemy') ctx.scale(-1, 1);
+      ctx.globalAlpha = u.fade * (hasS(u, 'invis') ? .38 : 1) * (u.look.ghost ? .62 : 1);
+      if (u.look.ghost) { ctx.shadowColor = 'rgba(160,255,210,.9)'; ctx.shadowBlur = 8 * this.s; }
+      RIG.draw(ctx, u.type, u.look, u.anim.n, u.anim.el, gt + u.gt0);
+      ctx.shadowBlur = 0;
+      if (u.flash > 0) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.min(1, u.flash / 110) * .55; RIG.draw(ctx, u.type, u.look, u.anim.n, u.anim.el, gt + u.gt0); ctx.globalCompositeOperation = 'source-over'; }
+      ctx.restore(); ctx.globalAlpha = 1;
+    }
     if (hasS(u, 'shield') && alive(u)) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .22 + Math.sin(gt / 200) * .06; const r = u.h * .62; const g = ctx.createRadialGradient(x, y - u.h * .5, r * .5, x, y - u.h * .5, r); g.addColorStop(0, 'rgba(120,180,255,0)'); g.addColorStop(1, 'rgba(160,210,255,.9)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y - u.h * .5, r * .75, r, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
     if (u.charging && alive(u)) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .35 + Math.sin(gt / 90) * .2; const g = ctx.createRadialGradient(x, y - u.h * .5, 0, x, y - u.h * .5, u.h * .9); g.addColorStop(0, 'rgba(255,60,30,.7)'); g.addColorStop(1, 'rgba(255,30,10,0)'); ctx.fillStyle = g; ctx.fillRect(x - u.h, y - u.h * 1.5, u.h * 2, u.h * 1.8); ctx.restore(); }
     if (u.side === 'hero' && u.energy >= 100 && alive(u)) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .25 + Math.sin(gt / 150) * .12; const g = ctx.createRadialGradient(x, y - u.h * .5, 0, x, y - u.h * .5, u.h * .7); g.addColorStop(0, 'rgba(255,220,120,.6)'); g.addColorStop(1, 'rgba(255,200,80,0)'); ctx.fillStyle = g; ctx.fillRect(x - u.h, y - u.h * 1.3, u.h * 2, u.h * 1.6); ctx.restore(); }
     if (this.active === u && alive(u)) { const ty = y - u.h - 11 + Math.sin(gt / 180) * 1.2; ctx.fillStyle = '#ffd97a'; ctx.beginPath(); ctx.moveTo(x - 2, ty); ctx.lineTo(x + 2, ty); ctx.lineTo(x, ty + 2.4); ctx.fill(); }
+  }
+  /* Grafikqualität: 'hoch' | 'normal' | 'auto' (auto schaltet bei dauerhaft < ~40 FPS auf normal) */
+  hq() { const m = (G && G.settings.gfx) || 'auto'; return m === 'hoch' || (m === 'auto' && !this.lowFps); }
+  perf(dt) {
+    if (document.hidden || dt <= 0) return;
+    this._pf = this._pf || { t: 0, n: 0, slow: 0 }; const pf = this._pf; pf.t += dt; pf.n++;
+    if (pf.t > 2500) { const avg = pf.t / pf.n; if (avg > 25) pf.slow++; else pf.slow = Math.max(0, pf.slow - 1); if (pf.slow >= 2 && !this.lowFps) { this.lowFps = true; } pf.t = 0; pf.n = 0; }
+  }
+  litSprite(u, gt) {
+    const k = this.s * Math.ceil(Math.max(1, this.cam.z) * 4) / 4, L = LIGHT[this.bgKey] || LIGHT._;
+    const bw = u.type === 'dragon' ? 220 : u.type === 'worm' ? 140 : u.type === 'olifant' ? 160 : u.big ? 130 : 90, bh = u.h + (u.type === 'dragon' ? 90 : 52), ax = bw / 2, ay = bh - 12;
+    const W2 = Math.ceil(bw * k), H2 = Math.ceil(bh * k);
+    const cv = u._oc || (u._oc = document.createElement('canvas'));
+    if (cv.width !== W2 || cv.height !== H2) { cv.width = W2; cv.height = H2; }
+    const c = cv.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'source-over'; c.clearRect(0, 0, W2, H2);
+    c.setTransform(u.side === 'enemy' ? -k : k, 0, 0, k, ax * k, ay * k);
+    RIG.draw(c, u.type, u.look, u.anim.n, u.anim.el, gt + u.gt0);
+    c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'source-atop';
+    // Licht-Overlay (Oberlicht, Bodenverdeckung, farbiges Kantenlicht) einmal pro Gebiet & Größe vorberechnet
+    const key = this.bgKey + W2 + 'x' + H2; let ov = this._lit && this._lit.get(key);
+    if (!ov) {
+      this._lit = this._lit || new Map(); if (this._lit.size > 24) this._lit.clear();
+      ov = document.createElement('canvas'); ov.width = Math.ceil(W2 / 4); ov.height = Math.ceil(H2 / 4); const o = ov.getContext('2d'), w = ov.width, h = ov.height;
+      let g = o.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(255,255,255,.07)'); g.addColorStop(.55, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.34)'); o.fillStyle = g; o.fillRect(0, 0, w, h);
+      g = L.from === 'below' ? o.createLinearGradient(0, h, 0, h * .35) : L.from === 'left' ? o.createLinearGradient(w * .25, 0, w * .5, 0) : o.createLinearGradient(w * .75, 0, w * .5, 0);
+      g.addColorStop(0, `rgba(${L.c},${L.a})`); g.addColorStop(1, `rgba(${L.c},0)`); o.fillStyle = g; o.fillRect(0, 0, w, h);
+      this._lit.set(key, ov);
+    }
+    c.drawImage(ov, 0, 0, W2, H2);
+    if (u.flash > 0) { c.fillStyle = `rgba(255,255,255,${Math.min(1, u.flash / 110) * .7})`; c.fillRect(0, 0, W2, H2); }
+    if (u.charging) { c.fillStyle = `rgba(255,60,30,${.18 + Math.sin(gt / 90) * .1})`; c.fillRect(0, 0, W2, H2); }
+    c.globalCompositeOperation = 'source-over';
+    return { cv, ax, ay, bw, bh };
   }
   drawBars(u) {
     const ctx = this.ctx, x = u.x + u.ox + u.kb, y = u.y + u.oy - u.h - 6, w = u.big ? 28 : 15;

@@ -4,6 +4,14 @@ Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden 
 
 **Spielen:** `index.html` im Browser öffnen. Keine Installation, kein Build.
 
+## Als App auf den iPhone-Homebildschirm
+1. Auf GitHub: **Settings → Pages → Build and deployment → Deploy from a branch**, Branch wählen, Ordner `/ (root)`, speichern.
+2. Nach 1–2 Minuten die angezeigte Adresse (z. B. `https://<name>.github.io/PH/`) in **Safari** öffnen.
+3. **Teilen → Zum Home-Bildschirm**. Ringfahrt startet dann als Vollbild-App mit eigenem Icon, ohne Safari-Leisten, und funktioniert nach dem ersten Start auch offline (`sw.js`).
+4. Bei Updates: App einmal mit Internet öffnen und neu starten.
+
+Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten). Unter **Optionen → Grafik** lässt sich zwischen *Auto*, *Hoch* (Figuren mit Szenenlicht, Kantenlicht und Bodenverdeckung) und *Normal* wählen; *Auto* schaltet bei zu niedriger Bildrate selbst herunter.
+
 ## Inhalt
 - **Vollbild im Querformat:** Die Welt läuft ununterbrochen, Menüs liegen als Glas-Panels darüber
 - **21 Story-Kapitel** in drei Teilen (Der Hobbit, Der Ringkrieg mit Epilog, Die Ringe der Macht), je 8 Wellen + Boss
@@ -17,6 +25,7 @@ Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden 
 
 ## Dateien
 - `index.html`: Seite und Stylesheet
+- `manifest.webmanifest`, `sw.js`, `icons/`: Homebildschirm-App und Offline-Cache
 - `js/data.js`: Klassen, Helden, Gegner, Kampagnen, Gegenstände
 - `js/render.js`: Render-Engine (Figuren-Rigs, Charakterkarten, Parallax-Ebenen, Icons)
 - `js/core.js`: Spielstand, Werte, Beute, Talente, Entwicklung
