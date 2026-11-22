@@ -68,7 +68,7 @@ function paintCards(root = document) {
     root.querySelectorAll('canvas[data-card]').forEach(c => {
       const k = c.dataset.card;
       if (c.dataset.enemy) { const E = ENEMIES[k]; RIG.card(c, E.type, Object.assign({ wpn: E.wpn }, E.look), { col: '#ff5a3a', flip: 1, seed: k, bust: E.type === 'hum' && !!c.dataset.bust, zoom: +(c.dataset.zoom || 1) }); return; }
-      const LK = c.dataset.stage !== undefined ? lookAtStage(k, +c.dataset.stage) : G.heroes[k] ? heroLook(k) : lookAtStage(k, 0);
+      const LK = c.dataset.stage !== undefined ? lookAtStage(k, +c.dataset.stage) : G.heroes[k] ? footLook(k) : lookAtStage(k, 0);
       RIG.card(c, 'hum', LK, { col: ROLE_COL[CLASSES[HEROES[k].cls].role], bust: !!c.dataset.bust, seed: k, zoom: +(c.dataset.zoom || 1) });
     });
     root.querySelectorAll('canvas[data-ic]').forEach(c => RIG.icon(c, c.dataset.ic, c.dataset.c, c.dataset.r !== undefined ? +c.dataset.r : 2));
@@ -398,7 +398,8 @@ async function director() {
       G.stats.chapters = Math.max(G.stats.chapters, G.story.ch + 1 + G.story.loop * STORY.length);
       const mith = 20 + G.story.ch * 4; G.mithril += mith;
       await pickChest(ch.n, mith);
-      G.story.ch++; if (G.story.ch >= STORY.length) { G.story.ch = 0; G.story.loop++; G.stats.loops++; const m = activeMods(); await splash(`<div class="cdone"><div class="kicker">Heldenreise ${G.story.loop + 1}</div><h1>Die Reise beginnt von Neuem</h1><p>Stärkere Gegner, bessere Beute (+${G.story.loop * 25} % Gold & EP, seltenere Gegenstände).</p><p><b>Erschwernisse:</b> ${m.map(x => esc(x.d)).join(' · ')}</p><div class="dhint">Tippen zum Fortfahren</div></div>`, 0, 'doneS'); }
+      G.story.ch++; for (const m of grantMounts()) { W.pendingParty = 1; await splash(`<div class="cdone"><div class="kicker">Neues Reittier</div><canvas class="mcv" data-mount="${m.id}"></canvas><h1>${esc(m.n)}</h1><p>${esc(m.d)}</p><p>Reiter: <b>${m.heroes.map(k => esc(HEROES[k].n)).join(', ')}</b> · ${esc(m.bd)}</p><div class="dhint">Tippen zum Fortfahren</div></div>`, 0, 'doneS'); } save();
+      if (G.story.ch >= STORY.length) { G.story.ch = 0; G.story.loop++; G.stats.loops++; const m = activeMods(); await splash(`<div class="cdone"><div class="kicker">Heldenreise ${G.story.loop + 1}</div><h1>Die Reise beginnt von Neuem</h1><p>Stärkere Gegner, bessere Beute (+${G.story.loop * 25} % Gold & EP, seltenere Gegenstände).</p><p><b>Erschwernisse:</b> ${m.map(x => esc(x.d)).join(' · ')}</p><div class="dhint">Tippen zum Fortfahren</div></div>`, 0, 'doneS'); }
       Object.assign(G.story, { wave: 0, intro: false, bossSeen: false, farm: false }); applyParty(); save();
     } else { G.story.farm = true; save(); banner('Der Boss ist zu stark. Die Gruppe trainiert.', 'foe'); toast('Werdet stärker und fordert den Boss dann erneut heraus.', 'unlock'); }
   }
@@ -490,7 +491,9 @@ function openHeroes(tab = openHeroes.tab || 'team', page = openHeroes.page) {
   }, { tabs: [['team', 'Team'], ['helden', `Alle ${own.length}/${Object.keys(HEROES).length}`], ['begleiter', 'Begleiter'], ['buende', 'Bündnisse']], tab, onTab: t => openHeroes(t, 0), pages: np, page, onPage: p => openHeroes(tab, p),
     extra: tab === 'team' || tab === 'helden' ? `<button class="btn small gold" id="optAll">⚡ Optimieren</button><button class="btn small ${G.settings.autoParty ? 'on' : ''}" id="autoP" title="Gruppe automatisch aufstellen">Auto</button>` : '' });
 }
-function paintComps(root) { root.querySelectorAll('canvas[data-comp]').forEach(c => { const cp = COMPANIONS.find(x => x.id === c.dataset.comp); requestAnimationFrame(() => compArt(c, cp)); }); }
+function footLook(k) { const L = heroLook(k); delete L.mount; return L; }
+function paintMounts(root) { root.querySelectorAll('canvas[data-mount]').forEach(cv => { const m = MOUNTS.find(x => x.id === cv.dataset.mount); requestAnimationFrame(() => { const dpr = Math.min(2, devicePixelRatio || 1); cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; const c = cv.getContext('2d'), g = c.createRadialGradient(cv.width / 2, cv.height * .55, 2, cv.width / 2, cv.height / 2, cv.width * .7); g.addColorStop(0, 'rgba(232,189,92,.3)'); g.addColorStop(1, 'rgba(10,13,18,0)'); c.fillStyle = g; c.fillRect(0, 0, cv.width, cv.height); const sc = cv.height / 34; c.setTransform(sc, 0, 0, sc, cv.width / 2 - 2 * sc, cv.height * .9); RIG.draw(c, 'quad', Object.assign({ horse: 1, pony: m.kind === 'pony' ? 1 : 0, eye: '#2a1a12' }, m.look), 'idle', 0, 500); }); }); }
+function paintComps(root) { paintMounts(root); root.querySelectorAll('canvas[data-comp]').forEach(c => { const cp = COMPANIONS.find(x => x.id === c.dataset.comp); requestAnimationFrame(() => compArt(c, cp)); }); }
 function compArt(cv, cp) {
   const dpr = Math.min(2, devicePixelRatio || 1); cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; const c = cv.getContext('2d');
   const g = c.createRadialGradient(cv.width / 2, cv.height / 2, 2, cv.width / 2, cv.height / 2, cv.width * .7); g.addColorStop(0, 'rgba(232,189,92,.35)'); g.addColorStop(1, 'rgba(10,13,18,1)'); c.fillStyle = g; c.fillRect(0, 0, cv.width, cv.height);
@@ -518,6 +521,7 @@ function openHero(k, tab = openHero.tab || 'werte') {
     <div class="hi-top"><span class="role r-${C.role}">${ROLES[C.role].n}</span><span class="muted">${esc(C.n)} · ${esc(C.sub)}</span></div>
     <div class="m-pow"><div class="power">⚡ ${fmt(st.power)}<small>Kampfkraft</small></div><div class="lvl"><span>Gruppenstufe ${G.team.lvl}</span><div class="bar"><i style="width:${G.team.xp / xpNeed(G.team.lvl) * 100}%"></i></div></div></div>
     <div class="stats">${[['Leben', st.hp], [magic ? 'Magie' : 'Angriff', magic ? st.mag : st.atk], ['Verteid.', st.def], ['Tempo', st.spd], ['Krit', st.crit + ' %']].map(([n, v]) => `<div><small>${n}</small><b>${typeof v === 'number' ? fmt(v) : v}</b></div>`).join('')}</div>
+    ${(() => { const m = mountFor(k); if (!m) return ''; const own = (G.mounts || {})[m.id], on = own && (G.ride || {})[k] !== false; return `<div class="m-mount ${own ? '' : 'lk'}"><canvas data-mount="${m.id}"></canvas><div><b>🐎 ${own ? esc(m.n) : '???'}</b><small>${own ? esc(m.bd) : 'Schaltet sich in Kapitel ' + (m.ch + 2) + ' frei'}</small></div>${own ? `<button class="btn small ${on ? 'on' : ''}" id="ride">${on ? 'Reitet' : 'Zu Fuß'}</button>` : ''}</div>`; })()}
     <div class="hi-fac">${heroFactions(k)}${BONDS.filter(b => b.a === k || b.b === k).map(b => { const o = b.a === k ? b.b : b.a, on = G.party.includes(k) && G.party.includes(o); return `<span class="fchip bond ${on ? 'on' : ''}">♥ ${G.heroes[o] ? esc(HEROES[o].n) : '???'}${on ? ' · aktiv' : ''}</span>`; }).join('')}</div>
     <div class="acts">
       <button class="btn ${inP ? '' : 'primary'}" id="toggleP" ${G.away[k] ? 'disabled' : ''}>${inP ? 'Aus der Gruppe' : 'In die Gruppe'}</button>
@@ -529,7 +533,7 @@ function openHero(k, tab = openHero.tab || 'werte') {
   openSheet(esc(H.n), `<div class="m-hero"><div class="hero-art" style="--rc:${ROLE_COL[C.role]}"><canvas id="bigArt"></canvas><div class="ha-foot">${stars(hs.stage)}<span>${esc(heroTitle(k))}</span></div></div><div class="m-hr-r">${right}</div></div>`, s => {
     const cv = s.querySelector('#bigArt'); const seq = ['idle', { melee: 'attack', spin: 'attack', cast: 'cast', shoot: 'shoot', throw: 'throw', shout: 'shout' }[H.act.anim] || 'attack', 'idle', 'victory'];
     let si = 0, t0 = performance.now();
-    const loop = now => { const a = seq[si]; const dur = a === 'idle' ? 2600 : a === 'victory' ? 1800 : RIG.animTime(a) + 300; if (now - t0 > dur) { si = (si + 1) % seq.length; t0 = now; } RIG.card(cv, 'hum', heroLook(k), { col: ROLE_COL[C.role], seed: k, anim: seq[si], el: now - t0, gt: now, zoom: 1.02 }); artRaf = requestAnimationFrame(loop); };
+    const loop = now => { const a = seq[si]; const dur = a === 'idle' ? 2600 : a === 'victory' ? 1800 : RIG.animTime(a) + 300; if (now - t0 > dur) { si = (si + 1) % seq.length; t0 = now; } RIG.card(cv, 'hum', footLook(k), { col: ROLE_COL[C.role], seed: k, anim: seq[si], el: now - t0, gt: now, zoom: 1.02 }); artRaf = requestAnimationFrame(loop); };
     artRaf = requestAnimationFrame(loop);
     const on = (id, f) => { const e = s.querySelector(id); if (e) e.onclick = f; };
     on('#train', () => { if (train(k)) { sfx('level'); toast(`${esc(H.n)} erreicht Stufe ${G.heroes[k].lvl}`, 'lvl'); W.pendingParty = 1; openHero(k); } });
@@ -537,6 +541,8 @@ function openHero(k, tab = openHero.tab || 'werte') {
     on('#bestEq', () => { const n = autoEquip([k]); refreshLooks(); toast(n ? 'Ausrüstung verbessert' : 'Bereits optimal ausgerüstet', 'mini'); W.pendingParty = 1; openHero(k); });
     on('#toBag', () => openBag());
     on('#toEq', () => openHero(k, 'ausr'));
+    on('#ride', () => { G.ride = G.ride || {}; G.ride[k] = G.ride[k] === false; save(); W.pendingParty = 1; refreshLooks(); openHero(k); });
+    paintMounts(s);
     on('#toggleP', () => {
       G.settings.autoParty = false;
       if (inP) { if (G.party.length > 1) G.party = G.party.filter(x => x !== k); }

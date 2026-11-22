@@ -94,6 +94,7 @@ const RIG = (() => {
     giant: { hw: 8, hh: 8.5, nk: 1.5, tw: 16, th: 19, ll: 16, al: 17, lw: 5.2, big: 1 }
   };
   function dims(type, look) {
+    if (type === 'hum' && look.mount) { const B = BODY[look.body] || BODY.man; return { h: -MOUNT_SADDLE[look.mount.kind] * (look.mount.kind === 'fell' ? 1 : .86) + B.th + B.nk + B.hh + 2, big: 0, w: 13 }; }
     if (type === 'hum') { const B = BODY[look.body] || BODY.man; return { h: B.ll + B.th + B.nk + B.hh + 2, big: !!B.big, w: B.big ? 20 : 8 }; }
     if (type === 'quad') return look.huge ? { h: 34, big: 1, w: 22 } : { h: look.size ? 18 : 15, big: 0, w: look.size ? 12 : 10 };
     if (type === 'spider') return look.size ? { h: 30, big: 1, w: 22 } : { h: 14, big: 0, w: 10 };
@@ -170,6 +171,11 @@ const RIG = (() => {
     g.ell(aB.h[0], aB.h[1], B.lw * .36, B.lw * .4, sh(skin, -.25), ow * .8);
     // Beine
     const legs = (front) => {
+      if (L.seated) { if (!front) return; const hx = cx + .2, kn = [hx + B.ll * .42, hipY + B.ll * .16], ft = [hx + B.ll * .34, hipY + B.ll * .62];
+        g.taper([[hx, hipY], kn, ft], [B.lw * 1.3, B.lw * .86, B.lw * .58], pants, ow * .8);
+        if (B.feet) g.ell(ft[0] + .9, ft[1] + .3, 1.6, .8, skin, ow * .7);
+        else { g.taper([[kn[0] + (ft[0] - kn[0]) * .4, kn[1] + (ft[1] - kn[1]) * .4], ft], [B.lw * .94, B.lw * .7], boots, ow * .8); g.ell(ft[0] + .9, ft[1] + .35, 1.4, .72, boots, ow * .6); }
+        return; }
       const s = (front ? 1 : -1) * (p.stride || 0), hx = cx + (front ? .45 : -.45) * B.lw;
       const lift = p.walkPh !== undefined ? Math.max(0, Math.sin(p.walkPh + (front ? 0 : Math.PI))) * 1.6 : 0;
       const foot = [hx + s, -.7 - lift], knee = [(hx + foot[0]) / 2 + .9 * K + cr * .6, (hipY + foot[1]) / 2 - lift * .3];
@@ -192,9 +198,9 @@ const RIG = (() => {
       g.fill(() => { c.moveTo(cx - B.tw * .42, hipY - 1.5); c.lineTo(cx + B.tw * .42, hipY - 1.5); c.lineTo(cx + B.tw / 2 + .8 + sw * .3, hipY + B.ll * .62); c.lineTo(cx + .4, hipY + B.ll * .5); c.lineTo(cx - B.tw / 2 - 1.6 + sw * .6, hipY + B.ll * .66); c.closePath(); }, g.lin(cx - B.tw, 0, cx + B.tw, 0, [sh(L.coat, -.3), L.coat, sh(L.coat, .1)]), ow);
     }
     if (L.robe) {
-      legs(false); legs(true);
+      legs(false); legs(true); const rb = L.seated ? hipY + B.ll * .55 : 0;
       const sw = (p.walkPh !== undefined ? Math.sin(p.walkPh) * 1.2 : 0) + (p.cape || 0) * .3;
-      g.fill(() => { c.moveTo(cx - B.tw * .4, hipY - B.th * .3); c.lineTo(cx + B.tw * .41, hipY - B.th * .27); c.quadraticCurveTo(cx + B.tw / 2 + 1, hipY + B.ll * .5, cx + B.tw / 2 + 1.6 + sw * .5, -1.2); c.quadraticCurveTo(cx + sw * .4, -.2 + Math.sin(gt / 380) * .3, cx - B.tw / 2 - 1.8 + sw * .4, -1.4); c.quadraticCurveTo(cx - B.tw / 2 - .8, hipY + B.ll * .5, cx - B.tw * .4, hipY - B.th * .3); }, g.lin(cx - B.tw, 0, cx + B.tw, 0, [sh(tunic, -.3), tunic, sh(tunic, .12)]), ow);
+      g.fill(() => { c.moveTo(cx - B.tw * .4, hipY - B.th * .3); c.lineTo(cx + B.tw * .41, hipY - B.th * .27); c.quadraticCurveTo(cx + B.tw / 2 + 1, hipY + B.ll * .5, cx + B.tw / 2 + 1.6 + sw * .5, rb - 1.2); c.quadraticCurveTo(cx + sw * .4, rb - .2 + Math.sin(gt / 380) * .3, cx - B.tw / 2 - 1.8 + sw * .4, rb - 1.4); c.quadraticCurveTo(cx - B.tw / 2 - .8, hipY + B.ll * .5, cx - B.tw * .4, hipY - B.th * .3); }, g.lin(cx - B.tw, 0, cx + B.tw, 0, [sh(tunic, -.3), tunic, sh(tunic, .12)]), ow);
     } else { legs(false); legs(true); }
     // Torso
     c.save(); c.translate(cx, hipY); c.rotate(tilt); c.translate(-cx, -hipY);
@@ -437,7 +443,7 @@ const RIG = (() => {
     // Schwanz
     c.lineCap = 'round'; c.strokeStyle = OL; c.lineWidth = 2.4; const tx = bx - bl / 2, tw = Math.sin(gt / 240) * 1.6;
     c.beginPath(); c.moveTo(tx + 1, by - 1); c.quadraticCurveTo(tx - 4, by - 3 + tw, tx - 7, by - 1 + tw); c.stroke(); c.strokeStyle = fur; c.lineWidth = 1.5; c.stroke();
-    const leg = (x, off, far) => { const a = gait ? Math.sin(ph + off) * .55 : 0, lift = gait ? Math.max(0, Math.cos(ph + off)) * 1.4 : 0; const hip = [x, by + bh * .3], foot = [x + Math.sin(a) * 3.2, -.6 - lift], knee = [(hip[0] + foot[0]) / 2 + (off % 2 ? -.8 : .8), (hip[1] + foot[1]) / 2]; g.limb([hip, knee, foot], big ? 2.2 : 1.8, far ? sh(fur, -.35) : sh(fur, -.1)); };
+    const leg = (x, off, far) => { const a = gait ? Math.sin(ph + off) * .55 : 0, lift = gait ? Math.max(0, Math.cos(ph + off)) * 1.4 : 0; const hip = [x, by + bh * .1], foot = [x + Math.sin(a) * 3.2, -.7 - lift], knee = [(hip[0] + foot[0]) / 2 + (off % 2 ? -.9 : .9), hip[1] + (foot[1] - hip[1]) * .5], col = far ? sh(fur, -.35) : sh(fur, -.08); g.taper([hip, knee, foot], [big ? 3.4 : 2.8, big ? 1.6 : 1.3, big ? 1.2 : 1], col, .3); g.ell(foot[0] + .5, foot[1] + .1, big ? 1.3 : 1.05, .65, sh(col, -.15), .25); };
     leg(bx - bl / 2 + 3, Math.PI, 1); leg(bx + bl / 2 - 3, 0, 1);
     g.ell(bx, by, bl / 2, bh / 2, g.lin(0, by - bh / 2, 0, by + bh / 2, [sh(fur, .12), fur, belly]));
     if (L.mane) g.ell(bx + bl / 2 - 3.5, by - 1.4, 4.4, 3.6, sh(fur, -.3), .35);
@@ -461,17 +467,19 @@ const RIG = (() => {
     const by = -ll - bh / 2 + bob, mane = L.mane || sh(L.fur, -.4);
     c.lineCap = 'round'; c.strokeStyle = OL; c.lineWidth = 3; const tw = Math.sin(gt / 380) * 1.5;
     c.beginPath(); c.moveTo(-bl / 2 + 1, by - 2); c.quadraticCurveTo(-bl / 2 - 4, by + 1 + tw, -bl / 2 - 4, by + 7 + tw); c.stroke(); c.strokeStyle = mane; c.lineWidth = 2; c.stroke();
-    const leg = (x, off, far) => { const a = gait ? Math.sin(ph + off) * .5 : 0, lift = gait ? Math.max(0, Math.cos(ph + off)) * 1.6 : 0; const hip = [x, by + bh * .3], foot = [x + Math.sin(a) * 3.5, -.6 - lift], knee = [(hip[0] + foot[0]) / 2 + (off % 2 ? -.6 : .6), (hip[1] + foot[1]) / 2]; g.limb([hip, knee, foot], 1.8, far ? sh(L.fur, -.3) : L.fur); g.limb([[foot[0] - .3, foot[1]], [foot[0] + .5, foot[1]]], 1.6, '#2a2018', .3); };
+    const leg = (x, off, far) => { const a = gait ? Math.sin(ph + off) * .5 : 0, lift = gait ? Math.max(0, Math.cos(ph + off)) * 1.6 : 0; const hip = [x, by + bh * .12], foot = [x + Math.sin(a) * 3.5, -.9 - lift], knee = [(hip[0] + foot[0]) / 2 + (off % 2 ? -.7 : .7), hip[1] + (foot[1] - hip[1]) * .46], fet = [foot[0] + (off % 2 ? .35 : -.2), foot[1] - 1.7], col = far ? sh(L.fur, -.32) : L.fur; g.taper([hip, knee, fet], [pony ? 3.4 : 3.9, pony ? 1.5 : 1.6, pony ? 1.2 : 1.1], col, .3); g.taper([fet, [foot[0], foot[1] - .4]], [pony ? 1.2 : 1.1, pony ? 1.5 : 1.3], sh(col, -.12), .28); g.fill(() => { c.moveTo(foot[0] - .9, foot[1] - .75); c.lineTo(foot[0] + .9, foot[1] - .75); c.lineTo(foot[0] + 1.15, foot[1] + .45); c.lineTo(foot[0] - 1, foot[1] + .45); c.closePath(); }, '#2a2018', .28); };
     leg(-bl / 2 + 3, Math.PI, 1); leg(bl / 2 - 3, 0, 1);
-    g.ell(0, by, bl / 2, bh / 2, g.lin(0, by - bh / 2, 0, by + bh / 2, [sh(L.fur, .15), L.fur, L.belly]));
+    { const bg = g.lin(0, by - bh / 2 - 1, 0, by + bh / 2, [sh(L.fur, .22), L.fur, L.belly || sh(L.fur, -.2)]); g.ell(-bl / 2 + 4.2, by - .4, 4.6, bh / 2 + .6, bg, .4); g.ell(bl / 2 - 3.2, by + .2, 4.1, bh / 2 + .5, bg, .4); g.ell(0, by, bl / 2, bh / 2, bg, 0);
+      c.strokeStyle = rgba('#ffffff', .22); c.lineWidth = .45; c.beginPath(); c.moveTo(-bl / 2 + 2, by - bh / 2 + .5); c.quadraticCurveTo(0, by - bh / 2 - .3, bl / 2 - 3, by - bh / 2 + .6); c.stroke(); c.strokeStyle = rgba(sh(L.fur, -.5), .35); c.lineWidth = .3; c.beginPath(); c.arc(-bl / 2 + 4.2, by, 3.2, -.4, 1.3); c.moveTo(bl / 2 - 1.5, by + 1); c.arc(bl / 2 - 3.2, by + .4, 2.8, .2, 1.8); c.stroke(); }
     if (L.gear) { g.rr(-3, by - bh / 2 - .5, 6, 3.4, 1, L.gear, .3); g.limb([[0, by + bh / 2 - 1], [0, by + bh / 2 + 2]], .4, '#5a3a22', 0); }
     leg(-bl / 2 + 4.5, 0, 0); leg(bl / 2 - 1.5, Math.PI, 0);
     const nx = bl / 2 - 1, hx = bl / 2 + 4 + (gait ? Math.sin(ph * 2) * .5 : 0), hy = by - bh / 2 - (pony ? 5 : 8);
-    g.limb([[nx - 2, by - 1], [hx - 1, hy + 2]], pony ? 4 : 4.4, L.fur);
-    for (let i = 0; i < 4; i++) g.ell(nx - 2 + i * 1.4, by - 3 - i * 2.2 * (pony ? .7 : 1), 1.2, 1.4, mane, .25);
+    g.taper([[nx - 3.2, by - 1.4], [hx - 1, hy + 1.6]], [pony ? 5.6 : 6.2, pony ? 3.2 : 3.4], L.fur, .35);
+    for (let i = 0; i < 8; i++) { const t = i / 7, mx = nx - 3.6 + (hx - 1.4 - (nx - 3.6)) * t, my = by - 3.4 + (hy - .6 - (by - 3.4)) * t, sw = gait ? Math.sin(ph * 2 + i) * .5 : Math.sin(gt / 600 + i) * .2; g.fill(() => { c.moveTo(mx + .7, my - .9); c.quadraticCurveTo(mx - 1 + sw, my + .2, mx - 2.2 + sw * 1.5, my + 2.4); c.lineTo(mx + .5, my + .7); c.closePath(); }, i % 2 ? mane : sh(mane, .18), .18); }
     g.fill(() => { c.moveTo(hx - 2, hy - 1); c.lineTo(hx + 5, hy + 1.5); c.lineTo(hx + 5, hy + 3.4); c.lineTo(hx - 2, hy + 3); c.closePath(); }, L.fur, .4);
     g.ell(hx - 1, hy, 2.6, 2.4, L.fur);
     g.fill(() => { c.moveTo(hx - 1.6, hy - 2); c.lineTo(hx - 1, hy - 4.4); c.lineTo(hx, hy - 1.8); }, sh(L.fur, -.1), .3);
+    if (L.gear) { c.strokeStyle = sh(L.gear, -.35); c.lineWidth = .38; c.beginPath(); c.moveTo(hx + 3.8, hy + 2.2); c.lineTo(hx - 1.2, hy + .2); c.moveTo(hx + 2.5, hy + 2.8); c.lineTo(hx - .4, hy - 1.6); c.stroke(); g.ell(hx + 2.6, hy + 2.4, .32, .32, '#e0c070', 0); }
     g.ell(hx + .4, hy - .3, .5, .5, L.eye || '#2a1a12', 0); g.ell(hx + 4.6, hy + 2.6, .4, .3, '#1a1010', 0);
   }
   function drawEagle(c, L, gt) {
@@ -608,12 +616,24 @@ const RIG = (() => {
   }
 
   /* ---------- Haupt-API ---------- */
+  /* ---------- Reittiere ---------- */
+  const MOUNT_SADDLE = { horse: -20.2, pony: -15.4, warg: -13.4, fell: -24 };
+  function drawMounted(c, L, anim, el, gt) {
+    const M = L.mount, run = anim === 'walk' || anim === 'attack' || anim === 'throw', mel = anim === 'walk' ? el : (gt % 1040);
+    const B = BODY[L.body] || BODY.man, sy = MOUNT_SADDLE[M.kind] || -20;
+    if (M.kind === 'fell') {
+      c.save(); const fl = Math.sin(gt / 300) * 1.2; c.translate(-3, fl); c.scale(.6, .6); drawDragon(c, M.look, 'idle', 0, gt); c.restore();
+    } else { c.save(); c.scale(.86, .86); drawQuad(c, Object.assign({ horse: M.kind === 'horse' || M.kind === 'pony' ? 1 : 0, pony: M.kind === 'pony' ? 1 : 0 }, M.look), run ? 'walk' : 'idle', run ? (anim === 'walk' ? el : gt % 520) : mel, gt); c.restore(); }
+    const p = poseAt(anim, el, L.wpn || 'sword', gt), bob = run ? Math.abs(Math.sin(gt / 520 * TAU)) * .8 : 0, ms = M.kind === 'fell' ? 1 : .86;
+    c.save(); c.translate(-1.2 * ms, sy * ms + B.ll - bob + (M.kind === 'fell' ? Math.sin(gt / 300) * 1.2 : 0)); drawHum(c, Object.assign({}, L, { seated: 1 }), p, gt); c.restore();
+  }
   function draw(c, type, look, anim, el, gt) {
     if (type === 'quad') { if (look.huge) { c.save(); c.scale(1.9, 1.9); drawQuad(c, look, anim, el, gt); c.restore(); return; } return drawQuad(c, look, anim, el, gt); }
     if (type === 'spider') return drawSpider(c, look, anim, el, gt);
     if (type === 'worm') return drawWorm(c, look, anim, el, gt);
     if (type === 'olifant') return drawOlifant(c, look, anim, el, gt);
     if (type === 'dragon') return drawDragon(c, look, anim, el, gt);
+    if (look.mount && anim !== 'dead') return drawMounted(c, look, anim, el, gt);
     const p = poseAt(anim, el, look.wpn || 'sword', gt);
     if (anim === 'dead') {
       c.save(); const f = p.fall; c.translate(-f * 3, -f * 2.2); c.rotate(-Math.PI / 2 * f); drawHum(c, look, p, gt); c.restore();

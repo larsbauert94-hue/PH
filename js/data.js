@@ -494,7 +494,7 @@ const ENEMIES = {
   king_dead: { n: 'König der Toten', type: 'hum', look: { body: 'uruk', skin: '#a8d8c0', hair: '#c8e8d8', hs: 'long', beard: 'long', bc: '#c8e8d8', tunic: '#4a7a68', armor: '#7aa898', hat: 'crown', hatC: '#9ac8b8', wc: '#c8e8d8', glow: '#ffffff', ghost: 1 }, wpn: 'sword', hp: 520, atk: 22, def: 13, mag: 16, res: 14, spd: 10, sk: ['heavy', 'shriek', 'morgul'], xp: 240, g: 110, tags: ['geist'], boss: 1 },
   uruk_captain:{ n: 'Uruk-Hauptmann', type: 'hum', look: { body: 'uruk', skin: '#8a8f7a', hair: '#1a1a1a', hs: 'wild', tunic: '#3a2f2a', pants: '#2a2420', armor: '#5a524a', cape: '#3a2a22', hat: 'helm', hatC: '#4a4440', wc: '#9a9a90', glow: '#e0e080' }, wpn: 'sword', hp: 520, atk: 23, def: 14, mag: 4, res: 9, spd: 11, sk: ['heavy', 'slash', 'warcry', 'summonOrc'], xp: 220, g: 110, tags: ['ork'], boss: 1 },
   // Bosse Ringkrieg
-  black_rider:{ n: 'Schwarzer Reiter', type: 'hum', look: { body: 'man', skin: '#0a0a0c', tunic: '#121216', robe: 1, cape: '#0e0e12', hat: 'hood', hatC: '#101014', wc: '#c8d0d8', glow: '#ff2020', noface: 1 }, wpn: 'sword', hp: 330, atk: 14, def: 8, mag: 15, res: 11, spd: 11, sk: ['morgul', 'shriek', 'slash'], xp: 90, g: 50, tags: ['geist'], boss: 1 },
+  black_rider:{ n: 'Schwarzer Reiter', type: 'hum', look: { body: 'man', skin: '#0a0a0c', tunic: '#121216', robe: 1, cape: '#0e0e12', hat: 'hood', hatC: '#101014', wc: '#c8d0d8', glow: '#ff2020', noface: 1, mount: { kind: 'horse', look: { fur: '#141216', mane: '#08080a', belly: '#1e1c20', eye: '#ff2a20', gear: '#2a2a30' } } }, wpn: 'sword', hp: 330, atk: 14, def: 8, mag: 15, res: 11, spd: 11, sk: ['morgul', 'shriek', 'slash'], xp: 90, g: 50, tags: ['geist'], boss: 1 },
   balrog:    { n: 'Balrog', type: 'hum', look: { body: 'giant', skin: '#2a120c', tunic: '#1a0a06', pants: '#1a0a06', hs: 'fire', hair: '#ff6a1a', wings: '#1a0a08', horns: '#3a2a20', fire: 1, wc: '#ff8a2a', glow: '#ffb030' }, wpn: 'whip', hp: 560, atk: 22, def: 13, mag: 20, res: 13, spd: 9, sk: ['whip', 'firesword', 'heavy'], xp: 180, g: 90, tags: ['dämon'], boss: 1 },
   lurtz:     { n: 'Lurtz', type: 'hum', look: { body: 'uruk', skin: '#2a2522', hair: '#0e0c0a', hs: 'wild', tunic: '#2a201a', pants: '#1e1a16', paint: '#f0f0f0', wc: '#a0a098', glow: '#ff6020' }, wpn: 'sword', hp: 440, atk: 21, def: 12, mag: 4, res: 8, spd: 11, sk: ['heavy', 'arrow', 'slash', 'warcry'], xp: 170, g: 80, tags: ['ork'], boss: 1 },
   saruman:   { n: 'Saruman', type: 'hum', look: { body: 'man', skin: '#e0c0a0', hair: '#f4f4f4', hs: 'long', beard: 'long', bc: '#f4f4f4', tunic: '#ececec', robe: 1, cape: '#d8d8d8', wc: '#1a1a1a', glowC: '#ffffff' }, wpn: 'staff', hp: 480, atk: 10, def: 10, mag: 23, res: 18, spd: 12, sk: ['staff', 'voice', 'summonUruk', 'staff'], xp: 220, g: 110, tags: [], boss: 1, ranged: 1 },
@@ -521,6 +521,8 @@ const ENEMIES = {
   carcharoth: { n: 'Carcharoth, der Rote Schlund', type: 'quad', look: { fur: '#1a1418', belly: '#3a2a30', eye: '#ff2a10', size: 1, mane: 1, huge: 1 }, wpn: 'claws', hp: 880, atk: 29, def: 16, mag: 10, res: 14, spd: 14, sk: ['bite', 'bite', 'howl', 'darkMight'], xp: 500, g: 250, tags: ['tier'], boss: 1 },
   gothmog:    { n: 'Gothmog, Herr der Balrogs', type: 'hum', look: { body: 'giant', skin: '#1e0a06', tunic: '#140604', pants: '#140604', hs: 'fire', hair: '#ff4a10', wings: '#2a0804', horns: '#1a0a06', fire: 1, wc: '#ffa040', glow: '#ff4010' }, wpn: 'whip', hp: 980, atk: 30, def: 17, mag: 27, res: 15, spd: 10, sk: ['whip', 'firesword', 'darkMight'], xp: 520, g: 260, tags: [], boss: 1 },
   morgoth:    { n: 'Morgoth Bauglir', type: 'hum', look: { body: 'giant', skin: '#0c0a0e', hs: 'bald', tunic: '#100c14', pants: '#0c0a0e', armor: '#1a1620', hat: 'crown', hatC: '#2a2430', wc: '#3a3440', glow: '#ffffff', noface: 1, aura: '#5a2a80' }, wpn: 'hammer', hp: 1150, atk: 31, def: 20, mag: 31, res: 20, spd: 10, sk: ['smash', 'darkness', 'gaze', 'darkMight', 'summonOrc'], xp: 600, g: 300, tags: [], boss: 1 },
+  warg_rider: { n: 'Wargreiter', type: 'hum', look: { body: 'orc', skin: '#6a5a40', hs: 'bald', tunic: '#3a2a1a', armor: '#4a3a2a', wc: '#8a7a60', glow: '#ff6020', mount: { kind: 'warg', look: { fur: '#3a3028', belly: '#5a4a3a', eye: '#ff4020', size: 1, mane: 1 } } }, wpn: 'spear', hp: 130, atk: 16, def: 7, mag: 3, res: 6, spd: 15, sk: ['spear', 'bite', 'howl'], xp: 32, g: 13, tags: ['ork', 'tier'] },
+  nazgul_fell:{ n: 'Nazgûl auf Flugbestie', type: 'hum', look: { body: 'man', skin: '#0a0a0c', tunic: '#121216', robe: 1, cape: '#0e0e12', hat: 'spikehelm', hatC: '#3a3a42', wc: '#b8c0c8', glow: '#ff3030', noface: 1, mount: { kind: 'fell', look: { skin: '#2a2a2e', belly: '#4a4a50', wing: '#18181c', eye: '#ff3030', horn: '#5a5a60' } } }, wpn: 'mace', hp: 300, atk: 18, def: 9, mag: 18, res: 13, spd: 12, sk: ['morgul', 'shriek', 'mace'], xp: 90, g: 36, tags: ['geist'], elite: 1, fly: 1 }
 };
 
 
@@ -568,7 +570,7 @@ const STORY = [
     outro: [['frodo', 'Er ist fort. Aber er wird wiederkommen.'], ['gandalf', 'Ich muss nach Isengart, Rat suchen. Wir treffen uns in Bree.']] },
   { part: 'Teil II · Der Ringkrieg', n: 'Bree & die Wetterspitze', map: [31, 31], bg: 'weather', lvl: 3, join: ['aragorn'],
     intro: [['narr', 'Im Tänzelnden Pony sitzt ein Fremder im Schatten und beobachtet die Hobbits.'], ['aragorn', 'Man nennt mich Streicher. Wenn ihr den Morgen erleben wollt, folgt mir.'], ['sam', 'Und warum sollten wir Euch trauen?'], ['aragorn', 'Weil die Reiter heute Nacht kommen.']],
-    waves: [['orc', 'orc'], ['orc', 'orc_archer', 'wolf'], ['wolf', 'warg'], ['orc', 'orc', 'orc_archer'], ['warg', 'warg', 'orc']],
+    waves: [['orc', 'orc'], ['orc', 'orc_archer', 'wolf'], ['wolf', 'warg_rider'], ['orc', 'orc', 'orc_archer'], ['warg_rider', 'warg', 'orc']],
     boss: ['nazgul', 'nazgul'], bossLine: [['narr', 'Auf der Ruine von Amon Sûl steigen fünf dunkle Gestalten den Hang hinauf.'], ['aragorn', 'Bleibt hinter mir! Feuer ist ihre Furcht!']],
     outro: [['narr', 'Eine Elbe reitet aus dem Licht heran und hebt den verwundeten Frodo auf ihr Pferd.'], ['arwen', 'Ich bin Arwen. Mein Vater erwartet euch in Bruchtal.']], end: ['arwen'] },
   { part: 'Teil II · Der Ringkrieg', n: 'Bruchtal & die Minen von Moria', map: [44, 34], bg: 'moria', lvl: 5, join: ['elrond', 'legolas', 'gimli', 'boromir'],
@@ -584,7 +586,7 @@ const STORY = [
     outro: [['boromir', 'Vergebt mir … Ich wollte den Ring.'], ['aragorn', 'Du hast tapfer gekämpft. Und du wirst leben, Bruder.'], ['narr', 'Frodo und Sam setzen allein über den Fluss. Doch die Gemeinschaft gibt nicht auf.']] },
   { part: 'Teil II · Der Ringkrieg', n: 'Fangorn & Helms Klamm', map: [47, 54], bg: 'helm', lvl: 11, join: ['baumbart', 'eomer', 'haldir'], back: ['gandalf'],
     intro: [['narr', 'Im Wald von Fangorn erscheint ein Reiter, strahlend weiß.'], ['gandalf', 'Ich bin Gandalf der Weiße. Und ich komme zur Wende der Gezeiten.'], ['baumbart', 'Hm, hum … Saruman hat meine Bäume gefällt. Das war ein großer Fehler.']],
-    waves: [['uruk', 'berserker'], ['uruk', 'uruk', 'uruk'], ['warg', 'uruk', 'warg'], ['uruk', 'berserker', 'orc_archer'], ['warg', 'warg', 'berserker']],
+    waves: [['uruk', 'berserker'], ['uruk', 'uruk', 'uruk'], ['warg_rider', 'uruk', 'warg'], ['uruk', 'berserker', 'orc_archer'], ['warg_rider', 'warg_rider', 'berserker']],
     mid: { 2: ['eowyn', 'theoden'] }, midLine: { 2: [['theoden', 'Rohan reitet mit euch. Zur Hornburg!'], ['eowyn', 'Und ich reite an der Seite meines Königs.']] },
     boss: ['saruman', 'uruk'], bossLine: [['e:saruman', 'Ihr Narren. Gegen die Macht von Mordor gibt es keinen Sieg.'], ['gandalf', 'Dein Stab ist zerbrochen, Saruman.']],
     outro: [['baumbart', 'Isengart steht unter Wasser. Die Bäume kehren zurück.']] },
@@ -595,7 +597,7 @@ const STORY = [
     outro: [['frodo', 'Sam … ohne dich wäre ich nie so weit gekommen.'], ['sam', 'Dann gehen wir das letzte Stück eben auch zusammen.']] },
   { part: 'Teil II · Der Ringkrieg', n: 'Die Pelennor-Felder', map: [64, 64], bg: 'pelennor', lvl: 17,
     intro: [['gandalf', 'Minas Tirith wird belagert. Gondor braucht jedes Schwert.'], ['theoden', 'Erhebt euch, Reiter Théodens! Speere werden splittern, Schilde zerbrechen!']],
-    waves: [['haradrim', 'haradrim', 'orc'], ['orc', 'orc', 'mordor_troll'], ['olifant', 'haradrim'], ['uruk', 'haradrim', 'orc_archer'], ['nazgul', 'orc', 'orc']],
+    waves: [['haradrim', 'haradrim', 'orc'], ['orc', 'orc', 'mordor_troll'], ['olifant', 'haradrim'], ['nazgul_fell', 'haradrim', 'orc_archer'], ['nazgul_fell', 'orc', 'orc']],
     boss: ['witch_king', 'orc', 'orc'], bossLine: [['e:witch_king', 'Kein lebender Mann kann mich aufhalten.'], ['eowyn', 'Ich bin kein Mann!']],
     outro: [['aragorn', 'Die Stadt ist gerettet. Doch solange der Ring besteht, ist nichts gewonnen.']] },
   { part: 'Teil II · Der Ringkrieg', n: 'Der Schicksalsberg', map: [77, 61], bg: 'doom', lvl: 20,
@@ -839,6 +841,17 @@ const BONDS = [
 ];
 
 /* ---------------- Ausrüstungs-Sets (fallen bei Bossen) ---------------- */
+/* Reittiere: aus der Lore, in der Story freigeschaltet, im Kampf geritten (Bonus für den Reiter) */
+const MOUNTS = [
+  { id: 'asfaloth', n: 'Asfaloth', d: 'Das weiße Elbenross mit silbernen Glöckchen.', heroes: ['glorfindel', 'arwen'], kind: 'horse', look: { fur: '#f4f0e8', mane: '#fbfbff', belly: '#e4e0d8', gear: '#c8b060' }, b: { spd: 3, dodge: 6 }, bd: '+3 Tempo, 6 % Ausweichen', ch: 7 },
+  { id: 'schattenfell', n: 'Schattenfell', d: 'Herr der Mearas, schneller als der Wind.', heroes: ['gandalf'], kind: 'horse', look: { fur: '#eeeef4', mane: '#ffffff', belly: '#dcdce4' }, b: { spd: 4, magPct: 6 }, bd: '+4 Tempo, +6 % Magie', ch: 10 },
+  { id: 'brego', n: 'Brego', d: 'Théodreds Ross, das Aragorn das Leben rettete.', heroes: ['aragorn'], kind: 'horse', look: { fur: '#5a3a22', mane: '#2a1a10', belly: '#6a4a32', gear: '#7a5a3a' }, b: { spd: 3, atkPct: 6 }, bd: '+3 Tempo, +6 % Angriff', ch: 10 },
+  { id: 'schneemaehne', n: 'Schneemähne', d: 'Das Ross des Königs der Mark.', heroes: ['theoden'], kind: 'horse', look: { fur: '#f0eee8', mane: '#ffffff', belly: '#e0ded6', gear: '#c8a040' }, b: { spd: 3, hpPct: 8 }, bd: '+3 Tempo, +8 % LP', ch: 10 },
+  { id: 'feuerfuss', n: 'Feuerfuß', d: 'Éomers feuriger Hengst.', heroes: ['eomer'], kind: 'horse', look: { fur: '#7a3a1a', mane: '#3a1a0a', belly: '#8a4a2a', gear: '#a08040' }, b: { spd: 3, atkPct: 6 }, bd: '+3 Tempo, +6 % Angriff', ch: 10 },
+  { id: 'arod', n: 'Arod', d: 'Ein Pferd aus Rohan, das Legolas ohne Sattel reitet.', heroes: ['legolas'], kind: 'horse', look: { fur: '#e6e0d6', mane: '#c8c0b0', belly: '#d8d2c8' }, b: { spd: 3, crit: 4 }, bd: '+3 Tempo, +4 % Krit', ch: 10 },
+  { id: 'windfola', n: 'Windfola', d: 'Trug Éowyn und Merry in die Schlacht.', heroes: ['eowyn'], kind: 'horse', look: { fur: '#8a8a86', mane: '#4a4a48', belly: '#9a9a96', gear: '#6a5a3a' }, b: { spd: 3, crit: 4 }, bd: '+3 Tempo, +4 % Krit', ch: 12 },
+  { id: 'stybba', n: 'Stybba', d: 'Merrys kleines, tapferes Pony.', heroes: ['merry'], kind: 'pony', look: { fur: '#8a6a4a', mane: '#4a3020', belly: '#9a7a5a', gear: '#6a4a2a' }, b: { spd: 2, dodge: 5 }, bd: '+2 Tempo, 5 % Ausweichen', ch: 12 }
+];
 const SETS = [
   { id: 'erebor', n: 'Erbe von Erebor', ch: 4, c: '#e8c060', b2: { hpPct: 15 }, b3: { dmgRed: 10 }, d2: '+15 % LP', d3: '−10 % erlittener Schaden' },
   { id: 'istari', n: 'Gewänder der Istari', ch: 5, c: '#c8b8ff', b2: { magPct: 15 }, b3: { ultCharge: 20 }, d2: '+15 % Magie', d3: 'Ultimate +20 %' },

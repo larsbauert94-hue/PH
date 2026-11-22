@@ -35,6 +35,7 @@ function load() { const g = store.get(SAVE_KEY); if (g && g.v === 4) { G = g; mi
 function migrate() {
   if (!G.team) { const ls = Object.values(G.heroes || {}).map(h => h.lvl || 1); G.team = { lvl: Math.max(1, ...ls), xp: 0 }; }
   if (!G.bestiary) G.bestiary = {};
+  if (!G.ride) G.ride = {}; if (!G.mounts) { G.mounts = {}; if (G.story) grantMounts(); }
   const d = { chest: 0, board: null, side: {}, comps: {}, companion: null, raid: {}, queue: null, relics: {}, tower: { best: 0, queued: false } };
   for (const [k, v] of Object.entries(d)) if (G[k] === undefined) G[k] = v;
   for (const k of ['sides', 'comps', 'fullSet', 'loops', 'relics', 'towerBest', 'maxCombo']) if (G.stats[k] === undefined) G.stats[k] = 0;
@@ -95,6 +96,7 @@ function heroStats(key, aura) {
   const flat = { hp: 0, atk: 0, mag: 0, def: 0, res: 0, spd: 0 }, p = {};
   const add = (k, v) => { if (k in flat) flat[k] += v; else p[k] = (p[k] || 0) + v; };
   for (const slot of Object.keys(SLOTS)) { const it = hs.eq[slot] && itemById(hs.eq[slot]); if (!it) continue; for (const [k, v] of Object.entries(itemStats(it))) add(k, v); if (it.bonus) for (const [k, v] of Object.entries(it.bonus)) add(k, v); if (it.fav === key) { add('atkPct', 10); add('magPct', 10); } }
+  const mt = mountOf(key); if (mt) for (const [k, v] of Object.entries(mt.b)) add(k, v);
   for (const ps of H.pas) if (ps.lvl <= lv) for (const [k, v] of Object.entries(ps.e)) if (!k.startsWith('aura')) add(k, v);
   const setN = {}; for (const slot of Object.keys(SLOTS)) { const it = hs.eq[slot] && itemById(hs.eq[slot]); if (it?.set) setN[it.set] = (setN[it.set] || 0) + 1; }
   for (const [id, n] of Object.entries(setN)) { const S2 = SETS.find(x => x.id === id); if (!S2) continue; if (n >= 2) for (const [k, v] of Object.entries(S2.b2)) add(k, v); if (n >= 3) for (const [k, v] of Object.entries(S2.b3)) add(k, v); }
@@ -115,8 +117,12 @@ function heroStats(key, aura) {
   st.power = Math.round(st.hp * .25 + (st.atk + st.mag) * 2.2 + (st.def + st.res) * 1.6 + st.spd * 4 + st.crit * 2 + (lv >= ACT2_LVL ? 40 : 0) + hs.stage * 60);
   return st;
 }
+function mountOf(key) { if (!G.heroes[key] || !G.mounts || (G.ride || {})[key] === false) return null; return MOUNTS.find(m => m.heroes.includes(key) && G.mounts[m.id]) || null; }
+function mountFor(key) { return MOUNTS.find(m => m.heroes.includes(key)) || null; }
+function grantMounts() { G.mounts = G.mounts || {}; const got = []; for (const m of MOUNTS) if (!G.mounts[m.id] && (G.story.ch > m.ch || G.story.loop > 0)) { G.mounts[m.id] = 1; got.push(m); } return got; }
 function gearOf(key) { const hs = G.heroes[key]; if (!hs || !hs.eq) return null; const f = sl => { const it = hs.eq[sl] && itemById(hs.eq[sl]); return it ? { r: it.r, e: it.enh || 0 } : null; }; return { w: f('weapon'), a: f('armor'), t: f('trinket') }; }
 function heroLook(key) { const H = HEROES[key], hs = G.heroes[key] || { stage: 0 }; const L = Object.assign({ wpn: H.wpn }, H.look); for (let i = 1; i <= hs.stage; i++) Object.assign(L, H.stageLook[i] || {}); for (const k in L) if (L[k] === null) delete L[k];
+  const mt = mountOf(key); if (mt) L.mount = { kind: mt.kind, look: mt.look };
   const gr = gearOf(key); if (gr) { L.gear = gr; if (gr.w && gr.w.r >= 3) L.wc = gr.w.r >= 4 ? '#fff0b8' : '#e4d6ff'; }
   return L; }
 function lookAtStage(key, st) { const H = HEROES[key]; const L = Object.assign({ wpn: H.wpn }, H.look); for (let i = 1; i <= st; i++) Object.assign(L, H.stageLook[i] || {}); for (const k in L) if (L[k] === null) delete L[k]; return L; }

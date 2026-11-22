@@ -95,6 +95,7 @@ class World {
       skills: E.sk.map(id => ESK[id]), xp: Math.round(E.xp * (1 + .22 * (lvl - 1))), gold: Math.round(E.g * (1 + .16 * (lvl - 1))), transform: E.transform, ranged: !!E.ranged,
       atkStat: E.look.glowC && E.wpn === 'staff' ? 'mag' : 'atk'
     });
+    if (E.fly) addS(u, 'fly', 99, 0, this);
     u.hp = u.maxHp; const Dm = RIG.dims(u.type, u.look); u.h = Dm.h; u.big = Dm.big; u.w = Dm.w;
     this.enemies.push(u); return u;
   }

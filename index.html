@@ -97,6 +97,9 @@ nav{display:flex;gap:6px}
 #sheet{position:fixed;top:0;bottom:0;right:0;width:min(760px,68vw);z-index:40;background:linear-gradient(160deg,rgba(18,24,32,.88),rgba(8,11,16,.92));backdrop-filter:blur(16px) saturate(1.2);-webkit-backdrop-filter:blur(16px) saturate(1.2);border-left:1px solid rgba(255,220,150,.22);box-shadow:-20px 0 60px rgba(0,0,0,.6);transform:translateX(102%);transition:transform .3s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;padding-right:var(--sr)}
 #sheet.open{transform:none}
 body.portrait #sheet{width:100%}
+.m-mount{display:grid;grid-template-columns:64px 1fr auto;gap:10px;align-items:center;border-radius:12px;border:1px solid rgba(232,189,92,.35);background:linear-gradient(90deg,rgba(232,189,92,.1),rgba(255,255,255,.02));padding:4px 10px 4px 4px}
+.m-mount canvas{width:64px;height:44px;border-radius:8px;display:block} .m-mount b{font-family:var(--display);font-size:13px;display:block} .m-mount small{font-size:11px;color:var(--muted)} .m-mount.lk{opacity:.55} .m-mount.lk canvas{filter:brightness(0)}
+.mcv{width:min(46vw,300px);height:min(30vh,170px);display:block;margin:6px auto}
 #lvc{font-size:10.5px;color:var(--muted);margin-top:3px;font-weight:700} #lvc .ok{color:#8fe07a} #lvc .mid{color:#ffd060} #lvc .bad{color:#ff7a5a}
 .m-mapcol{display:flex;flex-direction:column;gap:6px;min-height:0} .m-mapcol .mapwrap{flex:1;min-height:0}
 .m-story .m-parts{position:static;display:flex;gap:4px} .m-story .m-parts .ptab{flex:1;font-size:11px;padding:5px 4px;white-space:nowrap;background:rgba(255,255,255,.04);color:var(--muted)} .m-story .m-parts .ptab.on{color:#fff;background:linear-gradient(color-mix(in srgb,var(--c) 45%,transparent),color-mix(in srgb,var(--c) 15%,transparent))}
