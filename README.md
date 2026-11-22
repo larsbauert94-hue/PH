@@ -12,6 +12,11 @@ Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden 
 
 Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten). Unter **Optionen → Grafik** lässt sich zwischen *Auto*, *Hoch* (Figuren mit Szenenlicht, Kantenlicht und Bodenverdeckung) und *Normal* wählen; *Auto* schaltet bei zu niedriger Bildrate selbst herunter.
 
+## Neu in Version 9.1
+- **Sturmangriff der Rohirrim:** Théodens, Éomers und Éowyns Ultimate lässt eine Reiterschwadron über das Schlachtfeld galoppieren
+- **Boss-Arena Brücke von Khazad-dûm:** schmale Steinbrücke über dem feurigen Abgrund; die Brücke bricht und der Balrog stürzt
+- **Neue Wahrzeichen:** Hornburg mit Klammwall und Fackeln, Erebor mit großem Tor, Eilendem Wasser und Rabenberg
+
 ## Neu in Version 9
 - **Reittiere** (eigener Tab im Heldenmenü): Schattenfell, Brego, Asfaloth, Schneemähne, Feuerfuß, Arod, Windfola, Stybba – geritten im Kampf, mit Bonus; Feinde auf Wargen, Rappen und Flugbestien
 - **Wahrzeichen:** Minas Tirith, Barad-dûr mit dem Auge, Orodruin, Minas Morgul, Argonath, Ost-in-Edhil

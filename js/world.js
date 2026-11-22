@@ -177,6 +177,7 @@ class World {
     if (this.abortNext) { this.abortNext = false; return { win: false, aborted: true, enemies: [], dmgPct: 0 }; }
     this.raid = !!opts.raid; this.raidEnd = 0;
     this.enemies = []; this.parts = this.parts.filter(p => p.amb);
+    this.arena = group.includes('balrog') ? 'bridge' : null; this.bridgeBreak = null;
     if (opts.keepHp) { for (const h of this.heroes) { h.statuses = []; h.cd = {}; h.threat = 0; h.atb = 0; h.holdAnim = null; if (alive(h)) h.anim = { n: 'idle', el: 0 }; } } else this.restoreHeroes();
     if (hasMod('noEnergy')) this.heroes.forEach(h => h.energy = 0);
     group.forEach(k => this.addEnemy(k, lvl, kind)); this.layoutEnemies();
@@ -350,6 +351,7 @@ class World {
       this.h.ultUsed?.(u);
     }
     this.h.log?.(u, sk);
+    if (isUlt && u.side === 'hero' && ['theoden', 'eomer', 'eowyn'].includes(u.key)) { this.charge = { t: this.time }; this.shake(3); }
     if (isUlt) { this.hitstop = 140; this.cine = { t: this.time }; this.slowUntil = this.time + 420; this.speedFx = { x: u.x, y: u.y - u.h * .5, t: this.time, c: u.side === 'hero' ? '255,236,180' : '255,90,60' }; this.focus(u, 1.26, 1100); sfx('ult'); this.flash(u.side === 'hero' ? '#ffe9a8' : '#ff3a1a', 500); this.fxs.push({ k: 'pillar', x: u.x, y: u.y, c: '#ffe080', t: 0, dur: 800 }); this.shake(2); this.h.ult?.(u, sk); await this.wait(500); }
     const hits = sk.hits || 1, hitSet = new Set(), counters = [];
     const doHit = (t, mult = 1) => { const r = this.hit(u, t, sk, mult); if (r > 0) hitSet.add(t); if (r === -2) counters.push(t); };
@@ -497,6 +499,7 @@ class World {
   die(u) {
     if (u.p?.reviveSelf && !u.usedRevive) { u.usedRevive = 1; u.hp = Math.round(u.maxHp * u.p.reviveSelf); this.num(u, 'Unbeugsam', '#ffe080'); this.burst(u.x, u.y - u.h * .5, 'holy', 14, 1, .6); return; }
     u.hp = 0; u.statuses = []; u.charging = false; this.setAnim(u, 'dead'); sfx('die');
+    if (u.key === 'balrog' && this.arena === 'bridge') { u.falling = this.time; this.bridgeBreak = { x: u.x + u.ox, t: this.time }; this.shake(6); for (let i = 0; i < 24; i++) this.parts.push({ x: u.x + u.ox + rnd(-14, 14), y: 100 + rnd(-6, 24), vx: rnd(-.8, .8), vy: rnd(-1.2, .2), g: .05, t: 0, life: rnd(700, 1300), c: pick(['#5a5650', '#3e3a36', '#24201e']), s: 1.8 }); this.h.banner?.('Die Brücke bricht!', 'warn'); }
     if (u.side === 'enemy' && this.fighting && this.enemies.every(e => !alive(e) || e === u)) { this.slowUntil = this.time + 750; this.cine = { t: this.time, dur: 1500 }; this.focus(u, 1.24, 1000); this.flash('#fff4d0', 380); this.fxs.push({ k: 'rays', x: u.x + u.ox, y: u.y + u.oy - u.h * .5, t: 0, dur: 1300 }); }
     if (u.side === 'enemy') { this.h.kill?.(u); const n = u.big ? 34 : 18; for (let i = 0; i < n; i++) this.parts.push({ x: u.x + u.ox + rnd(-u.w, u.w) * .6, y: u.y + u.oy - rnd(0, u.h), vx: rnd(-.25, .25), vy: -rnd(.15, .6), g: -.002, t: 0, life: rnd(700, 1300), c: pick(['#ff9a40', '#ffcf70', '#c04a20', '#4a3a3a']), s: Math.random() < .4 ? 1.6 : 1, glow: Math.random() < .7 }); }
     this.burst(u.x, u.y - u.h * .5, u.side === 'enemy' ? 'dark' : 'slash', 10, 1);
@@ -544,6 +547,7 @@ class World {
     this.drawLandmark(ctx, gt, L, true);
     tile(L.ground, 1, L.HZ + YO, LH - L.HZ - YO + 4);
     if (this.hq()) this.drawRays(ctx, gt, L);
+    this.drawArena(ctx, gt, L);
     this.drawAtmos(ctx, gt);
     const units = this.all().filter(u => u.fade > 0).sort((a, b) => (a.y + a.oy) - (b.y + b.oy));
     for (const u of units) { const x = u.x + u.ox + u.kb, y = u.y + u.oy; const Ls = LIGHT[this.bgKey] || LIGHT._, sd = Ls.from === 'left' ? 1 : Ls.from === 'right' ? -1 : 0, fl = hasS(u, 'fly') ? .45 : 1; ctx.globalAlpha = .32 * u.fade * fl; ctx.save(); ctx.translate(x + sd * u.h * .32, y); ctx.transform(1, 0, sd * -.9, 1, 0, 0); const spr = this.shadowSprite(), rx = u.h * .5 + u.w * .3, ry = (u.w + 2) * .32; ctx.globalAlpha *= .65; ctx.drawImage(spr, -rx, -ry, rx * 2, ry * 2); ctx.restore(); ctx.globalAlpha = .62 * u.fade * fl; const cx2 = u.w + 1, cy2 = (u.w + 1) * .24; ctx.drawImage(spr, x - cx2, y - cy2, cx2 * 2, cy2 * 2); }
@@ -554,6 +558,7 @@ class World {
     if (this.hq()) for (const u of units) this.drawCastFx(u);
     for (const u of units) this.drawUnit(u, gt);
     for (const u of units) this.drawTrail(u);
+    this.drawCharge(ctx, gt);
     for (const f of this.fxs) if (!f.under) this.drawFx(f);
     for (const p of this.projs) this.drawProj(p);
     this.drawParts(ctx);
@@ -651,6 +656,29 @@ class World {
     ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(200,215,255,${.22 * a})`; ctx.fillRect(-20, YO - 20, this.LW + 40, L.HZ + 30);
     ctx.strokeStyle = `rgba(235,240,255,${a})`; ctx.lineWidth = 1.1; ctx.lineJoin = 'round'; ctx.beginPath(); b.pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke(); ctx.strokeStyle = `rgba(150,180,255,${a * .5})`; ctx.lineWidth = 3; ctx.stroke(); ctx.restore();
   }
+  drawCharge(ctx, gt) {
+    const ch = this.charge; if (!ch) return; const k = (this.time - ch.t) / 1600; if (k > 1) { this.charge = null; return; }
+    if (!this._rohan) this._rohan = ['#6a4a2a', '#e8e4dc', '#3a2a1a', '#8a6a4a', '#5a3a22', '#c8b8a0', '#4a3a2e', '#9a7a5a'].map((f, i) => ({ body: 'man', skin: '#e0b490', hair: i % 2 ? '#c8a060' : '#8a6a3a', hs: 'long', beard: i % 3 ? 'short' : null, bc: '#b89050', tunic: i % 2 ? '#3a4a2a' : '#2e4030', armor: '#a8a090', hat: 'helm', hatC: '#c0b080', crest: 1, cape: i % 2 ? '#5a3a20' : '#2e4a2a', wc: '#d8dce0', wpn: 'spear', mount: { kind: 'horse', look: { fur: f, mane: RIG.sh(f, -.45), belly: RIG.sh(f, .1), gear: '#7a5a3a' } } }));
+    for (let i = 0; i < 8; i++) {
+      const row = i % 4, x = -70 + k * (this.LW + 170) - Math.floor(i / 4) * 34 - row * 9, y = 98 + row * 9;
+      if (x < -60 || x > this.LW + 60) continue;
+      ctx.save(); ctx.translate(x, y); RIG.draw(ctx, 'hum', this._rohan[i], 'walk', (gt + i * 130) % 1040, gt + i * 77); ctx.restore();
+      if (Math.random() < .35) this.parts.push({ x: x - 12, y: y - 1, vx: rnd(-.6, -.1), vy: rnd(-.4, -.1), g: -.002, t: 0, life: rnd(400, 800), c: pick(['#a89878', '#8a7a62', '#c8b898']), s: 1.6 });
+    }
+  }
+  drawArena(ctx, gt, L) {
+    if (this.arena !== 'bridge') return; const top = 86, bot = 134, hz = L.HZ + YO;
+    ctx.save(); let g = ctx.createLinearGradient(0, hz, 0, LH); g.addColorStop(0, '#080404'); g.addColorStop(.5, '#1a0604'); g.addColorStop(1, '#5a1406'); ctx.fillStyle = g; ctx.fillRect(-20, hz, this.LW + 40, LH - hz + 10);
+    ctx.globalCompositeOperation = 'lighter'; for (let i = 0; i < 5; i++) { const fx = ((i * 97 + gt / 30) % (this.LW + 60)) - 30, a = .25 + .15 * Math.sin(gt / 200 + i); g = ctx.createRadialGradient(fx, LH + 6, 0, fx, LH + 6, 46); g.addColorStop(0, `rgba(255,110,30,${a})`); g.addColorStop(1, 'rgba(255,60,10,0)'); ctx.fillStyle = g; ctx.fillRect(fx - 46, LH - 50, 92, 60); }
+    ctx.globalCompositeOperation = 'source-over';
+    const slab = (x0, x1) => { ctx.beginPath(); ctx.moveTo(x0, top); ctx.lineTo(x1, top); ctx.lineTo(x1, bot); ctx.lineTo(x0, bot); ctx.closePath(); };
+    const bb = this.bridgeBreak, gap = bb ? Math.min(1, (this.time - bb.t) / 500) * 22 : 0;
+    const segs = bb ? [[-20, bb.x - gap], [bb.x + gap, this.LW + 20]] : [[-20, this.LW + 20]];
+    for (const [x0, x1] of segs) { if (x1 <= x0) continue; slab(x0, x1); g = ctx.createLinearGradient(0, top, 0, bot); g.addColorStop(0, '#5a5650'); g.addColorStop(.15, '#3e3a36'); g.addColorStop(1, '#24201e'); ctx.fillStyle = g; ctx.fill();
+      ctx.strokeStyle = 'rgba(255,140,60,.35)'; ctx.lineWidth = .8; ctx.beginPath(); ctx.moveTo(x0, bot); ctx.lineTo(x1, bot); ctx.stroke(); ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = .3; ctx.beginPath(); for (let x = Math.ceil(x0 / 14) * 14; x < x1; x += 14) { ctx.moveTo(x, top); ctx.lineTo(x - 3, bot); } ctx.stroke();
+      ctx.fillStyle = 'rgba(255,240,220,.08)'; ctx.fillRect(x0, top, x1 - x0, 1.2); }
+    ctx.restore();
+  }
   drawLandmark(ctx, gt, L, front = false) {
     const lm = RIG.landmark(this.bgKey, this.s); if (!lm || lm.front !== front) return;
     const k = lm.k, w = lm.w * k, h = lm.h * k, span = this.LW + w + 60; let X = this.LW * .6 - w / 2 - ((this.scroll * .05) % span + span) % span; if (X < -w - 30) X += span;
@@ -687,7 +715,7 @@ class World {
   }
   drawUnit(u, gt) {
     const ctx = this.ctx, x = u.x + u.ox + u.kb, y = u.y + u.oy;
-    const fly = hasS(u, 'fly') ? 14 + Math.sin(gt / 260) * 3 : 0;
+    const fly = (hasS(u, 'fly') ? 14 + Math.sin(gt / 260) * 3 : 0) - (u.falling ? Math.pow(Math.min(1.6, (this.time - u.falling) / 700), 2) * 70 : 0);
     if (this.hq()) {
       const img = this.litSprite(u, gt);
       const gp = u._gp || (u._gp = []); if (!gp.length || this.time - gp[gp.length - 1].t > 26) { gp.push({ x, y: y - fly, t: this.time }); if (gp.length > 5) gp.shift(); }

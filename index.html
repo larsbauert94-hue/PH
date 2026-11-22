@@ -92,6 +92,7 @@ nav{display:flex;gap:6px}
 .toast.out{opacity:0;transform:translateY(-8px)}
 .toast.lvl{border-color:var(--gold);color:var(--gold-2)} .toast.unlock{border-color:#8ad0ff;color:#cfeaff} .toast b{color:#fff}
 @keyframes tin{from{opacity:0;transform:translateY(-10px) scale(.95)}to{opacity:1;transform:none}}
+@keyframes dlgin{from{opacity:0;transform:translateX(-50%) translateY(14px) scale(.97)}to{opacity:1;transform:translateX(-50%)}}
 
 /* Glas-Panel */
 #sheet{position:fixed;top:0;bottom:0;right:0;width:min(760px,68vw);z-index:40;background:linear-gradient(160deg,rgba(18,24,32,.88),rgba(8,11,16,.92));backdrop-filter:blur(16px) saturate(1.2);-webkit-backdrop-filter:blur(16px) saturate(1.2);border-left:1px solid rgba(255,220,150,.22);box-shadow:-20px 0 60px rgba(0,0,0,.6);transform:translateX(102%);transition:transform .3s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;padding-right:var(--sr)}
@@ -272,7 +273,7 @@ body.sheet-open #gsug{display:none}
 .opt.warn{color:#ffb0a0}
 
 /* Dialog */
-#dialog{position:fixed;left:50%;bottom:calc(10px + var(--sb));transform:translateX(-50%);width:min(900px,calc(100% - 24px - var(--sl) - var(--sr)));z-index:50;display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center;background:linear-gradient(180deg,rgba(14,18,26,.92),rgba(6,8,12,.96));border:1px solid rgba(255,220,150,.3);border-radius:18px;padding:12px 16px 12px 12px;box-shadow:0 20px 60px rgba(0,0,0,.7);animation:tin .3s cubic-bezier(.2,.8,.2,1);cursor:pointer}
+#dialog{position:fixed;left:50%;bottom:calc(10px + var(--sb));transform:translateX(-50%);width:min(900px,calc(100% - 24px - var(--sl) - var(--sr)));z-index:50;display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center;background:linear-gradient(180deg,rgba(14,18,26,.92),rgba(6,8,12,.96));border:1px solid rgba(255,220,150,.3);border-radius:18px;padding:12px 16px 12px 12px;box-shadow:0 20px 60px rgba(0,0,0,.7);animation:dlgin .3s cubic-bezier(.2,.8,.2,1);cursor:pointer}
 .dport{width:min(12vw,24vh,120px);aspect-ratio:3/3.4;border-radius:14px;overflow:hidden;border:1.5px solid color-mix(in srgb,var(--rc) 70%,transparent);box-shadow:0 0 18px color-mix(in srgb,var(--rc) 35%,transparent);background:#0a0d12;display:grid;place-items:center}
 .dport canvas{width:100%;height:100%;display:block}
 .narr-ic{font-size:40px;color:var(--gold)}
