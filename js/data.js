@@ -1,101 +1,26 @@
 'use strict';
 /* =====================================================================
    RINGFAHRT – Spieldaten
-   Klassen nach Rollen (Tank / Schaden / Heiler) im Stil klassischer MMOs,
-   Helden aus „Der Herr der Ringe“ und „Die Ringe der Macht“.
+   Rollen (Tank / Schaden / Heiler), 23 Helden mit je 3 Passiven,
+   einer häufigen und einer seltenen Aktiven sowie einer Ultimate.
+   Eine durchgehende Story in 14 Kapiteln.
    ===================================================================== */
-
 const ROLES = {
-  tank: { n: 'Tank', c: '#6fa3e0', d: 'Zieht die Aufmerksamkeit der Feinde auf sich und hält viel aus.' },
-  dd:   { n: 'Schaden', c: '#e0745a', d: 'Verursacht hohen Schaden, im Nahkampf, Fernkampf oder mit Magie.' },
-  heal: { n: 'Heiler', c: '#7fd17a', d: 'Hält die Gruppe mit Heilung, Schilden und Segen am Leben.' }
+  tank: { n: 'Tank', c: '#6fa3e0', d: 'Zieht die Feinde auf sich und hält viel aus.' },
+  dd:   { n: 'Schaden', c: '#ef7d5e', d: 'Verursacht hohen Schaden im Nah- oder Fernkampf oder mit Magie.' },
+  heal: { n: 'Heiler', c: '#7fd17a', d: 'Hält die Gruppe mit Heilung und Schilden am Leben.' }
 };
-
-const RESOURCES = {
-  wut:     { n: 'Wut',     c: '#d24a3a', start: 20, regen: 0,  onHit: 9, onHurt: 12 },
-  energie: { n: 'Energie', c: '#e8d05a', start: 60, regen: 25, onHit: 0, onHurt: 0 },
-  fokus:   { n: 'Fokus',   c: '#e8964a', start: 50, regen: 20, onHit: 3, onHurt: 0 },
-  mana:    { n: 'Mana',    c: '#4f8fe0', start: 100, regen: 14, onHit: 0, onHurt: 0 }
-};
-
 const WCLS = { klinge: 'Klingen', bogen: 'Bögen', wucht: 'Äxte & Hämmer', stab: 'Stäbe', speer: 'Speere' };
-
-/* Talent-Knoten: 5 Ränge (Stufe 1 & 2) + Meisterschaft (1 Rang).
-   e = Wert pro Rang. Rang 2 braucht 5 Punkte im Ast, Meisterschaft 10. */
-const T = (n, e, d) => ({ n, e, d });
 const CLASSES = {
-  schildwache: { n: 'Schildwache', role: 'tank', sub: 'Schild & Schwert', res: 'wut', wcls: ['klinge', 'speer'], threat: 3,
-    base: { hp: 178, atk: 14, mag: 5, def: 17, res: 11, spd: 9, crit: 5 },
-    d: 'Ein gepanzerter Verteidiger. Provoziert Feinde, blockt Schläge und schützt Verbündete.',
-    tree: [
-      { n: 'Schutz', nodes: [T('Schildwall', { defPct: 4 }, '+4 % Verteidigung'), T('Standhaftigkeit', { hpPct: 5 }, '+5 % Lebenspunkte'), T('Letzte Bastion', { reviveSelf: .3 }, 'Einmal pro Kampf: Überlebt einen tödlichen Treffer mit 30 % LP')] },
-      { n: 'Vergeltung', nodes: [T('Schwertarm', { atkPct: 3 }, '+3 % Angriff'), T('Dornenschild', { thorns: 4 }, 'Wirft 4 % des erlittenen Schadens zurück'), T('Gegenschlag', { counter: .25 }, '25 % Chance, Nahkampfangriffe zu kontern')] },
-      { n: 'Befehl', nodes: [T('Herausforderung', { threat: 10 }, '+10 % Bedrohung'), T('Kampfeswut', { resGain: 10 }, '+10 % Ressourcengewinn'), T('Banner des Königs', { startBuffDef: 1 }, 'Kampfbeginn: Alle Verbündeten erhalten Wacht (2)')] }
-    ] },
-  bollwerk: { n: 'Bollwerk', role: 'tank', sub: 'Zwergische Wucht', res: 'wut', wcls: ['wucht'], threat: 3,
-    base: { hp: 188, atk: 15, mag: 4, def: 16, res: 10, spd: 8, crit: 6 },
-    d: 'Unerschütterlich wie der Fels. Viel Leben, schwere Hiebe, Wut als Antrieb.',
-    tree: [
-      { n: 'Stein', nodes: [T('Felsenhaut', { hpPct: 5 }, '+5 % Lebenspunkte'), T('Granit', { dmgRed: 2 }, '−2 % erlittener Schaden'), T('Steinhaut', { startShieldSelf: .15 }, 'Kampfbeginn: Schild in Höhe von 15 % LP')] },
-      { n: 'Zorn', nodes: [T('Grimm', { atkPct: 3 }, '+3 % Angriff'), T('Wucht', { crit: 2 }, '+2 % kritische Trefferchance'), T('Berserker', { lowHpDmg: .5 }, 'Bis zu +50 % Schaden bei niedrigen LP')] },
-      { n: 'Ahnen', nodes: [T('Ahnenschutz', { resPct: 4 }, '+4 % Widerstand'), T('Ahnenkraft', { healRecv: 5 }, '+5 % erhaltene Heilung'), T('Durins Segen', { reviveSelf: .35 }, 'Einmal pro Kampf: Überlebt einen tödlichen Treffer mit 35 % LP')] }
-    ] },
-  urgewalt: { n: 'Urgewalt', role: 'tank', sub: 'Naturkraft', res: 'wut', wcls: ['wucht'], threat: 3,
-    base: { hp: 215, atk: 14, mag: 10, def: 13, res: 15, spd: 7, crit: 5 },
-    d: 'Uralte Naturgewalt. Enorme Lebenspunkte, Selbstheilung und lähmende Wurzeln.',
-    tree: [
-      { n: 'Rinde', nodes: [T('Dicke Rinde', { hpPct: 5 }, '+5 % Lebenspunkte'), T('Hartholz', { defPct: 3 }, '+3 % Verteidigung'), T('Dornenranken', { thorns: 25 }, 'Wirft 25 % des erlittenen Schadens zurück')] },
-      { n: 'Wurzel', nodes: [T('Saft des Lebens', { healRecv: 5 }, '+5 % erhaltene Heilung'), T('Tiefe Wurzeln', { regenTurn: 1 }, 'Heilt sich jede Runde um 1 % LP'), T('Ewige Wurzeln', { startBuffRegen: 1 }, 'Kampfbeginn: Alle Verbündeten erhalten Erholung (3)')] },
-      { n: 'Sturm', nodes: [T('Astpeitsche', { atkPct: 3 }, '+3 % Angriff'), T('Ranken', { statusCh: 5 }, '+5 % Chance auf Zustände'), T('Zorn der Ents', { stunOnHit: .15 }, '15 % Chance, mit Treffern zu betäuben')] }
-    ] },
-  klingenmeister: { n: 'Klingenmeister', role: 'dd', sub: 'Nahkampf', res: 'wut', wcls: ['klinge', 'speer'], threat: 1,
-    base: { hp: 128, atk: 19, mag: 6, def: 10, res: 9, spd: 11, crit: 12 },
-    d: 'Meister der Klinge im Nahkampf. Schnelle Kombos, Blutungen und vernichtende Finisher.',
-    tree: [
-      { n: 'Waffen', nodes: [T('Klingenkunst', { atkPct: 3 }, '+3 % Angriff'), T('Tiefe Wunden', { critDmg: 8 }, '+8 % kritischer Schaden'), T('Doppelhieb', { doubleHit: .2 }, '20 % Chance auf einen zweiten Treffer')] },
-      { n: 'Furor', nodes: [T('Kampfrausch', { spd: 1 }, '+1 Tempo'), T('Präzision', { crit: 2 }, '+2 % kritische Trefferchance'), T('Blutrausch', { lifesteal: 10 }, '10 % Lebensraub')] },
-      { n: 'Ruhm', nodes: [T('Heldenmut', { ultCharge: 5 }, '+5 % Ultimate-Aufladung'), T('Unbeugsam', { hpPct: 4 }, '+4 % Lebenspunkte'), T('Hinrichten', { execute: .5 }, '+50 % Schaden gegen Feinde unter 30 % LP')] }
-    ] },
-  waldlaeufer: { n: 'Waldläufer', role: 'dd', sub: 'Fernkampf', res: 'fokus', wcls: ['bogen'], threat: 1,
-    base: { hp: 108, atk: 18, mag: 7, def: 8, res: 9, spd: 13, crit: 18 },
-    d: 'Präzise Schützen aus sicherer Entfernung. Markieren Ziele und lassen Pfeile regnen.',
-    tree: [
-      { n: 'Treffsicherheit', nodes: [T('Ruhige Hand', { atkPct: 3 }, '+3 % Angriff'), T('Schwachstellen', { critDmg: 8 }, '+8 % kritischer Schaden'), T('Todesschuss', { execute: .5 }, '+50 % Schaden gegen Feinde unter 30 % LP')] },
-      { n: 'Überleben', nodes: [T('Wachsamkeit', { dodge: 2 }, '+2 % Ausweichen'), T('Zähigkeit', { hpPct: 4 }, '+4 % Lebenspunkte'), T('Giftpfeile', { poisonOnHit: .25 }, '25 % Chance, Ziele zu vergiften')] },
-      { n: 'Wind', nodes: [T('Leichtfüßig', { spd: 1 }, '+1 Tempo'), T('Konzentration', { resGain: 10 }, '+10 % Fokusgewinn'), T('Doppelschuss', { doubleHit: .25 }, '25 % Chance auf einen zweiten Pfeil')] }
-    ] },
-  schurke: { n: 'Schattenläufer', role: 'dd', sub: 'Nahkampf / List', res: 'energie', wcls: ['klinge'], threat: .8,
-    base: { hp: 100, atk: 17, mag: 8, def: 7, res: 10, spd: 15, crit: 22 },
-    d: 'Flink und schwer zu fassen. Gifte, kritische Treffer und Tarnung.',
-    tree: [
-      { n: 'Meucheln', nodes: [T('Gezielte Stiche', { critDmg: 10 }, '+10 % kritischer Schaden'), T('Giftkunde', { statusCh: 5 }, '+5 % Chance auf Zustände'), T('Tödliches Gift', { poisonOnHit: .3 }, '30 % Chance, Ziele zu vergiften')] },
-      { n: 'Kampf', nodes: [T('Kampfgeschick', { atkPct: 3 }, '+3 % Angriff'), T('Scharfes Auge', { crit: 2 }, '+2 % kritische Trefferchance'), T('Klingenwirbel', { doubleHit: .2 }, '20 % Chance auf einen zweiten Treffer')] },
-      { n: 'Täuschung', nodes: [T('Ausweichen', { dodge: 3 }, '+3 % Ausweichen'), T('Flinkheit', { spd: 1 }, '+1 Tempo'), T('Unsichtbar', { startInvis: 1 }, 'Kampfbeginn: Unsichtbar (2)')] }
-    ] },
-  zauberer: { n: 'Zauberer', role: 'dd', sub: 'Magie', res: 'mana', wcls: ['stab'], threat: 1,
-    base: { hp: 94, atk: 7, mag: 21, def: 6, res: 14, spd: 10, crit: 10 },
-    d: 'Wirkt Feuer, Licht und Sturm. Hoher Flächenschaden, aber zerbrechlich.',
-    tree: [
-      { n: 'Feuer', nodes: [T('Flammenmacht', { magPct: 3 }, '+3 % Magie'), T('Glut', { critDmg: 8 }, '+8 % kritischer Schaden'), T('Flamme von Anor', { burnOnHit: .3 }, '30 % Chance, Ziele in Brand zu setzen')] },
-      { n: 'Frost', nodes: [T('Kälteschild', { resPct: 4 }, '+4 % Widerstand'), T('Eisige Finger', { statusCh: 5 }, '+5 % Chance auf Zustände'), T('Frostbiss', { slowOnHit: .3 }, '30 % Chance, Ziele zu verlangsamen')] },
-      { n: 'Arkan', nodes: [T('Manafluss', { resGain: 10 }, '+10 % Manaregeneration'), T('Sternenmacht', { ultCharge: 5 }, '+5 % Ultimate-Aufladung'), T('Echo', { echo: .2 }, '20 % Chance, dass ein Zauber keine Abklingzeit auslöst')] }
-    ] },
-  lichtheiler: { n: 'Lichtheiler', role: 'heal', sub: 'Heiliges Licht', res: 'mana', wcls: ['stab', 'klinge'], threat: .5,
-    base: { hp: 108, atk: 10, mag: 18, def: 8, res: 13, spd: 11, crit: 6 },
-    d: 'Elbenmagie und heiliges Licht. Starke Einzelheilung, Schilde und Reinigung.',
-    tree: [
-      { n: 'Licht', nodes: [T('Strahlen', { healPct: 6 }, '+6 % Heilung'), T('Gnade', { crit: 2 }, '+2 % kritische Heilung'), T('Lichtschild', { healShield: .2 }, 'Heilungen gewähren zusätzlich 20 % als Schild')] },
-      { n: 'Disziplin', nodes: [T('Gelassenheit', { resPct: 4 }, '+4 % Widerstand'), T('Klarheit', { resGain: 10 }, '+10 % Manaregeneration'), T('Schutz der Eldar', { startShieldAll: 1.5 }, 'Kampfbeginn: Schild für alle (Magie × 1,5)')] },
-      { n: 'Zorn', nodes: [T('Heiliger Eifer', { magPct: 3 }, '+3 % Magie'), T('Glanz', { ultCharge: 5 }, '+5 % Ultimate-Aufladung'), T('Heiliger Zorn', { healSmite: .3 }, '30 % jeder Heilung trifft einen Feind als Schaden')] }
-    ] },
-  naturheiler: { n: 'Naturheiler', role: 'heal', sub: 'Kräuter & Natur', res: 'mana', wcls: ['stab', 'wucht'], threat: .5,
-    base: { hp: 115, atk: 11, mag: 17, def: 9, res: 12, spd: 11, crit: 6 },
-    d: 'Kräuter, Proviant und die Kraft des Wachsens. Heilung über Zeit und Wiederbelebung.',
-    tree: [
-      { n: 'Wiederherstellung', nodes: [T('Heilkräuter', { healPct: 6 }, '+6 % Heilung'), T('Ausdauer', { hpPct: 3 }, '+3 % Lebenspunkte'), T('Lebensblüte', { healRegen: 1 }, 'Geheilte erhalten Erholung (2)')] },
-      { n: 'Kräuterkunde', nodes: [T('Vorrat', { resGain: 10 }, '+10 % Manaregeneration'), T('Gute Hausmannskost', { healRecv: 5 }, '+5 % erhaltene Heilung'), T('Lebensfunke', { reviveAlly: .4 }, 'Einmal pro Kampf: Belebt den ersten Gefallenen mit 40 % LP')] },
-      { n: 'Gleichgewicht', nodes: [T('Wachstum', { magPct: 3 }, '+3 % Magie'), T('Frische Luft', { spd: 1 }, '+1 Tempo'), T('Frühling', { startBuffRegen: 1 }, 'Kampfbeginn: Alle Verbündeten erhalten Erholung (3)')] }
-    ] }
+  schildwache:    { n: 'Schildwache', role: 'tank', sub: 'Schild & Schwert', wcls: ['klinge', 'speer'], threat: 3, base: { hp: 178, atk: 14, mag: 5, def: 17, res: 11, spd: 9, crit: 5 } },
+  bollwerk:       { n: 'Bollwerk', role: 'tank', sub: 'Zwergische Wucht', wcls: ['wucht'], threat: 3, base: { hp: 188, atk: 15, mag: 4, def: 16, res: 10, spd: 8, crit: 6 } },
+  urgewalt:       { n: 'Urgewalt', role: 'tank', sub: 'Naturkraft', wcls: ['wucht'], threat: 3, base: { hp: 215, atk: 14, mag: 10, def: 13, res: 15, spd: 7, crit: 5 } },
+  klingenmeister: { n: 'Klingenmeister', role: 'dd', sub: 'Nahkampf', wcls: ['klinge', 'speer'], threat: 1, base: { hp: 128, atk: 19, mag: 6, def: 10, res: 9, spd: 11, crit: 12 } },
+  waldlaeufer:    { n: 'Waldläufer', role: 'dd', sub: 'Fernkampf', wcls: ['bogen'], threat: 1, base: { hp: 108, atk: 18, mag: 7, def: 8, res: 9, spd: 13, crit: 18 } },
+  schurke:        { n: 'Schattenläufer', role: 'dd', sub: 'List & Klinge', wcls: ['klinge'], threat: .8, base: { hp: 100, atk: 17, mag: 8, def: 7, res: 10, spd: 15, crit: 22 } },
+  zauberer:       { n: 'Zauberer', role: 'dd', sub: 'Magie', wcls: ['stab'], threat: 1, base: { hp: 94, atk: 7, mag: 21, def: 6, res: 14, spd: 10, crit: 10 } },
+  lichtheiler:    { n: 'Lichtheiler', role: 'heal', sub: 'Elbenlicht', wcls: ['stab', 'klinge'], threat: .5, base: { hp: 108, atk: 10, mag: 18, def: 8, res: 13, spd: 11, crit: 6 } },
+  naturheiler:    { n: 'Naturheiler', role: 'heal', sub: 'Kräuter & Natur', wcls: ['stab', 'wucht'], threat: .5, base: { hp: 115, atk: 11, mag: 17, def: 9, res: 12, spd: 11, crit: 6 } }
 };
 
 const STATUS = {
@@ -126,243 +51,179 @@ const STATUS = {
    buff [[Zustand, Dauer]] auf Verbündete (tgt allAllies) bzw. Ziel, self [[Zustand, Dauer]] auf Anwender,
    heal (Magie-Faktor), healPct, shield (Faktor), cleanse, revive, taunt (alle Feinde), cost (Ressource), cd (Runden) */
 const S = (o) => o;
-const HEROES = {
-  /* ---------- Der Herr der Ringe ---------- */
-  aragorn: { n: 'Aragorn', era: 'Drittes Zeitalter', cls: 'klingenmeister', wpn: 'sword', start: 1,
-    stages: ['Streicher', 'Erbe Isildurs', 'König Elessar'],
-    look: { body: 'man', skin: '#d6a07c', hair: '#3a281c', hs: 'long', beard: 'stubble', tunic: '#4d5a3c', pants: '#3b3026', cape: '#3c4636', wc: '#d8e0e8' },
-    stageLook: [{}, { armor: '#8d969e', cape: '#2b3450' }, { tunic: '#1f2c4a', cape: '#141c33', armor: '#c9d1d9', hat: 'circlet', hatC: '#e7c75a', wc: '#f0f6ff' }],
-    skills: [
-      S({ n: 'Andúril-Hieb', d: 'Kräftiger Hieb (170 %), 50 % Blutung.', cost: 25, cd: 2, anim: 'melee', fx: 'slash', tgt: 'single', dmg: 1.7, st: [['bleed', .5, 3]] }),
-      S({ n: 'Klingenwirbel', d: 'Zwei Hiebe gegen alle Feinde (je 80 %).', cost: 35, cd: 3, anim: 'spin', fx: 'slash', tgt: 'all', dmg: .8, hits: 2 }),
-      S({ n: 'Sammelruf', d: 'Alle Verbündeten: Stärke (3).', cost: 20, cd: 5, anim: 'shout', fx: 'buff', tgt: 'allAllies', buff: [['atkUp', 3]], stage: 1 })
-    ],
-    ult: { n: 'Der König kehrt wieder', d: 'Alle Feinde 240 %. Verbündete: Stärke & Erholung (3).', anim: 'spin', fx: 'holy', tgt: 'all', dmg: 2.4, buffAll: [['atkUp', 3], ['regen', 3]] } },
-  legolas: { n: 'Legolas', era: 'Drittes Zeitalter', cls: 'waldlaeufer', wpn: 'bow', start: 1,
-    stages: ['Prinz des Düsterwalds', 'Gefährte des Rings', 'Herr von Ithilien'],
-    look: { body: 'elf', skin: '#f0d2b4', hair: '#f3e3a1', hs: 'long', ears: 1, tunic: '#5d7a3a', pants: '#4a3b2a', wc: '#c79b52' },
-    stageLook: [{}, { cape: '#55703f' }, { tunic: '#7a8f6a', cape: '#9aae7f', armor: '#c8ccc0', hat: 'circlet', hatC: '#d8e4f0' }],
-    skills: [
-      S({ n: 'Doppelschuss', d: 'Zwei Pfeile (je 85 %).', cost: 25, cd: 1, anim: 'shoot', fx: 'arrow', tgt: 'single', dmg: .85, hits: 2 }),
-      S({ n: 'Elbenblick', d: 'Schuss (70 %), markiert das Ziel (+30 % Schaden).', cost: 20, cd: 3, anim: 'shoot', fx: 'arrow', tgt: 'single', dmg: .7, st: [['mark', 1, 3]] }),
-      S({ n: 'Pfeilhagel', d: 'Drei Salven auf alle Feinde (je 50 %).', cost: 40, cd: 3, anim: 'shoot', fx: 'arrow', tgt: 'all', dmg: .5, hits: 3, stage: 1 })
-    ],
-    ult: { n: 'Sturm des Düsterwalds', d: 'Sieben Pfeile auf zufällige Feinde (je 85 %).', anim: 'shoot', fx: 'arrow', tgt: 'random', dmg: .85, hits: 7 } },
-  gimli: { n: 'Gimli', era: 'Drittes Zeitalter', cls: 'bollwerk', wpn: 'axe', start: 1,
-    stages: ['Sohn Glóins', 'Elbenfreund', 'Herr der Glitzernden Grotten'],
-    look: { body: 'dwarf', skin: '#d79b7a', hair: '#b5472a', hs: 'short', beard: 'dwarf', bc: '#b5472a', tunic: '#5e3d24', pants: '#4a3a2a', armor: '#8a8f96', hat: 'helm', hatC: '#8a8f96', wc: '#b8bec6' },
-    stageLook: [{}, { armor: '#9aa3ad', cape: '#4a2e1c' }, { armor: '#d8c070', hatC: '#d8c070', cape: '#3a2a5a', wc: '#e8eef4' }],
-    skills: [
-      S({ n: 'Baruk Khazâd!', d: 'Spott: Alle Feinde greifen Gimli an (2). Wacht (2).', cost: 20, cd: 4, anim: 'shout', fx: 'buff', tgt: 'self', taunt: 2, self: [['defUp', 2]] }),
-      S({ n: 'Axtwurf', d: '140 % Schaden, 70 % Rüstungsbruch.', cost: 25, cd: 2, anim: 'throw', fx: 'axe', tgt: 'single', dmg: 1.4, st: [['defDown', .7, 3]] }),
-      S({ n: 'Spaltender Hieb', d: 'Alle Feinde 100 %, 25 % Betäubung.', cost: 35, cd: 3, anim: 'spin', fx: 'slash', tgt: 'all', dmg: 1, st: [['stun', .25, 1]], stage: 1 })
-    ],
-    ult: { n: 'Zorn von Khazad-dûm', d: 'Alle Feinde 210 %, 60 % Betäubung. Spott (2).', anim: 'spin', fx: 'stone', tgt: 'all', dmg: 2.1, st: [['stun', .6, 1]], taunt: 2 } },
-  gandalf: { n: 'Gandalf', era: 'Drittes Zeitalter', cls: 'zauberer', wpn: 'staff', start: 1,
-    stages: ['Gandalf der Graue', 'Mithrandir', 'Gandalf der Weiße'],
-    look: { body: 'man', skin: '#e3b796', hair: '#c9c9c9', hs: 'long', beard: 'long', bc: '#d0d0d0', tunic: '#8d8f94', robe: 1, hat: 'wizard', hatC: '#85878c', wc: '#7a5530', glowC: '#fff6c0' },
-    stageLook: [{}, { tunic: '#7a7e88', hatC: '#6f737c', cape: '#5d606a' }, { tunic: '#eeeeee', hair: '#f6f6f6', bc: '#f6f6f6', hat: 'none', cape: '#dcdcdc', wc: '#f4f4f4', glowC: '#ffffff' }],
-    skills: [
-      S({ n: 'Stabblitz', d: 'Blitz (170 % Magie).', cost: 20, cd: 1, anim: 'cast', fx: 'lightning', tgt: 'single', dmg: 1.7, stat: 'mag' }),
-      S({ n: 'Flamme von Anor', d: 'Alle Feinde 110 % Magie, 60 % Brand.', cost: 35, cd: 3, anim: 'cast', fx: 'fire', tgt: 'all', dmg: 1.1, stat: 'mag', st: [['burn', .6, 3]] }),
-      S({ n: 'Du kannst nicht vorbei!', d: '260 % Magie, betäubt sicher.', cost: 45, cd: 4, anim: 'cast', fx: 'light', tgt: 'single', dmg: 2.6, stat: 'mag', st: [['stun', 1, 1]], stage: 1 })
-    ],
-    ult: { n: 'Der Weiße Reiter', d: 'Alle Feinde 260 % Magie, heilt alle Verbündeten um 25 %.', anim: 'cast', fx: 'holy', tgt: 'all', dmg: 2.6, stat: 'mag', healAllPct: .25 } },
-  frodo: { n: 'Frodo', era: 'Drittes Zeitalter', cls: 'schurke', wpn: 'dagger', start: 1,
-    stages: ['Ringträger', 'Freund der Elben', 'Held der Ringfahrt'],
-    look: { body: 'hobbit', skin: '#f0c8a0', hair: '#4a3020', hs: 'curly', tunic: '#7d5a35', pants: '#5a6b3a', cape: '#5f6e48', wc: '#cfe4ff' },
-    stageLook: [{}, { armor: '#e8eef6', cape: '#6f7f58' }, { armor: '#f2f6fb', cape: '#8b9a74', tunic: '#5a4a6a' }],
-    skills: [
-      S({ n: 'Stich leuchtet', d: '150 % Schaden, +40 % gegen Orks.', cost: 30, cd: 1, anim: 'melee', fx: 'slash', tgt: 'single', dmg: 1.5, bonusTag: 'ork' }),
-      S({ n: 'Der Eine Ring', d: 'Unsichtbar & Stärke (2).', cost: 20, cd: 5, anim: 'cast', fx: 'dark', tgt: 'self', self: [['invis', 2], ['atkUp', 2]] }),
-      S({ n: 'Phiole Galadriels', d: 'Alle Feinde 90 % Magie, 80 % Schwäche.', cost: 45, cd: 4, anim: 'cast', fx: 'light', tgt: 'all', dmg: .9, stat: 'mag', st: [['atkDown', .8, 3]], stage: 1 })
-    ],
-    ult: { n: 'Für das Auenland!', d: 'Garantierter kritischer Treffer (340 %).', anim: 'melee', fx: 'holy', tgt: 'single', dmg: 3.4, alwaysCrit: 1 } },
-  sam: { n: 'Samweis', era: 'Drittes Zeitalter', cls: 'naturheiler', wpn: 'pan', start: 1,
-    stages: ['Gärtner', 'Der Getreue', 'Bürgermeister des Auenlands'],
-    look: { body: 'hobbit', skin: '#f0c098', hair: '#a0703a', hs: 'curly', tunic: '#a88a5a', pants: '#6b5a3a', cape: '#6a7a4a', wc: '#3a3a3a' },
-    stageLook: [{}, { cape: '#5f6e48', tunic: '#8a7048' }, { tunic: '#e0c060', cape: '#4a7a3a' }],
-    skills: [
-      S({ n: 'Proviant', d: 'Heilt einen Verbündeten (180 % Magie) + Erholung (3).', cost: 25, cd: 1, anim: 'cast', fx: 'heal', tgt: 'lowestAlly', heal: 1.8, buff: [['regen', 3]] }),
-      S({ n: 'Bratpfanne', d: '130 % Schaden, 35 % Betäubung.', cost: 15, cd: 3, anim: 'melee', fx: 'stone', tgt: 'single', dmg: 1.3, st: [['stun', .35, 1]] }),
-      S({ n: 'Kaninchen mit Kräutern', d: 'Heilt alle (110 % Magie) + Erholung (3).', cost: 45, cd: 3, anim: 'cast', fx: 'heal', tgt: 'allAllies', heal: 1.1, buff: [['regen', 3]], stage: 1 })
-    ],
-    ult: { n: 'Ich kann dich tragen!', d: 'Belebt alle Gefallenen (50 %) und heilt alle um 40 %.', anim: 'cast', fx: 'holy', tgt: 'allAllies', revive: .5, healPct: .4 } },
-  merry: { n: 'Merry', era: 'Drittes Zeitalter', cls: 'schurke', wpn: 'dagger', unlock: { camp: 'ringkrieg', ch: 0 }, cost: 120,
-    stages: ['Brandybock', 'Knappe Rohans', 'Herr von Bockland'],
-    look: { body: 'hobbit', skin: '#f0c8a0', hair: '#b7864a', hs: 'curly', tunic: '#6b7a3a', pants: '#5a4a3a', cape: '#5f6e48', wc: '#d8e0e8' },
-    stageLook: [{}, { armor: '#7a8a5a', cape: '#2f5a3a', tunic: '#3f6a3a' }, { armor: '#c8c070', cape: '#2f6a3a' }],
-    skills: [
-      S({ n: 'Hinterhalt', d: '160 % Schaden, doppelt gegen Ziele unter 40 % LP.', cost: 30, cd: 2, anim: 'melee', fx: 'slash', tgt: 'single', dmg: 1.6, exec: 1 }),
-      S({ n: 'Horn von Bockland', d: 'Alle Verbündeten: Eile (3).', cost: 25, cd: 5, anim: 'shout', fx: 'buff', tgt: 'allAllies', buff: [['haste', 3]] }),
-      S({ n: 'Klinge von Westernis', d: '190 % Schaden, Rüstungsbruch. +60 % gegen Geister.', cost: 40, cd: 3, anim: 'melee', fx: 'holy', tgt: 'single', dmg: 1.9, bonusTag: 'geist', st: [['defDown', 1, 3]], stage: 1 })
-    ],
-    ult: { n: 'Für Rohan!', d: 'Alle Feinde 200 %. Verbündete: Stärke (3).', anim: 'spin', fx: 'slash', tgt: 'all', dmg: 2, buffAll: [['atkUp', 3]] } },
-  pippin: { n: 'Pippin', era: 'Drittes Zeitalter', cls: 'schurke', wpn: 'dagger', unlock: { camp: 'ringkrieg', ch: 0 }, cost: 120,
-    stages: ['Tuk', 'Wache der Zitadelle', 'Thain des Auenlands'],
-    look: { body: 'hobbit', skin: '#f2caa4', hair: '#8a5a30', hs: 'curly', tunic: '#5b6e8a', pants: '#5a4a3a', cape: '#5f6e48', wc: '#d8e0e8' },
-    stageLook: [{}, { tunic: '#222226', armor: '#3a3a40', cape: '#1a1a1e' }, { tunic: '#2a2a34', armor: '#c0c6d0', cape: '#202028' }],
-    skills: [
-      S({ n: 'Steinwurf', d: '120 % Schaden, 30 % Betäubung.', cost: 20, cd: 1, anim: 'throw', fx: 'stone', tgt: 'single', dmg: 1.2, st: [['stun', .3, 1]] }),
-      S({ n: 'Lied für den Truchsess', d: 'Alle Verbündeten: Erholung (3) und Reinigung.', cost: 30, cd: 4, anim: 'shout', fx: 'heal', tgt: 'allAllies', buff: [['regen', 3]], cleanse: 1 }),
-      S({ n: 'Turmwache', d: '170 % Schaden. Selbst: Wacht (2).', cost: 35, cd: 3, anim: 'melee', fx: 'slash', tgt: 'single', dmg: 1.7, self: [['defUp', 2]], stage: 1 })
-    ],
-    ult: { n: 'Narrenglück', d: 'Fünf garantierte kritische Treffer auf zufällige Feinde (je 90 %).', anim: 'throw', fx: 'stone', tgt: 'random', dmg: .9, hits: 5, alwaysCrit: 1 } },
-  boromir: { n: 'Boromir', era: 'Drittes Zeitalter', cls: 'schildwache', wpn: 'sword', unlock: { camp: 'ringkrieg', ch: 2 }, cost: 140,
-    stages: ['Sohn Denethors', 'Hauptmann Gondors', 'Held von Amon Hen'],
-    look: { body: 'man', skin: '#d9a684', hair: '#8a5a2e', hs: 'short', beard: 'short', bc: '#8a5a2e', tunic: '#7a2a2a', pants: '#3a2a22', armor: '#7d6a4a', cape: '#5a1e1e', shield: '#b2965a', wc: '#d0d6dc' },
-    stageLook: [{}, { armor: '#9aa0a8', shield: '#c8ccd2' }, { armor: '#d8dde4', shield: '#e8e8f0', cape: '#7a1e1e' }],
-    skills: [
-      S({ n: 'Horn Gondors', d: 'Spott (3). Alle Verbündeten: Wacht (2).', cost: 20, cd: 4, anim: 'shout', fx: 'buff', tgt: 'allAllies', taunt: 3, buff: [['defUp', 2]] }),
-      S({ n: 'Schildstoß', d: '120 % Schaden, 35 % Betäubung.', cost: 20, cd: 2, anim: 'melee', fx: 'stone', tgt: 'single', dmg: 1.2, st: [['stun', .35, 1]] }),
-      S({ n: 'Schildblock', d: 'Selbst: −40 % Schaden & Wacht (3).', cost: 25, cd: 4, anim: 'shout', fx: 'buff', tgt: 'self', self: [['guard', 3], ['defUp', 3]], stage: 1 })
-    ],
-    ult: { n: 'Für Gondor!', d: 'Alle Feinde 190 %. Schild für alle Verbündeten (Angriff × 2). Spott (2).', anim: 'spin', fx: 'slash', tgt: 'all', dmg: 1.9, shieldAll: 2, shieldStat: 'atk', taunt: 2 } },
-  faramir: { n: 'Faramir', era: 'Drittes Zeitalter', cls: 'waldlaeufer', wpn: 'bow', unlock: { camp: 'ringkrieg', ch: 5 }, cost: 160,
-    stages: ['Waldläufer Ithiliens', 'Hauptmann Gondors', 'Fürst von Ithilien'],
-    look: { body: 'man', skin: '#d9a684', hair: '#8a6a42', hs: 'short', beard: 'stubble', tunic: '#3f5a3a', pants: '#3a3226', cape: '#33452f', hat: 'hood', hatC: '#3a4a34', wc: '#8a6a42' },
-    stageLook: [{}, { hat: 'none', armor: '#7a8088' }, { hat: 'none', armor: '#c8ced6', cape: '#1e2a40', tunic: '#2a3a5a' }],
-    skills: [
-      S({ n: 'Ithilien-Pfeil', d: '140 % Schaden, +15 % Krit.', cost: 20, cd: 1, anim: 'shoot', fx: 'arrow', tgt: 'single', dmg: 1.4, critB: 15 }),
-      S({ n: 'Hinterhalt im Wald', d: 'Alle Feinde 75 %, 50 % Lähmung.', cost: 35, cd: 3, anim: 'shoot', fx: 'arrow', tgt: 'all', dmg: .75, st: [['slow', .5, 2]] }),
-      S({ n: 'Kapitän von Gondor', d: 'Alle Verbündeten: Stärke & Wacht (2).', cost: 30, cd: 5, anim: 'shout', fx: 'buff', tgt: 'allAllies', buff: [['atkUp', 2], ['defUp', 2]], stage: 1 })
-    ],
-    ult: { n: 'Henneth Annûn', d: 'Sechs Pfeile auf zufällige Feinde (je 95 %).', anim: 'shoot', fx: 'arrow', tgt: 'random', dmg: .95, hits: 6 } },
-  eowyn: { n: 'Éowyn', era: 'Drittes Zeitalter', cls: 'klingenmeister', wpn: 'sword', unlock: { camp: 'ringkrieg', ch: 3 }, cost: 150,
-    stages: ['Schildmaid Rohans', 'Dernhelm', 'Weiße Herrin von Rohan'],
-    look: { body: 'slim', skin: '#f2d3b8', hair: '#e8cf7a', hs: 'long', tunic: '#d8d4c4', pants: '#6a6a60', cape: '#4c6b3a', shield: '#4c6b3a', wc: '#d8e0e8' },
-    stageLook: [{}, { armor: '#a8aeb6', hat: 'helm', hatC: '#a8aeb6', tunic: '#5a6a4a' }, { armor: '#e0e4ea', tunic: '#f0f0f0', cape: '#e8e8e8', hat: 'circlet', hatC: '#e7c75a' }],
-    skills: [
-      S({ n: 'Klingentanz', d: 'Zwei schnelle Hiebe (je 85 %).', cost: 25, cd: 1, anim: 'melee', fx: 'slash', tgt: 'single', dmg: .85, hits: 2 }),
-      S({ n: 'Schildmaid', d: 'Selbst: Stärke & Eile (3).', cost: 20, cd: 5, anim: 'shout', fx: 'buff', tgt: 'self', self: [['atkUp', 3], ['haste', 3]] }),
-      S({ n: 'Kein Mann bin ich!', d: '220 % Schaden, gegen Bosse ×1,8.', cost: 40, cd: 3, anim: 'melee', fx: 'holy', tgt: 'single', dmg: 2.2, bossBonus: 1.8, stage: 1 })
-    ],
-    ult: { n: 'Tod!', d: 'Alle Feinde 230 %. Verbündete: Stärke (3).', anim: 'spin', fx: 'slash', tgt: 'all', dmg: 2.3, buffAll: [['atkUp', 3]] } },
-  theoden: { n: 'Théoden', era: 'Drittes Zeitalter', cls: 'schildwache', wpn: 'sword', unlock: { camp: 'ringkrieg', ch: 4 }, cost: 160,
-    stages: ['König von Rohan', 'Herr der Mark', 'König Théoden der Glorreiche'],
-    look: { body: 'man', skin: '#e0b090', hair: '#d0c8b0', hs: 'long', beard: 'short', bc: '#d0c8b0', tunic: '#3f5f3a', pants: '#3a3226', armor: '#b89a4a', cape: '#6a2a1e', hat: 'helm', hatC: '#c9a640', shield: '#3f5f3a', wc: '#e0e4e8' },
-    stageLook: [{}, { cape: '#2f4f2a', shield: '#c9a640' }, { armor: '#e8cc60', cape: '#e8e8e0', shield: '#e8cc60' }],
-    skills: [
-      S({ n: 'Erhebt euch, Reiter!', d: 'Spott (2). Alle Verbündeten: Stärke (2).', cost: 25, cd: 4, anim: 'shout', fx: 'buff', tgt: 'allAllies', taunt: 2, buff: [['atkUp', 2]] }),
-      S({ n: 'Königlicher Hieb', d: '150 % Schaden.', cost: 20, cd: 1, anim: 'melee', fx: 'slash', tgt: 'single', dmg: 1.5 }),
-      S({ n: 'Wacht am Klamm', d: 'Selbst: Schildblock & Erholung (3).', cost: 25, cd: 4, anim: 'shout', fx: 'buff', tgt: 'self', self: [['guard', 3], ['regen', 3]], stage: 1 })
-    ],
-    ult: { n: 'Rote Morgendämmerung', d: 'Alle Feinde 220 %, 40 % Betäubung. Spott (2).', anim: 'spin', fx: 'fire', tgt: 'all', dmg: 2.2, st: [['stun', .4, 1]], taunt: 2 } },
-  arwen: { n: 'Arwen', era: 'Drittes Zeitalter', cls: 'lichtheiler', wpn: 'sword', unlock: { camp: 'ringkrieg', ch: 1 }, cost: 140,
-    stages: ['Abendstern', 'Herrin von Bruchtal', 'Königin Gondors'],
-    look: { body: 'slim', skin: '#f2dcc8', hair: '#2a1a14', hs: 'long', ears: 1, tunic: '#5a3a6a', robe: 1, hat: 'circlet', hatC: '#d8e0f0', wc: '#e0e8f0' },
-    stageLook: [{}, { tunic: '#3a4a6a', cape: '#2a3456' }, { tunic: '#e8e4f0', cape: '#c8c0e0', hatC: '#f0e080' }],
-    skills: [
-      S({ n: 'Licht des Abendsterns', d: 'Heilt einen Verbündeten (200 % Magie) und reinigt.', cost: 25, cd: 1, anim: 'cast', fx: 'holy', tgt: 'lowestAlly', heal: 2, cleanse: 1 }),
-      S({ n: 'Flut des Bruinen', d: 'Alle Feinde 100 % Magie, 60 % Lähmung.', cost: 35, cd: 3, anim: 'cast', fx: 'water', tgt: 'all', dmg: 1, stat: 'mag', st: [['slow', .6, 2]] }),
-      S({ n: 'Gnade der Eldar', d: 'Schild für alle Verbündeten (Magie × 1,4).', cost: 40, cd: 4, anim: 'cast', fx: 'light', tgt: 'allAllies', shield: 1.4, stage: 1 })
-    ],
-    ult: { n: 'Unsterbliches Licht', d: 'Belebt alle Gefallenen (40 %), heilt alle um 50 %.', anim: 'cast', fx: 'holy', tgt: 'allAllies', revive: .4, healPct: .5 } },
-  baumbart: { n: 'Baumbart', era: 'Drittes Zeitalter', cls: 'urgewalt', wpn: 'claws', unlock: { camp: 'ringkrieg', ch: 4 }, cost: 180,
-    stages: ['Hirte der Bäume', 'Fangorn', 'Ältester der Ents'],
-    look: { body: 'ent', skin: '#6b4a2a', hair: '#4f7a2e', hs: 'leaves', beard: 'long', bc: '#7a8a4a', tunic: '#5a3e22', pants: '#4a321c', wc: '#5a3e22' },
-    stageLook: [{}, { hair: '#6a9a3a' }, { hair: '#c8a040', bc: '#9aa060' }],
-    skills: [
-      S({ n: 'Hum, Hom!', d: 'Spott (3). Selbst: Wacht & Erholung (3).', cost: 20, cd: 4, anim: 'shout', fx: 'leaf', tgt: 'self', taunt: 3, self: [['defUp', 3], ['regen', 3]] }),
-      S({ n: 'Astschlag', d: '150 % Schaden.', cost: 15, cd: 1, anim: 'melee', fx: 'stone', tgt: 'single', dmg: 1.5 }),
-      S({ n: 'Wurzelgriff', d: 'Alle Feinde 90 %, 35 % Betäubung.', cost: 35, cd: 3, anim: 'cast', fx: 'leaf', tgt: 'all', dmg: .9, st: [['stun', .35, 1]], stage: 1 })
-    ],
-    ult: { n: 'Der letzte Marsch der Ents', d: 'Alle Feinde 260 %. Spott (2).', anim: 'spin', fx: 'stone', tgt: 'all', dmg: 2.6, taunt: 2 } },
 
-  /* ---------- Die Ringe der Macht ---------- */
-  galadriel: { n: 'Galadriel', era: 'Zweites Zeitalter', cls: 'klingenmeister', wpn: 'sword', unlock: { camp: 'ringe', ch: -1 }, cost: 180,
-    stages: ['Kommandantin des Nordens', 'Herrin des Lichts', 'Trägerin von Nenya'],
-    look: { body: 'slim', skin: '#f4dcc4', hair: '#f2dc90', hs: 'braids', ears: 1, tunic: '#e6e6ea', pants: '#8a8a90', armor: '#c9cfd6', wc: '#eaf2ff' },
-    stageLook: [{}, { cape: '#d8dce6', armor: '#e0e6ee' }, { robe: 1, tunic: '#f4f4fa', armor: null, cape: '#e8ecf6', hat: 'circlet', hatC: '#ffffff', glowC: '#ffffff' }],
-    skills: [
-      S({ n: 'Klinge Valinors', d: '160 % Schaden, +10 % Krit.', cost: 25, cd: 1, anim: 'melee', fx: 'holy', tgt: 'single', dmg: 1.6, critB: 10 }),
-      S({ n: 'Licht der Bäume', d: 'Alle Feinde 100 %, 50 % Schwäche.', cost: 35, cd: 3, anim: 'spin', fx: 'light', tgt: 'all', dmg: 1, st: [['atkDown', .5, 2]] }),
-      S({ n: 'Kommandantin', d: 'Alle Verbündeten: Stärke (3). Selbst: Eile (3).', cost: 25, cd: 5, anim: 'shout', fx: 'buff', tgt: 'allAllies', buff: [['atkUp', 3]], self: [['haste', 3]], stage: 1 })
-    ],
-    ult: { n: 'Nenya', d: 'Alle Feinde 250 %, heilt alle Verbündeten um 25 %.', anim: 'cast', fx: 'holy', tgt: 'all', dmg: 2.5, healAllPct: .25 } },
-  elrond: { n: 'Elrond', era: 'Zweites Zeitalter', cls: 'lichtheiler', wpn: 'staff', unlock: { camp: 'ringe', ch: -1 }, cost: 180,
-    stages: ['Herold Gil-galads', 'Halbelb', 'Herr von Bruchtal'],
-    look: { body: 'elf', skin: '#ecd0b8', hair: '#2a2018', hs: 'short', ears: 1, tunic: '#6a3a2a', robe: 1, hat: 'circlet', hatC: '#c8a040', wc: '#c8b080', glowC: '#bfe8ff' },
-    stageLook: [{}, { hs: 'long', tunic: '#5a2a3a', cape: '#3a1e2a' }, { hs: 'long', tunic: '#3a2a5a', cape: '#2a1e40', glowC: '#80c8ff', hatC: '#e8c860' }],
-    skills: [
-      S({ n: 'Heilkunst', d: 'Heilt einen Verbündeten (190 % Magie) + Erholung (2).', cost: 25, cd: 1, anim: 'cast', fx: 'heal', tgt: 'lowestAlly', heal: 1.9, buff: [['regen', 2]] }),
-      S({ n: 'Rat der Weisen', d: 'Alle Verbündeten: Wacht (3) und Reinigung.', cost: 30, cd: 4, anim: 'cast', fx: 'light', tgt: 'allAllies', buff: [['defUp', 3]], cleanse: 1 }),
-      S({ n: 'Licht Eärendils', d: 'Heilt alle Verbündeten (100 % Magie).', cost: 45, cd: 3, anim: 'cast', fx: 'holy', tgt: 'allAllies', heal: 1, stage: 1 })
-    ],
-    ult: { n: 'Macht von Vilya', d: 'Heilt alle um 60 %, Schild für alle (Magie × 1).', anim: 'cast', fx: 'holy', tgt: 'allAllies', healPct: .6, shield: 1 } },
-  durin: { n: 'Durin IV.', era: 'Zweites Zeitalter', cls: 'bollwerk', wpn: 'hammer', unlock: { camp: 'ringe', ch: 4 }, cost: 200,
-    stages: ['Prinz von Khazad-dûm', 'Freund der Elben', 'König unter dem Berg'],
-    look: { body: 'dwarf', skin: '#c98b6a', hair: '#2a1a12', hs: 'short', beard: 'dwarf', bc: '#2a1a12', tunic: '#6a4a2a', pants: '#4a3424', armor: '#8a6a3a', wc: '#9aa0a8' },
-    stageLook: [{}, { armor: '#a8885a', cape: '#5a2a1a' }, { armor: '#e0c060', hat: 'crown', hatC: '#e8c860', cape: '#2a3a6a' }],
-    skills: [
-      S({ n: 'Stolz von Khazad-dûm', d: 'Spott (2). Selbst: Schildblock (2).', cost: 20, cd: 4, anim: 'shout', fx: 'buff', tgt: 'self', taunt: 2, self: [['guard', 2]] }),
-      S({ n: 'Hammerschlag', d: '150 % Schaden, 25 % Betäubung.', cost: 20, cd: 1, anim: 'melee', fx: 'stone', tgt: 'single', dmg: 1.5, st: [['stun', .25, 1]] }),
-      S({ n: 'Felsbrecher', d: 'Alle Feinde 110 %, 50 % Rüstungsbruch.', cost: 35, cd: 3, anim: 'spin', fx: 'stone', tgt: 'all', dmg: 1.1, st: [['defDown', .5, 3]], stage: 1 })
-    ],
-    ult: { n: 'Hammer Durins', d: '340 % Schaden, betäubt sicher. Spott (2).', anim: 'melee', fx: 'stone', tgt: 'single', dmg: 3.4, st: [['stun', 1, 1]], taunt: 2 } },
-  arondir: { n: 'Arondir', era: 'Zweites Zeitalter', cls: 'waldlaeufer', wpn: 'bow', unlock: { camp: 'ringe', ch: 2 }, cost: 180,
-    stages: ['Silvan-Wächter', 'Hüter der Südlande', 'Held von Ostirith'],
-    look: { body: 'elf', skin: '#8a5a3a', hair: '#1a1210', hs: 'short', ears: 1, tunic: '#4a5a3a', pants: '#3a3428', armor: '#6a6a5a', wc: '#7a5a3a' },
+/* ---------------- Helden ----------------
+   act: häufige Aktive · act2: seltene Aktive (ab Stufe 10) · ult: Ultimate (Leiste voll)
+   pas: drei Passive (Stufe 1 / 15 / 25)
+   Skill-Felder: anim, fx, tgt (single|all|random|self|lowestAlly|allAllies), dmg, hits, stat, st, buff, self,
+   heal, healPct, shield, cleanse, revive, taunt, buffAll, healAllPct, shieldAll, shieldStat, bonusTag, bossBonus, exec, lowHp, alwaysCrit, critB */
+const PS = (n, lvl, e, d) => ({ n, lvl, e, d });
+const ACT2_LVL = 10;
+const HEROES = {
+  frodo: { n: 'Frodo', cls: 'schurke', wpn: 'dagger', era: 'Drittes Zeitalter', stages: ['Ringträger', 'Freund der Elben', 'Held der Ringfahrt'],
+    look: { body: 'hobbit', skin: '#f0c8a0', hair: '#3e2818', hs: 'curly', eyeC: '#4a8ad8', tunic: '#b08a5a', vest: '#5a4a32', pants: '#5a6448', cape: '#6a7458', acc: ['brooch'], wc: '#d8ecff', glowC: '#9fd0ff' },
+    stageLook: [{}, { armor: '#e8eef6', cape: '#7a8468' }, { armor: '#f4f8fc', cape: '#8a9478', tunic: '#5a4a6a' }],
+    act: { n: 'Stich leuchtet', d: '150 % Schaden, +40 % gegen Orks.', cd: 1, anim: 'melee', fx: 'light', tgt: 'single', dmg: 1.5, bonusTag: 'ork' },
+    act2: { n: 'Der Eine Ring', d: 'Wird unsichtbar und stärker (2 Runden).', cd: 5, anim: 'cast', fx: 'dark', tgt: 'self', self: [['invis', 2], ['atkUp', 2]] },
+    ult: { n: 'Für das Auenland!', d: 'Garantierter kritischer Treffer mit 340 % Schaden.', anim: 'melee', fx: 'holy', tgt: 'single', dmg: 3.4, alwaysCrit: 1 },
+    pas: [PS('Mithrilhemd', 1, { dmgRed: 12 }, '−12 % erlittener Schaden.'), PS('Ringträger', 15, { startInvis: 1 }, 'Beginnt jeden Kampf unsichtbar.'), PS('Unerwartet zäh', 25, { reviveSelf: .3 }, 'Überlebt einmal pro Kampf einen tödlichen Treffer.')] },
+  sam: { n: 'Samweis', cls: 'naturheiler', wpn: 'pan', era: 'Drittes Zeitalter', stages: ['Gärtner', 'Der Getreue', 'Bürgermeister des Auenlands'],
+    look: { body: 'hobbit', skin: '#f0c098', hair: '#9a6a36', hs: 'curly', eyeC: '#5a7a3a', tunic: '#c8b088', vest: '#7a5a32', pants: '#6b5a3a', cape: '#6a7458', acc: ['pack', 'brooch'], wc: '#3a3a3a' },
+    stageLook: [{}, { vest: '#5a4a2e' }, { vest: '#c8a040', cape: '#4a7a3a' }],
+    act: { n: 'Proviant', d: 'Heilt den schwächsten Verbündeten (180 % Magie) und gibt Erholung.', cd: 1, anim: 'cast', fx: 'heal', tgt: 'lowestAlly', heal: 1.8, buff: [['regen', 3]] },
+    act2: { n: 'Kaninchen mit Kräutern', d: 'Heilt alle Verbündeten (110 % Magie) und gibt Erholung.', cd: 4, anim: 'cast', fx: 'heal', tgt: 'allAllies', heal: 1.1, buff: [['regen', 3]] },
+    ult: { n: 'Ich kann dich tragen!', d: 'Belebt alle Gefallenen (50 %) und heilt alle um 40 %.', anim: 'cast', fx: 'holy', tgt: 'allAllies', revive: .5, healPct: .4 },
+    pas: [PS('Gärtner', 1, { healPct: 15 }, '+15 % Heilung.'), PS('Treue', 15, { auraDef: 8 }, 'Gruppe: +8 % Verteidigung.'), PS('Bratpfanne', 25, { counter: .3 }, '30 % Chance, Nahkampfangriffe zu kontern.')] },
+  gandalf: { n: 'Gandalf', cls: 'zauberer', wpn: 'staff', era: 'Drittes Zeitalter', stages: ['Gandalf der Graue', 'Mithrandir', 'Gandalf der Weiße'],
+    look: { body: 'man', skin: '#e3b796', hair: '#b8b8b8', hs: 'long', beard: 'long', bc: '#c8c8c8', eyeC: '#5a6a8a', tunic: '#8a8c92', robe: 1, scarf: '#5a6a8a', hat: 'wizard', hatC: '#7e8086', wc: '#6a4a2a', glowC: '#fff2b8' },
+    stageLook: [{}, { tunic: '#7a7e88', hatC: '#6f737c', cape: '#5d606a' }, { tunic: '#f2f2f4', hair: '#fafafa', bc: '#fafafa', hat: 'none', scarf: null, cape: '#e4e4e8', wc: '#f4f4f4', glowC: '#ffffff' }],
+    act: { n: 'Stabblitz', d: 'Blitz mit 170 % Magieschaden.', cd: 1, anim: 'cast', fx: 'lightning', tgt: 'single', dmg: 1.7, stat: 'mag' },
+    act2: { n: 'Flamme von Anor', d: 'Alle Feinde 110 % Magie, setzt in Brand.', cd: 4, anim: 'cast', fx: 'fire', tgt: 'all', dmg: 1.1, stat: 'mag', st: [['burn', .7, 3]] },
+    ult: { n: 'Du kannst nicht vorbei!', d: 'Alle Feinde 260 % Magie, 50 % Betäubung.', anim: 'cast', fx: 'holy', tgt: 'all', dmg: 2.6, stat: 'mag', st: [['stun', .5, 1]] },
+    pas: [PS('Istar', 1, { magPct: 12 }, '+12 % Magie.'), PS('Licht von Anor', 15, { burnOnHit: .25 }, 'Treffer setzen mit 25 % in Brand.'), PS('Mithrandir', 25, { startShieldAll: 1.2 }, 'Kampfbeginn: Schild für die ganze Gruppe.')] },
+  merry: { n: 'Merry', cls: 'schurke', wpn: 'dagger', era: 'Drittes Zeitalter', stages: ['Brandybock', 'Knappe Rohans', 'Herr von Bockland'],
+    look: { body: 'hobbit', skin: '#f0c8a0', hair: '#b07a42', hs: 'curly', eyeC: '#6a8a4a', tunic: '#d0c098', vest: '#8a7a2a', pants: '#5a4a3a', cape: '#6a7458', acc: ['brooch'], wc: '#d8e0e8' },
+    stageLook: [{}, { armor: '#7a8a5a', cape: '#2f5a3a', vest: '#3f6a3a' }, { armor: '#c8c070', cape: '#2f6a3a' }],
+    act: { n: 'Hinterhalt', d: '160 % Schaden, doppelt gegen geschwächte Feinde.', cd: 1, anim: 'melee', fx: 'slash', tgt: 'single', dmg: 1.6, exec: 1 },
+    act2: { n: 'Klinge von Westernis', d: '190 % Schaden, bricht Rüstung, +60 % gegen Geister.', cd: 4, anim: 'melee', fx: 'holy', tgt: 'single', dmg: 1.9, bonusTag: 'geist', st: [['defDown', 1, 3]] },
+    ult: { n: 'Für Rohan!', d: 'Alle Feinde 200 %, Gruppe wird gestärkt.', anim: 'spin', fx: 'slash', tgt: 'all', dmg: 2, buffAll: [['atkUp', 3]] },
+    pas: [PS('Brandybock', 1, { spd: 2, crit: 6 }, '+2 Tempo, +6 % kritische Treffer.'), PS('Knappe Rohans', 15, { auraSpd: 6 }, 'Gruppe: +6 % Tempo.'), PS('Kleiner Mut', 25, { lowHpDmg: .5 }, 'Bis zu +50 % Schaden bei niedrigen LP.')] },
+  pippin: { n: 'Pippin', cls: 'schurke', wpn: 'dagger', era: 'Drittes Zeitalter', stages: ['Tuk', 'Wache der Zitadelle', 'Thain des Auenlands'],
+    look: { body: 'hobbit', skin: '#f2caa4', hair: '#8a5a30', hs: 'curly', eyeC: '#4a7ac8', tunic: '#d8c8a0', vest: '#4a5a7a', pants: '#5a4a3a', cape: '#6a7458', acc: ['brooch'], wc: '#d8e0e8' },
+    stageLook: [{}, { vest: '#222226', armor: '#3a3a40', cape: '#1a1a1e', emblem: 'tree' }, { vest: '#2a2a34', armor: '#c0c6d0', cape: '#202028', emblem: 'tree' }],
+    act: { n: 'Steinwurf', d: '120 % Schaden, 30 % Betäubung.', cd: 1, anim: 'throw', fx: 'stone', tgt: 'single', dmg: 1.2, st: [['stun', .3, 1]] },
+    act2: { n: 'Lied für den Truchsess', d: 'Gruppe erhält Erholung und wird gereinigt.', cd: 5, anim: 'shout', fx: 'heal', tgt: 'allAllies', buff: [['regen', 3]], cleanse: 1 },
+    ult: { n: 'Narrenglück', d: 'Fünf garantierte kritische Treffer auf zufällige Feinde.', anim: 'throw', fx: 'stone', tgt: 'random', dmg: .9, hits: 5, alwaysCrit: 1 },
+    pas: [PS('Tuk-Glück', 1, { dodge: 12 }, '12 % Ausweichen.'), PS('Wache der Zitadelle', 15, { defPct: 15 }, '+15 % Verteidigung.'), PS('Blick in den Palantír', 25, { ultCharge: 20 }, 'Ultimate lädt 20 % schneller.')] },
+  aragorn: { n: 'Aragorn', cls: 'klingenmeister', wpn: 'sword', era: 'Drittes Zeitalter', stages: ['Streicher', 'Erbe Isildurs', 'König Elessar'],
+    look: { body: 'man', skin: '#d6a07c', hair: '#2e2016', hs: 'long', beard: 'stubble', eyeC: '#5a7a8a', tunic: '#4a4a36', coat: '#3a3a2c', pants: '#2e2820', cape: '#2f3628', acc: ['pouch'], wc: '#e0e8f0' },
+    stageLook: [{}, { armor: '#8d969e', cape: '#2b3450' }, { coat: '#18203a', tunic: '#1f2c4a', cape: '#141c33', armor: '#d0d8e0', emblem: 'tree', hat: 'circlet', hatC: '#e7c75a', wc: '#f4faff' }],
+    act: { n: 'Andúril-Hieb', d: '170 % Schaden, verursacht Blutung.', cd: 2, anim: 'melee', fx: 'slash', tgt: 'single', dmg: 1.7, st: [['bleed', .6, 3]] },
+    act2: { n: 'Klingenwirbel', d: 'Zwei Hiebe gegen alle Feinde (je 85 %).', cd: 4, anim: 'spin', fx: 'slash', tgt: 'all', dmg: .85, hits: 2 },
+    ult: { n: 'Der König kehrt wieder', d: 'Alle Feinde 240 %, Gruppe erhält Stärke und Erholung.', anim: 'spin', fx: 'holy', tgt: 'all', dmg: 2.4, buffAll: [['atkUp', 3], ['regen', 3]] },
+    pas: [PS('Waldläufer des Nordens', 1, { crit: 8, critDmg: 15 }, '+8 % kritische Treffer, +15 % kritischer Schaden.'), PS('Erbe Isildurs', 15, { auraAtk: 6 }, 'Gruppe: +6 % Angriff.'), PS('Hände des Königs', 25, { healRecv: 20, regenTurn: 2 }, 'Regeneriert jede Runde 2 % LP.')] },
+  arwen: { n: 'Arwen', cls: 'lichtheiler', wpn: 'sword', era: 'Drittes Zeitalter', stages: ['Abendstern', 'Herrin von Bruchtal', 'Königin Gondors'],
+    look: { body: 'slim', skin: '#f2dcc8', hair: '#1e140e', hs: 'long', ears: 1, eyeC: '#5a8ac8', tunic: '#5a3a6a', robe: 1, cape: '#3a2a4a', hat: 'circlet', hatC: '#d8e0f0', wc: '#e0e8f0', glowC: '#cfe6ff' },
+    stageLook: [{}, { tunic: '#3a4a6a', cape: '#2a3456' }, { tunic: '#ece8f4', cape: '#c8c0e0', hatC: '#f0e080' }],
+    act: { n: 'Licht des Abendsterns', d: 'Heilt den schwächsten Verbündeten (200 % Magie) und reinigt.', cd: 1, anim: 'cast', fx: 'holy', tgt: 'lowestAlly', heal: 2, cleanse: 1 },
+    act2: { n: 'Flut des Bruinen', d: 'Alle Feinde 100 % Magie und verlangsamt.', cd: 4, anim: 'cast', fx: 'water', tgt: 'all', dmg: 1, stat: 'mag', st: [['slow', .7, 2]] },
+    ult: { n: 'Unsterbliches Licht', d: 'Belebt alle Gefallenen (40 %) und heilt alle um 50 %.', anim: 'cast', fx: 'holy', tgt: 'allAllies', revive: .4, healPct: .5 },
+    pas: [PS('Elbenanmut', 1, { healPct: 12 }, '+12 % Heilung.'), PS('Abendstern', 15, { healShield: .25 }, 'Heilungen geben zusätzlich einen Schild.'), PS('Wahl Lúthiens', 25, { reviveAlly: .5 }, 'Belebt einmal pro Kampf den ersten Gefallenen.')] },
+  legolas: { n: 'Legolas', cls: 'waldlaeufer', wpn: 'bow', era: 'Drittes Zeitalter', stages: ['Prinz des Düsterwalds', 'Gefährte des Rings', 'Herr von Ithilien'],
+    look: { body: 'elf', skin: '#f2d8be', hair: '#f4e6a8', hs: 'long', ears: 1, eyeC: '#4a8ad8', tunic: '#6a7f4a', vest: '#4a5a32', pants: '#4a3b2a', acc: ['quiver', 'brooch'], wc: '#c79b52' },
+    stageLook: [{}, { cape: '#55703f' }, { tunic: '#8a9f7a', cape: '#a8b88f', armor: '#d8dcd0', hat: 'circlet', hatC: '#d8e4f0' }],
+    act: { n: 'Doppelschuss', d: 'Zwei Pfeile (je 85 %).', cd: 1, anim: 'shoot', fx: 'arrow', tgt: 'single', dmg: .85, hits: 2 },
+    act2: { n: 'Pfeilhagel', d: 'Drei Salven auf alle Feinde (je 50 %).', cd: 4, anim: 'shoot', fx: 'arrow', tgt: 'all', dmg: .5, hits: 3 },
+    ult: { n: 'Sturm des Düsterwalds', d: 'Sieben Pfeile auf zufällige Feinde (je 85 %).', anim: 'shoot', fx: 'arrow', tgt: 'random', dmg: .85, hits: 7 },
+    pas: [PS('Elbenaugen', 1, { crit: 12 }, '+12 % kritische Treffer.'), PS('Leichtfüßig', 15, { dodge: 10, spd: 2 }, '10 % Ausweichen, +2 Tempo.'), PS('Unermüdlich', 25, { doubleHit: .25 }, '25 % Chance auf einen zweiten Pfeil.')] },
+  gimli: { n: 'Gimli', cls: 'bollwerk', wpn: 'axe', era: 'Drittes Zeitalter', stages: ['Sohn Glóins', 'Elbenfreund', 'Herr der Glitzernden Grotten'],
+    look: { body: 'dwarf', skin: '#d79b7a', hair: '#a8401e', hs: 'short', beard: 'dwarf', bc: '#b4481f', eyeC: '#5a3a2a', tunic: '#6a4024', pants: '#4a3a2a', armor: '#8a9098', hat: 'helm', hatC: '#9aa0a8', crest: 1, acc: ['pouch'], wc: '#c8ced6' },
+    stageLook: [{}, { armor: '#9aa3ad', cape: '#4a2e1c' }, { armor: '#d8c070', hatC: '#d8c070', cape: '#3a2a5a', wc: '#eef4fa' }],
+    act: { n: 'Baruk Khazâd!', d: '120 % Schaden und Spott: Feinde greifen Gimli an.', cd: 2, anim: 'melee', fx: 'stone', tgt: 'single', dmg: 1.2, taunt: 2 },
+    act2: { n: 'Spaltender Hieb', d: 'Alle Feinde 100 %, 30 % Betäubung.', cd: 4, anim: 'spin', fx: 'slash', tgt: 'all', dmg: 1, st: [['stun', .3, 1]] },
+    ult: { n: 'Zorn von Khazad-dûm', d: 'Alle Feinde 210 %, 60 % Betäubung, Spott.', anim: 'spin', fx: 'stone', tgt: 'all', dmg: 2.1, st: [['stun', .6, 1]], taunt: 2 },
+    pas: [PS('Zwergenhaut', 1, { hpPct: 15, defPct: 10 }, '+15 % LP, +10 % Verteidigung.'), PS('Einer mehr!', 15, { lifesteal: 8 }, '8 % Lebensraub.'), PS('Unbeugsam', 25, { reviveSelf: .4 }, 'Überlebt einmal pro Kampf einen tödlichen Treffer.')] },
+  boromir: { n: 'Boromir', cls: 'schildwache', wpn: 'sword', era: 'Drittes Zeitalter', stages: ['Sohn Denethors', 'Hauptmann Gondors', 'Held von Amon Hen'],
+    look: { body: 'man', skin: '#d9a684', hair: '#7a5028', hs: 'short', beard: 'short', bc: '#7a5028', eyeC: '#5a6a7a', tunic: '#7a2a2a', pants: '#3a2a22', armor: '#7d6a4a', cape: '#5a1e1e', shield: '#b2965a', acc: ['horn'], wc: '#d0d6dc' },
+    stageLook: [{}, { armor: '#9aa0a8', shield: '#c8ccd2' }, { armor: '#d8dde4', shield: '#e8e8f0', cape: '#7a1e1e', emblem: 'tree' }],
+    act: { n: 'Schildstoß', d: '120 % Schaden, Spott, 25 % Betäubung.', cd: 2, anim: 'melee', fx: 'stone', tgt: 'single', dmg: 1.2, taunt: 2, st: [['stun', .25, 1]] },
+    act2: { n: 'Horn Gondors', d: 'Gruppe erhält Wacht, Boromir verspottet alle Feinde.', cd: 5, anim: 'shout', fx: 'buff', tgt: 'allAllies', taunt: 3, buff: [['defUp', 2]] },
+    ult: { n: 'Für Gondor!', d: 'Alle Feinde 190 %, Schild für die Gruppe, Spott.', anim: 'spin', fx: 'slash', tgt: 'all', dmg: 1.9, shieldAll: 2, shieldStat: 'atk', taunt: 2 },
+    pas: [PS('Hauptmann', 1, { hpPct: 12, defPct: 10 }, '+12 % LP, +10 % Verteidigung.'), PS('Vergeltung', 15, { thorns: 15 }, 'Wirft 15 % des Schadens zurück.'), PS('Letztes Gefecht', 25, { lowHpDmg: .6, reviveSelf: .25 }, 'Stärker bei wenig LP, überlebt einmal.')] },
+  galadriel: { n: 'Galadriel', cls: 'klingenmeister', wpn: 'sword', era: 'Beide Zeitalter', stages: ['Kommandantin des Nordens', 'Herrin des Lichts', 'Trägerin von Nenya'],
+    look: { body: 'slim', skin: '#f6e0ca', hair: '#f6e29a', hs: 'braids', ears: 1, eyeC: '#7ab0e8', tunic: '#e6e6ea', pants: '#8a8a90', armor: '#c9cfd6', wc: '#eaf2ff', glowC: '#ffffff' },
+    stageLook: [{}, { cape: '#d8dce6', armor: '#e0e6ee' }, { robe: 1, tunic: '#f6f6fc', armor: null, cape: '#eceff8', hat: 'circlet', hatC: '#ffffff', aura: '#d8ecff' }],
+    act: { n: 'Klinge Valinors', d: '160 % Schaden, +10 % kritische Chance.', cd: 1, anim: 'melee', fx: 'holy', tgt: 'single', dmg: 1.6, critB: 10 },
+    act2: { n: 'Licht der Bäume', d: 'Alle Feinde 100 %, schwächt sie.', cd: 4, anim: 'spin', fx: 'light', tgt: 'all', dmg: 1, st: [['atkDown', .6, 2]] },
+    ult: { n: 'Nenya', d: 'Alle Feinde 250 %, heilt die Gruppe um 25 %.', anim: 'cast', fx: 'holy', tgt: 'all', dmg: 2.5, healAllPct: .25 },
+    pas: [PS('Kommandantin', 1, { auraAtk: 5, atkPct: 5 }, 'Gruppe: +5 % Angriff.'), PS('Licht der Eldar', 15, { vsGeist: .3, healRecv: 10 }, '+30 % Schaden gegen Geister.'), PS('Herrin von Lórien', 25, { startShieldAll: 1 }, 'Kampfbeginn: Schild für die Gruppe.')] },
+  elrond: { n: 'Elrond', cls: 'lichtheiler', wpn: 'staff', era: 'Beide Zeitalter', stages: ['Herold Gil-galads', 'Halbelb', 'Herr von Bruchtal'],
+    look: { body: 'elf', skin: '#ecd0b8', hair: '#241a12', hs: 'long', ears: 1, eyeC: '#6a5a4a', tunic: '#6a2a2e', robe: 1, cape: '#3a1e22', hat: 'circlet', hatC: '#c8a040', wc: '#c8b080', glowC: '#bfe8ff' },
+    stageLook: [{}, { tunic: '#5a2a3a', cape: '#3a1e2a' }, { tunic: '#3a2a5a', cape: '#2a1e40', glowC: '#80c8ff', hatC: '#e8c860', aura: '#bfe0ff' }],
+    act: { n: 'Heilkunst', d: 'Heilt den schwächsten Verbündeten (190 % Magie) und gibt Erholung.', cd: 1, anim: 'cast', fx: 'heal', tgt: 'lowestAlly', heal: 1.9, buff: [['regen', 2]] },
+    act2: { n: 'Rat der Weisen', d: 'Heilt alle (80 % Magie), Wacht und Reinigung.', cd: 4, anim: 'cast', fx: 'light', tgt: 'allAllies', heal: .8, buff: [['defUp', 3]], cleanse: 1 },
+    ult: { n: 'Macht von Vilya', d: 'Heilt alle um 60 % und gibt Schilde.', anim: 'cast', fx: 'holy', tgt: 'allAllies', healPct: .6, shield: 1 },
+    pas: [PS('Halbelb', 1, { healPct: 12 }, '+12 % Heilung.'), PS('Herr von Bruchtal', 15, { auraHp: 8 }, 'Gruppe: +8 % LP.'), PS('Vilya', 25, { ultCharge: 20 }, 'Ultimate lädt 20 % schneller.')] },
+  baumbart: { n: 'Baumbart', cls: 'urgewalt', wpn: 'claws', era: 'Drittes Zeitalter', stages: ['Hirte der Bäume', 'Fangorn', 'Ältester der Ents'],
+    look: { body: 'ent', skin: '#6b4a2a', hair: '#4f7a2e', hs: 'leaves', beard: 'long', bc: '#7a8a4a', eyeC: '#c8b040', tunic: '#5a3e22', pants: '#4a321c', wc: '#5a3e22', bark: 1 },
+    stageLook: [{}, { hair: '#6a9a3a' }, { hair: '#c8a040', bc: '#9aa060' }],
+    act: { n: 'Astschlag', d: '140 % Schaden und Spott.', cd: 2, anim: 'melee', fx: 'stone', tgt: 'single', dmg: 1.4, taunt: 2 },
+    act2: { n: 'Wurzelgriff', d: 'Alle Feinde 90 %, 35 % Betäubung.', cd: 4, anim: 'cast', fx: 'leaf', tgt: 'all', dmg: .9, st: [['stun', .35, 1]] },
+    ult: { n: 'Der letzte Marsch der Ents', d: 'Alle Feinde 260 % Schaden, Spott.', anim: 'spin', fx: 'stone', tgt: 'all', dmg: 2.6, taunt: 2 },
+    pas: [PS('Uralte Rinde', 1, { hpPct: 20 }, '+20 % LP.'), PS('Hum, Hom', 15, { regenTurn: 3 }, 'Regeneriert jede Runde 3 % LP.'), PS('Zorn der Ents', 25, { thorns: 20 }, 'Wirft 20 % des Schadens zurück.')] },
+  eowyn: { n: 'Éowyn', cls: 'klingenmeister', wpn: 'sword', era: 'Drittes Zeitalter', stages: ['Schildmaid Rohans', 'Dernhelm', 'Weiße Herrin von Rohan'],
+    look: { body: 'slim', skin: '#f2d6bc', hair: '#ecd282', hs: 'long', eyeC: '#6a9ac8', tunic: '#d8d4c4', pants: '#6a6a60', cape: '#4c6b3a', shield: '#4c6b3a', wc: '#d8e0e8' },
+    stageLook: [{}, { armor: '#a8aeb6', hat: 'helm', hatC: '#a8aeb6', tunic: '#5a6a4a' }, { armor: '#e0e4ea', tunic: '#f0f0f0', cape: '#e8e8e8', hat: 'circlet', hatC: '#e7c75a' }],
+    act: { n: 'Klingentanz', d: 'Zwei schnelle Hiebe (je 85 %).', cd: 1, anim: 'melee', fx: 'slash', tgt: 'single', dmg: .85, hits: 2 },
+    act2: { n: 'Kein Mann bin ich!', d: '220 % Schaden, gegen Bosse ×1,8.', cd: 4, anim: 'melee', fx: 'holy', tgt: 'single', dmg: 2.2, bossBonus: 1.8 },
+    ult: { n: 'Tod!', d: 'Alle Feinde 230 %, Gruppe wird gestärkt.', anim: 'spin', fx: 'slash', tgt: 'all', dmg: 2.3, buffAll: [['atkUp', 3]] },
+    pas: [PS('Schildmaid', 1, { atkPct: 10 }, '+10 % Angriff.'), PS('Mut Rohans', 15, { vsGeist: .4 }, '+40 % Schaden gegen Geister.'), PS('Weiße Herrin', 25, { doubleHit: .2 }, '20 % Chance auf einen zweiten Hieb.')] },
+  theoden: { n: 'Théoden', cls: 'schildwache', wpn: 'sword', era: 'Drittes Zeitalter', stages: ['König von Rohan', 'Herr der Mark', 'Théoden der Glorreiche'],
+    look: { body: 'man', skin: '#e0b090', hair: '#d0c8b0', hs: 'long', beard: 'short', bc: '#d0c8b0', eyeC: '#6a7a8a', tunic: '#3f5f3a', pants: '#3a3226', armor: '#b89a4a', cape: '#6a2a1e', hat: 'helm', hatC: '#c9a640', crest: 1, shield: '#3f5f3a', wc: '#e0e4e8' },
+    stageLook: [{}, { cape: '#2f4f2a', shield: '#c9a640' }, { armor: '#e8cc60', cape: '#e8e8e0', shield: '#e8cc60' }],
+    act: { n: 'Königlicher Hieb', d: '140 % Schaden und Spott.', cd: 2, anim: 'melee', fx: 'slash', tgt: 'single', dmg: 1.4, taunt: 2 },
+    act2: { n: 'Erhebt euch, Reiter!', d: 'Gruppe erhält Stärke und Eile.', cd: 5, anim: 'shout', fx: 'buff', tgt: 'allAllies', buff: [['atkUp', 2], ['haste', 2]] },
+    ult: { n: 'Rote Morgendämmerung', d: 'Alle Feinde 220 %, 40 % Betäubung, Spott.', anim: 'spin', fx: 'fire', tgt: 'all', dmg: 2.2, st: [['stun', .4, 1]], taunt: 2 },
+    pas: [PS('König der Mark', 1, { hpPct: 12 }, '+12 % LP.'), PS('Banner Rohans', 15, { auraAtk: 6 }, 'Gruppe: +6 % Angriff.'), PS('Glorreicher Ritt', 25, { startHaste: 1 }, 'Kampfbeginn: Eile.')] },
+  faramir: { n: 'Faramir', cls: 'waldlaeufer', wpn: 'bow', era: 'Drittes Zeitalter', stages: ['Waldläufer Ithiliens', 'Hauptmann Gondors', 'Fürst von Ithilien'],
+    look: { body: 'man', skin: '#d9a684', hair: '#8a6a42', hs: 'short', beard: 'stubble', eyeC: '#5a7a9a', tunic: '#3f5a3a', pants: '#3a3226', cape: '#33452f', hat: 'hood', hatC: '#3a4a34', acc: ['quiver'], wc: '#8a6a42' },
+    stageLook: [{}, { hat: 'none', armor: '#7a8088' }, { hat: 'none', armor: '#c8ced6', cape: '#1e2a40', tunic: '#2a3a5a', emblem: 'tree' }],
+    act: { n: 'Ithilien-Pfeil', d: '140 % Schaden, +15 % kritische Chance.', cd: 1, anim: 'shoot', fx: 'arrow', tgt: 'single', dmg: 1.4, critB: 15 },
+    act2: { n: 'Hinterhalt im Wald', d: 'Alle Feinde 75 % und verlangsamt.', cd: 4, anim: 'shoot', fx: 'arrow', tgt: 'all', dmg: .75, st: [['slow', .6, 2]] },
+    ult: { n: 'Henneth Annûn', d: 'Sechs Pfeile auf zufällige Feinde (je 95 %).', anim: 'shoot', fx: 'arrow', tgt: 'random', dmg: .95, hits: 6 },
+    pas: [PS('Waldläufer', 1, { crit: 8 }, '+8 % kritische Treffer.'), PS('Weitsicht', 15, { execute: .4 }, '+40 % Schaden gegen Feinde unter 30 % LP.'), PS('Fürst von Ithilien', 25, { auraCrit: 5 }, 'Gruppe: +5 % kritische Treffer.')] },
+  // ---------- Zweites Zeitalter ----------
+  isildur: { n: 'Isildur', cls: 'klingenmeister', wpn: 'sword', era: 'Zweites Zeitalter', stages: ['Seekadett', 'Sohn Elendils', 'Hoher König'],
+    look: { body: 'man', skin: '#dcac88', hair: '#3a2a1e', hs: 'short', eyeC: '#4a6a8a', tunic: '#2d4a6a', pants: '#2a2a2e', cape: '#1e2f4a', wc: '#d8e0e8' },
+    stageLook: [{}, { armor: '#b0b8c0' }, { armor: '#e0e6ee', hat: 'circlet', hatC: '#f0f0f0', wc: '#fff0c0', emblem: 'tree' }],
+    act: { n: 'Seemannsklinge', d: '150 % Schaden.', cd: 1, anim: 'melee', fx: 'slash', tgt: 'single', dmg: 1.5 },
+    act2: { n: 'Wagemut', d: '200 % Schaden, bis doppelt so stark bei wenig LP.', cd: 4, anim: 'melee', fx: 'slash', tgt: 'single', dmg: 2, lowHp: 1 },
+    ult: { n: 'Narsil', d: '400 % Schaden gegen ein Ziel.', anim: 'melee', fx: 'holy', tgt: 'single', dmg: 4 },
+    pas: [PS('Sohn Elendils', 1, { atkPct: 8 }, '+8 % Angriff.'), PS('Seemann', 15, { lifesteal: 8 }, '8 % Lebensraub.'), PS('Hoher König', 25, { execute: .5 }, '+50 % Schaden gegen Feinde unter 30 % LP.')] },
+  elendil: { n: 'Elendil', cls: 'schildwache', wpn: 'sword', era: 'Zweites Zeitalter', stages: ['Kapitän Númenors', 'Herr der Getreuen', 'Hoher König von Arnor & Gondor'],
+    look: { body: 'man', skin: '#d8a882', hair: '#3a2a1e', hs: 'short', beard: 'short', bc: '#6a5a4a', eyeC: '#4a5a6a', tunic: '#2a3f5a', pants: '#2a2a2e', armor: '#c0c8d0', cape: '#1a2a40', shield: '#c0c8d0', wc: '#e0e8f0' },
+    stageLook: [{}, { cape: '#283a5a' }, { armor: '#eef2f8', hat: 'crown', hatC: '#f0f4ff', shield: '#f0f4ff', emblem: 'tree' }],
+    act: { n: 'Hauptmannshieb', d: '140 % Schaden, Spott, 20 % Betäubung.', cd: 2, anim: 'melee', fx: 'slash', tgt: 'single', dmg: 1.4, taunt: 2, st: [['stun', .2, 1]] },
+    act2: { n: 'Schildwall', d: 'Gruppe erhält Wacht, Elendil verspottet alle Feinde.', cd: 5, anim: 'shout', fx: 'buff', tgt: 'allAllies', taunt: 3, buff: [['defUp', 2]] },
+    ult: { n: 'Letztes Bündnis', d: 'Alle Feinde 210 %, Schild für die Gruppe, Spott.', anim: 'spin', fx: 'holy', tgt: 'all', dmg: 2.1, shieldAll: 1.6, shieldStat: 'atk', taunt: 2 },
+    pas: [PS('Elendil der Große', 1, { hpPct: 15 }, '+15 % LP.'), PS('Die Getreuen', 15, { auraDef: 6 }, 'Gruppe: +6 % Verteidigung.'), PS('Stern des Elendil', 25, { counter: .25 }, '25 % Chance, Nahkampfangriffe zu kontern.')] },
+  miriel: { n: 'Míriel', cls: 'zauberer', wpn: 'staff', era: 'Zweites Zeitalter', stages: ['Königin-Regentin', 'Seherin des Palantír', 'Tar-Míriel'],
+    look: { body: 'slim', skin: '#c99a72', hair: '#1a120c', hs: 'long', eyeC: '#3a2a1a', tunic: '#e8e2d0', robe: 1, cape: '#2a4a7a', hat: 'circlet', hatC: '#e7c75a', wc: '#d8c080', glowC: '#80e0ff' },
+    stageLook: [{}, { tunic: '#d0e0f0' }, { tunic: '#f4f0e0', cape: '#e0c060', hat: 'crown', hatC: '#f0d060' }],
+    act: { n: 'Gezeitenstoß', d: '160 % Magieschaden.', cd: 1, anim: 'cast', fx: 'water', tgt: 'single', dmg: 1.6, stat: 'mag' },
+    act2: { n: 'Flutwelle', d: 'Alle Feinde 110 % Magie und verlangsamt.', cd: 4, anim: 'cast', fx: 'water', tgt: 'all', dmg: 1.1, stat: 'mag', st: [['slow', .6, 2]] },
+    ult: { n: 'Untergang der Wellen', d: 'Alle Feinde 260 % Magie, 40 % Betäubung.', anim: 'cast', fx: 'water', tgt: 'all', dmg: 2.6, stat: 'mag', st: [['stun', .4, 1]] },
+    pas: [PS('Königin', 1, { magPct: 10 }, '+10 % Magie.'), PS('Palantír', 15, { ultCharge: 15 }, 'Ultimate lädt 15 % schneller.'), PS('Tar-Míriel', 25, { slowOnHit: .3 }, 'Treffer verlangsamen mit 30 %.')] },
+  arondir: { n: 'Arondir', cls: 'waldlaeufer', wpn: 'bow', era: 'Zweites Zeitalter', stages: ['Silvan-Wächter', 'Hüter der Südlande', 'Held von Ostirith'],
+    look: { body: 'elf', skin: '#8a5a3a', hair: '#1a1210', hs: 'short', ears: 1, eyeC: '#3a2a1a', tunic: '#4a5a3a', pants: '#3a3428', armor: '#6a6a5a', acc: ['quiver'], wc: '#7a5a3a' },
     stageLook: [{}, { cape: '#3a4a2e' }, { armor: '#c0c8b8', cape: '#5a6a3e' }],
-    skills: [
-      S({ n: 'Silvan-Pfeil', d: '140 % Schaden.', cost: 20, cd: 1, anim: 'shoot', fx: 'arrow', tgt: 'single', dmg: 1.4 }),
-      S({ n: 'Pfeil ins Auge', d: '100 % Schaden, markiert, 30 % Betäubung.', cost: 30, cd: 3, anim: 'shoot', fx: 'arrow', tgt: 'single', dmg: 1, st: [['mark', 1, 3], ['stun', .3, 1]] }),
-      S({ n: 'Sprungangriff', d: '190 % Schaden im Nahkampf, Blutung.', cost: 35, cd: 3, anim: 'melee', fx: 'slash', tgt: 'single', dmg: 1.9, st: [['bleed', .8, 3]], stage: 1 })
-    ],
-    ult: { n: 'Wächter der Südlande', d: 'Sechs Pfeile auf zufällige Feinde (je 95 %).', anim: 'shoot', fx: 'arrow', tgt: 'random', dmg: .95, hits: 6 } },
-  isildur: { n: 'Isildur', era: 'Zweites Zeitalter', cls: 'klingenmeister', wpn: 'sword', unlock: { camp: 'ringe', ch: 1 }, cost: 180,
-    stages: ['Seekadett', 'Sohn Elendils', 'Hoher König'],
-    look: { body: 'man', skin: '#dcac88', hair: '#3a2a1e', hs: 'short', tunic: '#2d4a6a', pants: '#2a2a2e', cape: '#1e2f4a', wc: '#d8e0e8' },
-    stageLook: [{}, { armor: '#b0b8c0' }, { armor: '#e0e6ee', hat: 'circlet', hatC: '#f0f0f0', wc: '#fff0c0' }],
-    skills: [
-      S({ n: 'Seemannsklinge', d: '150 % Schaden.', cost: 20, cd: 1, anim: 'melee', fx: 'slash', tgt: 'single', dmg: 1.5 }),
-      S({ n: 'Wagemut', d: '200 % Schaden, bis doppelt so stark bei wenig LP.', cost: 35, cd: 3, anim: 'melee', fx: 'slash', tgt: 'single', dmg: 2, lowHp: 1 }),
-      S({ n: 'Sturm von Númenor', d: 'Alle Feinde 105 %.', cost: 35, cd: 3, anim: 'spin', fx: 'water', tgt: 'all', dmg: 1.05, stage: 1 })
-    ],
-    ult: { n: 'Narsil', d: '400 % Schaden gegen ein Ziel.', anim: 'melee', fx: 'holy', tgt: 'single', dmg: 4 } },
-  elendil: { n: 'Elendil', era: 'Zweites Zeitalter', cls: 'schildwache', wpn: 'sword', unlock: { camp: 'ringe', ch: 3 }, cost: 200,
-    stages: ['Kapitän Númenors', 'Herr der Getreuen', 'Hoher König von Arnor & Gondor'],
-    look: { body: 'man', skin: '#d8a882', hair: '#3a2a1e', hs: 'short', beard: 'short', bc: '#6a5a4a', tunic: '#2a3f5a', pants: '#2a2a2e', armor: '#c0c8d0', cape: '#1a2a40', shield: '#c0c8d0', wc: '#e0e8f0' },
-    stageLook: [{}, { cape: '#283a5a' }, { armor: '#eef2f8', hat: 'crown', hatC: '#f0f4ff', shield: '#f0f4ff' }],
-    skills: [
-      S({ n: 'Schildwall', d: 'Spott (3). Alle Verbündeten: Wacht (2).', cost: 25, cd: 4, anim: 'shout', fx: 'buff', tgt: 'allAllies', taunt: 3, buff: [['defUp', 2]] }),
-      S({ n: 'Hauptmannshieb', d: '140 % Schaden, 20 % Betäubung.', cost: 20, cd: 1, anim: 'melee', fx: 'slash', tgt: 'single', dmg: 1.4, st: [['stun', .2, 1]] }),
-      S({ n: 'Stern des Elendil', d: 'Alle Feinde 90 %, markiert (50 %).', cost: 35, cd: 3, anim: 'cast', fx: 'light', tgt: 'all', dmg: .9, st: [['mark', .5, 3]], stage: 1 })
-    ],
-    ult: { n: 'Letztes Bündnis', d: 'Alle Feinde 210 %. Schild für alle (Angriff × 1,6). Spott (2).', anim: 'spin', fx: 'holy', tgt: 'all', dmg: 2.1, shieldAll: 1.6, shieldStat: 'atk', taunt: 2 } },
-  miriel: { n: 'Míriel', era: 'Zweites Zeitalter', cls: 'zauberer', wpn: 'staff', unlock: { camp: 'ringe', ch: 1 }, cost: 200,
-    stages: ['Königin-Regentin', 'Seherin des Palantír', 'Tar-Míriel'],
-    look: { body: 'slim', skin: '#c99a72', hair: '#1e1410', hs: 'long', tunic: '#e8e2d0', robe: 1, hat: 'circlet', hatC: '#e7c75a', wc: '#d8c080', glowC: '#80e0ff' },
-    stageLook: [{}, { tunic: '#d0e0f0', cape: '#2a4a7a' }, { tunic: '#f4f0e0', cape: '#e0c060', hat: 'crown', hatC: '#f0d060' }],
-    skills: [
-      S({ n: 'Gezeitenstoß', d: '160 % Magie.', cost: 20, cd: 1, anim: 'cast', fx: 'water', tgt: 'single', dmg: 1.6, stat: 'mag' }),
-      S({ n: 'Flutwelle', d: 'Alle Feinde 110 % Magie, 50 % Lähmung.', cost: 35, cd: 3, anim: 'cast', fx: 'water', tgt: 'all', dmg: 1.1, stat: 'mag', st: [['slow', .5, 2]] }),
-      S({ n: 'Vision des Palantír', d: 'Alle Verbündeten: Eile & Stärke (2).', cost: 35, cd: 5, anim: 'cast', fx: 'light', tgt: 'allAllies', buff: [['haste', 2], ['atkUp', 2]], stage: 1 })
-    ],
-    ult: { n: 'Untergang der Wellen', d: 'Alle Feinde 260 % Magie, 40 % Betäubung.', anim: 'cast', fx: 'water', tgt: 'all', dmg: 2.6, stat: 'mag', st: [['stun', .4, 1]] } },
-  nori: { n: 'Nori Brandyfuß', era: 'Zweites Zeitalter', cls: 'naturheiler', wpn: 'staff', unlock: { camp: 'ringe', ch: 0 }, cost: 160,
-    stages: ['Harfuß', 'Wanderin', 'Freundin der Sterne'],
-    look: { body: 'hobbit', skin: '#e8b890', hair: '#c58a4a', hs: 'wild', tunic: '#6a7a4a', pants: '#5a4a3a', cape: '#7a5a3a', wc: '#7a5a3a', glowC: '#c0ff90' },
-    stageLook: [{}, { cape: '#8a6a3a', tunic: '#8a7a4a' }, { cape: '#3a4a6a', glowC: '#ffffff' }],
-    skills: [
-      S({ n: 'Harfuß-Kräuter', d: 'Heilt einen Verbündeten (170 % Magie) + Erholung (3).', cost: 25, cd: 1, anim: 'cast', fx: 'heal', tgt: 'lowestAlly', heal: 1.7, buff: [['regen', 3]] }),
-      S({ n: 'Wanderstock', d: '120 % Schaden, 30 % Lähmung.', cost: 10, cd: 2, anim: 'melee', fx: 'stone', tgt: 'single', dmg: 1.2, st: [['slow', .3, 2]] }),
-      S({ n: 'Wanderlied', d: 'Heilt alle (100 % Magie) und Eile (2).', cost: 45, cd: 3, anim: 'cast', fx: 'heal', tgt: 'allAllies', heal: 1, buff: [['haste', 2]], stage: 1 })
-    ],
-    ult: { n: 'Niemand geht allein', d: 'Belebt alle Gefallenen (50 %), heilt alle um 35 %.', anim: 'cast', fx: 'holy', tgt: 'allAllies', revive: .5, healPct: .35 } },
-  fremder: { n: 'Der Fremde', era: 'Zweites Zeitalter', cls: 'zauberer', wpn: 'staff', unlock: { camp: 'ringe', ch: 0 }, cost: 200,
-    stages: ['Der Fremde', 'Istar', 'Der Graue Wanderer'],
-    look: { body: 'man', skin: '#d8b090', hair: '#9a8a70', hs: 'wild', beard: 'long', bc: '#9a8a70', tunic: '#6a6a62', robe: 1, wc: '#5a4a32', glowC: '#a0e0ff' },
+    act: { n: 'Silvan-Pfeil', d: '140 % Schaden.', cd: 1, anim: 'shoot', fx: 'arrow', tgt: 'single', dmg: 1.4 },
+    act2: { n: 'Pfeil ins Auge', d: '100 % Schaden, markiert, 30 % Betäubung.', cd: 4, anim: 'shoot', fx: 'arrow', tgt: 'single', dmg: 1, st: [['mark', 1, 3], ['stun', .3, 1]] },
+    ult: { n: 'Wächter der Südlande', d: 'Sechs Pfeile auf zufällige Feinde (je 95 %).', anim: 'shoot', fx: 'arrow', tgt: 'random', dmg: .95, hits: 6 },
+    pas: [PS('Silvan', 1, { spd: 2 }, '+2 Tempo.'), PS('Wachsam', 15, { dodge: 10 }, '10 % Ausweichen.'), PS('Ungebrochen', 25, { doubleHit: .2 }, '20 % Chance auf einen zweiten Pfeil.')] },
+  nori: { n: 'Nori Brandyfuß', cls: 'naturheiler', wpn: 'staff', era: 'Zweites Zeitalter', stages: ['Harfuß', 'Wanderin', 'Freundin der Sterne'],
+    look: { body: 'hobbit', skin: '#e8b890', hair: '#c58a4a', hs: 'wild', eyeC: '#6a5a3a', tunic: '#8a8a5a', vest: '#6a5a3a', pants: '#5a4a3a', cape: '#7a5a3a', wc: '#7a5a3a', glowC: '#c0ff90' },
+    stageLook: [{}, { cape: '#8a6a3a' }, { cape: '#3a4a6a', glowC: '#ffffff' }],
+    act: { n: 'Harfuß-Kräuter', d: 'Heilt den schwächsten Verbündeten (170 % Magie) und gibt Erholung.', cd: 1, anim: 'cast', fx: 'heal', tgt: 'lowestAlly', heal: 1.7, buff: [['regen', 3]] },
+    act2: { n: 'Wanderlied', d: 'Heilt alle (100 % Magie) und gibt Eile.', cd: 4, anim: 'cast', fx: 'heal', tgt: 'allAllies', heal: 1, buff: [['haste', 2]] },
+    ult: { n: 'Niemand geht allein', d: 'Belebt alle Gefallenen (50 %), heilt alle um 35 %.', anim: 'cast', fx: 'holy', tgt: 'allAllies', revive: .5, healPct: .35 },
+    pas: [PS('Neugier', 1, { dodge: 10 }, '10 % Ausweichen.'), PS('Zusammenhalt', 15, { healRegen: 1 }, 'Geheilte erhalten zusätzlich Erholung.'), PS('Sternenfreundin', 25, { startBuffRegen: 1 }, 'Kampfbeginn: Erholung für die Gruppe.')] },
+  fremder: { n: 'Der Fremde', cls: 'zauberer', wpn: 'staff', era: 'Zweites Zeitalter', stages: ['Der Fremde', 'Istar', 'Der Graue Wanderer'],
+    look: { body: 'man', skin: '#d8b090', hair: '#9a8a70', hs: 'wild', beard: 'long', bc: '#9a8a70', eyeC: '#7aa8d8', tunic: '#6a6a62', robe: 1, wc: '#5a4a32', glowC: '#a0e0ff' },
     stageLook: [{}, { tunic: '#5a6070', cape: '#4a5060' }, { tunic: '#8d8f94', hat: 'wizard', hatC: '#7a7c82', hair: '#c0c0c0', bc: '#c8c8c8', glowC: '#fff6c0' }],
-    skills: [
-      S({ n: 'Sternenfunken', d: '170 % Magie.', cost: 20, cd: 1, anim: 'cast', fx: 'light', tgt: 'single', dmg: 1.7, stat: 'mag' }),
-      S({ n: 'Frostwind', d: 'Alle Feinde 100 % Magie, 60 % Lähmung.', cost: 35, cd: 3, anim: 'cast', fx: 'ice', tgt: 'all', dmg: 1, stat: 'mag', st: [['slow', .6, 2]] }),
-      S({ n: 'Glühwürmchen', d: '240 % Magie, 50 % Brand.', cost: 40, cd: 3, anim: 'cast', fx: 'fire', tgt: 'single', dmg: 2.4, stat: 'mag', st: [['burn', .5, 3]], stage: 1 })
-    ],
-    ult: { n: 'Stimme der Sterne', d: 'Alle Feinde 270 % Magie, 30 % Betäubung.', anim: 'cast', fx: 'lightning', tgt: 'all', dmg: 2.7, stat: 'mag', st: [['stun', .3, 1]] } }
+    act: { n: 'Sternenfunken', d: '170 % Magieschaden.', cd: 1, anim: 'cast', fx: 'light', tgt: 'single', dmg: 1.7, stat: 'mag' },
+    act2: { n: 'Frostwind', d: 'Alle Feinde 100 % Magie und verlangsamt.', cd: 4, anim: 'cast', fx: 'ice', tgt: 'all', dmg: 1, stat: 'mag', st: [['slow', .6, 2]] },
+    ult: { n: 'Stimme der Sterne', d: 'Alle Feinde 270 % Magie, 30 % Betäubung.', anim: 'cast', fx: 'lightning', tgt: 'all', dmg: 2.7, stat: 'mag', st: [['stun', .3, 1]] },
+    pas: [PS('Istar', 1, { magPct: 12 }, '+12 % Magie.'), PS('Sternenkunde', 15, { critDmg: 25 }, '+25 % kritischer Schaden.'), PS('Der Graue Wanderer', 25, { doubleHit: .15 }, '15 % Chance, Zauber doppelt zu wirken.')] },
+  durin: { n: 'Durin IV.', cls: 'bollwerk', wpn: 'hammer', era: 'Zweites Zeitalter', stages: ['Prinz von Khazad-dûm', 'Freund der Elben', 'König unter dem Berg'],
+    look: { body: 'dwarf', skin: '#c98b6a', hair: '#24160e', hs: 'short', beard: 'dwarf', bc: '#24160e', eyeC: '#3a2a1a', tunic: '#6a4a2a', pants: '#4a3424', armor: '#8a6a3a', acc: ['pouch'], wc: '#9aa0a8' },
+    stageLook: [{}, { armor: '#a8885a', cape: '#5a2a1a' }, { armor: '#e0c060', hat: 'crown', hatC: '#e8c860', cape: '#2a3a6a' }],
+    act: { n: 'Hammerschlag', d: '140 % Schaden, Spott, 20 % Betäubung.', cd: 2, anim: 'melee', fx: 'stone', tgt: 'single', dmg: 1.4, taunt: 2, st: [['stun', .2, 1]] },
+    act2: { n: 'Felsbrecher', d: 'Alle Feinde 110 % und bricht Rüstung.', cd: 4, anim: 'spin', fx: 'stone', tgt: 'all', dmg: 1.1, st: [['defDown', .6, 3]] },
+    ult: { n: 'Hammer Durins', d: '340 % Schaden, betäubt sicher, Spott.', anim: 'melee', fx: 'stone', tgt: 'single', dmg: 3.4, st: [['stun', 1, 1]], taunt: 2 },
+    pas: [PS('Stolz Khazad-dûms', 1, { hpPct: 15 }, '+15 % LP.'), PS('Steinhaut', 15, { startShieldSelf: .2 }, 'Kampfbeginn: Schild in Höhe von 20 % LP.'), PS('Freund der Elben', 25, { auraDef: 8 }, 'Gruppe: +8 % Verteidigung.')] }
 };
 
-/* ---------------- Gegner ---------------- */
 const ESK = {
   slash:   { n: 'Hieb', anim: 'melee', fx: 'slash', tgt: 'single', dmg: 1, w: 3 },
   heavy:   { n: 'Wuchtschlag', anim: 'melee', fx: 'slash', tgt: 'single', dmg: 1.6, w: 1.5, cd: 2 },
@@ -438,45 +299,87 @@ const ENEMIES = {
   sauron_rop:{ n: 'Sauron', type: 'hum', look: { body: 'giant', skin: '#1a1a1c', tunic: '#26201a', pants: '#18181a', armor: '#3a3028', hat: 'spikehelm', hatC: '#4a3a2a', wc: '#d8a040', glow: '#ff8020', noface: 1 }, wpn: 'hammer', hp: 820, atk: 27, def: 17, mag: 28, res: 18, spd: 11, sk: ['forge', 'darkness', 'mace', 'gaze'], xp: 0, g: 0, tags: [], boss: 1 }
 };
 
-/* ---------------- Kampagnen ---------------- */
-const CAMPAIGNS = {
-  ringkrieg: { n: 'Der Ringkrieg', era: 'Drittes Zeitalter', d: 'Vom Auenland bis zum Schicksalsberg: die Reise der Gemeinschaft.',
-    chapters: [
-      { n: 'Das Auenland', bg: 'shire', lvl: 1, story: 'Schwarze Reiter fragen in Hobbingen nach einem Beutlin. Die Gefährten müssen das Auenland verlassen, bevor die Straße nach Bockland gesperrt ist.',
-        normal: [['wolf', 'wolf'], ['wolf', 'wolf', 'wolf'], ['wight']], elite: [['wight', 'wolf', 'wolf']], boss: ['black_rider', 'wolf'] },
-      { n: 'Die Wetterspitze', bg: 'weather', lvl: 3, story: 'Auf der Ruine von Amon Sûl brennt nachts ein kleines Feuer. Fünf dunkle Gestalten steigen den Hang hinauf.',
-        normal: [['orc', 'orc'], ['orc', 'orc_archer', 'wolf'], ['wolf', 'warg']], elite: [['warg', 'warg', 'orc']], boss: ['nazgul', 'nazgul'] },
-      { n: 'Die Minen von Moria', bg: 'moria', lvl: 6, story: 'In der Kammer Mazarbul hallen Trommeln aus der Tiefe. Etwas Älteres als die Orks erwacht in den Feuern unter der Brücke.',
-        normal: [['goblin', 'goblin', 'goblin'], ['goblin', 'goblin', 'orc_archer'], ['orc', 'goblin', 'goblin']], elite: [['cave_troll', 'goblin', 'goblin']], boss: ['balrog'] },
-      { n: 'Amon Hen', bg: 'amonhen', lvl: 9, story: 'Am Hang von Amon Hen bricht die Gemeinschaft auseinander. Aus dem Wald stürmen Uruk-hai mit der weißen Hand.',
-        normal: [['uruk', 'uruk'], ['uruk', 'orc_archer', 'orc'], ['berserker', 'orc']], elite: [['berserker', 'uruk', 'uruk']], boss: ['lurtz', 'uruk', 'orc_archer'] },
-      { n: 'Helms Klamm & Isengart', bg: 'helm', lvl: 12, story: 'Zehntausend Uruk-hai marschieren durch den Regen auf die Hornburg. Dahinter wartet der Weiße Zauberer in Orthanc.',
-        normal: [['uruk', 'berserker', 'orc_archer'], ['uruk', 'uruk', 'uruk'], ['warg', 'uruk']], elite: [['warg', 'warg', 'berserker']], boss: ['saruman', 'uruk'] },
-      { n: 'Cirith Ungol', bg: 'cirith', lvl: 15, story: 'Über die Treppen von Cirith Ungol führt der Weg nach Mordor. Netze, dick wie Taue, hängen im Tunnel.',
-        normal: [['orc', 'orc', 'orc_archer'], ['spiderling', 'spiderling', 'spiderling'], ['uruk', 'orc_archer', 'orc']], elite: [['mordor_troll', 'orc']], boss: ['shelob', 'spiderling'] },
-      { n: 'Die Pelennor-Felder', bg: 'pelennor', lvl: 18, story: 'Minas Tirith brennt, als im Morgengrauen die Hörner Rohans erklingen. Über dem Feld kreist der Herr der Neun.',
-        normal: [['haradrim', 'haradrim', 'orc'], ['orc', 'orc', 'mordor_troll'], ['uruk', 'haradrim', 'orc_archer']], elite: [['olifant', 'haradrim'], ['nazgul', 'haradrim']], boss: ['witch_king', 'orc', 'orc'] },
-      { n: 'Der Schicksalsberg', bg: 'doom', lvl: 21, story: 'Vor dem Schwarzen Tor fordern die Heerführer des Westens Sauron heraus. Am Orodruin entscheidet sich das Schicksal Mittelerdes.',
-        normal: [['mordor_troll', 'orc', 'orc'], ['nazgul', 'orc_archer', 'orc'], ['uruk', 'uruk', 'berserker']], elite: [['mordor_troll', 'mordor_troll'], ['nazgul', 'nazgul']], boss: ['sauron'] }
-    ] },
-  ringe: { n: 'Die Ringe der Macht', era: 'Zweites Zeitalter', d: 'Tausende Jahre zuvor: Galadriel jagt Sauron, und in Eregion werden die Ringe geschmiedet.', req: { camp: 'ringkrieg', ch: 5 },
-    chapters: [
-      { n: 'Forodwaith', bg: 'snow', lvl: 17, story: 'Im ewigen Eis des Nordens folgt Galadriel der letzten Spur Saurons. Ihre Gefährten wollen umkehren, doch im Schnee lauert etwas Großes.',
-        normal: [['wolf', 'wolf', 'warg'], ['adar_orc', 'adar_orc'], ['warg', 'warg']], elite: [['snow_troll', 'wolf']], boss: ['snow_boss'] },
-      { n: 'Das Belegaer-Meer', bg: 'sea', lvl: 19, story: 'Auf einem Floß inmitten des Ozeans treiben Schiffbrüchige. Unter den Wellen bewegt sich ein Schatten, länger als jedes Schiff.',
-        normal: [['pirate', 'pirate'], ['pirate', 'pirate', 'pirate'], ['adar_orc', 'pirate']], elite: [['pirate', 'pirate', 'warg']], boss: ['seawurm', 'pirate'] },
-      { n: 'Die Südlande', bg: 'south', lvl: 21, story: 'In Tirharad und Ostirith verstecken sich die Menschen vor Adars Uruks. Der dunkle Elb nennt die Orks seine Kinder.',
-        normal: [['adar_orc', 'adar_orc', 'orc_archer'], ['adar_orc', 'warg'], ['orc', 'orc', 'adar_orc']], elite: [['adar_orc', 'adar_orc', 'mordor_troll']], boss: ['adar', 'adar_orc'] },
-      { n: 'Rhûn', bg: 'rhun', lvl: 23, story: 'In den Steppen des Ostens sucht ein Dunkler Zauberer nach dem Fremden, der vom Himmel fiel. Seine Mystikerinnen sind ihm treu ergeben.',
-        normal: [['mystic', 'mystic', 'warg'], ['wight', 'mystic'], ['warg', 'warg', 'mystic']], elite: [['mystic', 'mystic', 'mystic']], boss: ['dark_wizard', 'mystic'] },
-      { n: 'Khazad-dûm', bg: 'khazad', lvl: 25, story: 'Die Hallen der Zwerge leuchten noch. Doch Durin und sein Vater sind zerstritten, und ein Hügeltroll bricht in die Minen ein.',
-        normal: [['goblin', 'goblin', 'cave_troll'], ['adar_orc', 'adar_orc', 'goblin'], ['wight', 'wight']], elite: [['cave_troll', 'cave_troll']], boss: ['damrod'] },
-      { n: 'Eregion', bg: 'eregion', lvl: 28, story: 'Celebrimbor hat die Ringe geschmiedet, angeleitet von einem strahlenden Fremden. Nun belagert Adar die Stadt, und Annatar zeigt sein wahres Gesicht.',
-        normal: [['adar_orc', 'adar_orc', 'berserker'], ['wight', 'wight', 'adar_orc'], ['mordor_troll', 'adar_orc']], elite: [['nazgul', 'mordor_troll']], boss: ['annatar'] }
-    ] }
-};
 
-/* ---------------- Ausrüstung ---------------- */
+/* ---------------- Story ----------------
+   Jedes Kapitel: 5 Wellen + Boss. Sprecher: Heldenschlüssel, 'e:gegner' oder 'narr'.
+   join: Gefährten beim Kapitelstart · mid: {Welle: [Helden]} · end: nach dem Boss
+   away/back: Held verlässt die Gruppe bzw. kehrt zurück (back mit Entwicklungsstufe) */
+const STORY = [
+  { part: 'Teil I · Der Ringkrieg', n: 'Das Auenland', bg: 'shire', lvl: 1, join: ['frodo', 'sam', 'gandalf'],
+    intro: [['narr', 'Beutelsend, Hobbingen. Ein schlichter goldener Ring liegt auf dem Kaminsims.'], ['gandalf', 'Er ist der Eine Ring, Frodo. Und die Neun sind bereits unterwegs, um ihn zu holen.'], ['frodo', 'Dann muss ich fort. Bis nach Bree, und weiter, wenn es sein muss.'], ['sam', 'Ohne mich gehen Sie nirgendwohin, Herr Frodo!']],
+    waves: [['wolf', 'wolf'], ['wolf', 'wolf', 'wolf'], ['wight'], ['wolf', 'wight', 'wolf'], ['wolf', 'wolf', 'wolf', 'wolf']],
+    mid: { 2: ['merry', 'pippin'] }, midLine: { 2: [['pippin', 'Merry! Das sind Frodo und Sam!'], ['merry', 'Wir kommen mit. Keine Widerrede, Vetter.']] },
+    boss: ['black_rider', 'wolf'], bossLine: [['narr', 'Hufschlag auf der Straße. Ein Schatten in schwarzem Mantel versperrt den Weg.'], ['e:black_rider', 'Beutlin … Gib ihn mir …']],
+    outro: [['frodo', 'Er ist fort. Aber er wird wiederkommen.'], ['gandalf', 'Ich muss nach Isengart, Rat suchen. Wir treffen uns in Bree.']] },
+  { part: 'Teil I · Der Ringkrieg', n: 'Bree & die Wetterspitze', bg: 'weather', lvl: 3, join: ['aragorn'],
+    intro: [['narr', 'Im Tänzelnden Pony sitzt ein Fremder im Schatten und beobachtet die Hobbits.'], ['aragorn', 'Man nennt mich Streicher. Wenn ihr den Morgen erleben wollt, folgt mir.'], ['sam', 'Und warum sollten wir Euch trauen?'], ['aragorn', 'Weil die Reiter heute Nacht kommen.']],
+    waves: [['orc', 'orc'], ['orc', 'orc_archer', 'wolf'], ['wolf', 'warg'], ['orc', 'orc', 'orc_archer'], ['warg', 'warg', 'orc']],
+    boss: ['nazgul', 'nazgul'], bossLine: [['narr', 'Auf der Ruine von Amon Sûl steigen fünf dunkle Gestalten den Hang hinauf.'], ['aragorn', 'Bleibt hinter mir! Feuer ist ihre Furcht!']],
+    outro: [['narr', 'Eine Elbe reitet aus dem Licht heran und hebt den verwundeten Frodo auf ihr Pferd.'], ['arwen', 'Ich bin Arwen. Mein Vater erwartet euch in Bruchtal.']], end: ['arwen'] },
+  { part: 'Teil I · Der Ringkrieg', n: 'Bruchtal & die Minen von Moria', bg: 'moria', lvl: 5, join: ['elrond', 'legolas', 'gimli', 'boromir'],
+    intro: [['elrond', 'Neun sollen es sein, gegen die Neun Reiter. Wer begleitet den Ringträger?'], ['aragorn', 'Du hast mein Schwert.'], ['legolas', 'Und meinen Bogen.'], ['gimli', 'Und meine Axt!'], ['boromir', 'Gondor wird an eurer Seite stehen.']],
+    waves: [['goblin', 'goblin', 'goblin'], ['goblin', 'goblin', 'orc_archer'], ['orc', 'goblin', 'goblin'], ['cave_troll', 'goblin'], ['goblin', 'goblin', 'goblin', 'orc_archer']],
+    midLine: { 3: [['gimli', 'Trommeln … Trommeln in der Tiefe.'], ['gandalf', 'Wir können nicht hinaus. Sie kommen.']] },
+    boss: ['balrog'], bossLine: [['narr', 'Eine Mauer aus Feuer steigt aus dem Abgrund. Darin ein Schatten mit Flügeln.'], ['gandalf', 'Ein Balrog! Ein Dämon der Alten Welt. Flieht, ihr Narren!']],
+    outro: [['narr', 'Die Brücke von Khazad-dûm bricht. Gandalf stürzt mit dem Balrog in die Tiefe.'], ['aragorn', 'Er ist fort … Wir dürfen nicht stehen bleiben.']], away: ['gandalf'] },
+  { part: 'Teil I · Der Ringkrieg', n: 'Lothlórien & Amon Hen', bg: 'amonhen', lvl: 8, join: ['galadriel'],
+    intro: [['galadriel', 'Willkommen in Lothlórien. Euer Weg ist schmal wie die Schneide eines Messers.'], ['galadriel', 'Doch Hoffnung bleibt, solange die Gemeinschaft treu ist. Ich gehe ein Stück mit euch.']],
+    waves: [['uruk', 'uruk'], ['uruk', 'orc_archer', 'orc'], ['berserker', 'orc'], ['berserker', 'uruk', 'uruk'], ['uruk', 'uruk', 'orc_archer']],
+    boss: ['lurtz', 'uruk', 'orc_archer'], bossLine: [['narr', 'Das Horn Gondors erklingt über Amon Hen.'], ['boromir', 'Lauft, kleine Leute! Ich halte sie auf!'], ['e:lurtz', 'Fangt die Halblinge. Den Rest tötet.']],
+    outro: [['boromir', 'Vergebt mir … Ich wollte den Ring.'], ['aragorn', 'Du hast tapfer gekämpft. Und du wirst leben, Bruder.'], ['narr', 'Frodo und Sam setzen allein über den Fluss. Doch die Gemeinschaft gibt nicht auf.']] },
+  { part: 'Teil I · Der Ringkrieg', n: 'Fangorn & Helms Klamm', bg: 'helm', lvl: 11, join: ['baumbart'], back: ['gandalf'],
+    intro: [['narr', 'Im Wald von Fangorn erscheint ein Reiter, strahlend weiß.'], ['gandalf', 'Ich bin Gandalf der Weiße. Und ich komme zur Wende der Gezeiten.'], ['baumbart', 'Hm, hum … Saruman hat meine Bäume gefällt. Das war ein großer Fehler.']],
+    waves: [['uruk', 'berserker'], ['uruk', 'uruk', 'uruk'], ['warg', 'uruk', 'warg'], ['uruk', 'berserker', 'orc_archer'], ['warg', 'warg', 'berserker']],
+    mid: { 2: ['eowyn', 'theoden'] }, midLine: { 2: [['theoden', 'Rohan reitet mit euch. Zur Hornburg!'], ['eowyn', 'Und ich reite an der Seite meines Königs.']] },
+    boss: ['saruman', 'uruk'], bossLine: [['e:saruman', 'Ihr Narren. Gegen die Macht von Mordor gibt es keinen Sieg.'], ['gandalf', 'Dein Stab ist zerbrochen, Saruman.']],
+    outro: [['baumbart', 'Isengart steht unter Wasser. Die Bäume kehren zurück.']] },
+  { part: 'Teil I · Der Ringkrieg', n: 'Ithilien & Cirith Ungol', bg: 'cirith', lvl: 14, join: ['faramir'],
+    intro: [['faramir', 'Ich bin Faramir, Hauptmann Gondors. Was tragt ihr da bei euch, Halblinge?'], ['sam', 'Nichts, was Euch etwas angeht!'], ['faramir', 'Dann geht in Frieden. Und mein Bogen geht mit euch.']],
+    waves: [['orc', 'orc', 'orc_archer'], ['haradrim', 'haradrim'], ['spiderling', 'spiderling', 'spiderling'], ['uruk', 'orc_archer', 'orc'], ['mordor_troll', 'orc']],
+    boss: ['shelob', 'spiderling'], bossLine: [['narr', 'Der Tunnel riecht nach Fäulnis. Aus der Dunkelheit kriecht etwas mit vielen Augen.'], ['sam', 'Lass ihn los, du Ungeheuer!']],
+    outro: [['frodo', 'Sam … ohne dich wäre ich nie so weit gekommen.'], ['sam', 'Dann gehen wir das letzte Stück eben auch zusammen.']] },
+  { part: 'Teil I · Der Ringkrieg', n: 'Die Pelennor-Felder', bg: 'pelennor', lvl: 17,
+    intro: [['gandalf', 'Minas Tirith wird belagert. Gondor braucht jedes Schwert.'], ['theoden', 'Erhebt euch, Reiter Théodens! Speere werden splittern, Schilde zerbrechen!']],
+    waves: [['haradrim', 'haradrim', 'orc'], ['orc', 'orc', 'mordor_troll'], ['olifant', 'haradrim'], ['uruk', 'haradrim', 'orc_archer'], ['nazgul', 'orc', 'orc']],
+    boss: ['witch_king', 'orc', 'orc'], bossLine: [['e:witch_king', 'Kein lebender Mann kann mich aufhalten.'], ['eowyn', 'Ich bin kein Mann!']],
+    outro: [['aragorn', 'Die Stadt ist gerettet. Doch solange der Ring besteht, ist nichts gewonnen.']] },
+  { part: 'Teil I · Der Ringkrieg', n: 'Der Schicksalsberg', bg: 'doom', lvl: 20,
+    intro: [['aragorn', 'Für Frodo. Wir ziehen zum Schwarzen Tor und lenken das Auge ab.'], ['gandalf', 'Jede Stunde, die wir ihm abringen, ist ein Schritt für den Ringträger.']],
+    waves: [['mordor_troll', 'orc', 'orc'], ['nazgul', 'orc_archer', 'orc'], ['uruk', 'uruk', 'berserker'], ['mordor_troll', 'mordor_troll'], ['nazgul', 'nazgul']],
+    boss: ['sauron'], bossLine: [['narr', 'Der Himmel über Mordor färbt sich rot. Eine Gestalt in schwarzer Rüstung tritt hervor.'], ['e:sauron', 'Ihr könnt mich nicht besiegen. Alles, was lebt, wird sich mir beugen.']],
+    outro: [['narr', 'Der Ring fällt in das Feuer, aus dem er kam. Barad-dûr stürzt in sich zusammen.'], ['sam', 'Es ist vorbei, Herr Frodo. Es ist wirklich vorbei.']] },
+  { part: 'Teil II · Die Ringe der Macht', n: 'Forodwaith', bg: 'snow', lvl: 23,
+    intro: [['narr', 'In den Grauen Anfurten erzählt Galadriel, wie alles begann …'], ['galadriel', 'Vor Tausenden von Jahren jagte ich Sauron bis ins ewige Eis.'], ['elrond', 'Die Jagd ist vorbei, Galadriel. Lass es ruhen.'], ['galadriel', 'Nicht, solange er lebt.']],
+    waves: [['wolf', 'wolf', 'warg'], ['adar_orc', 'adar_orc'], ['warg', 'warg'], ['snow_troll', 'wolf'], ['adar_orc', 'adar_orc', 'warg']],
+    boss: ['snow_boss'], bossLine: [['narr', 'Das Eis bricht. Ein Troll, weiß wie der Schnee, erhebt sich.']],
+    outro: [['galadriel', 'Sein Zeichen, in den Fels geritzt … Er ist nicht tot. Er versteckt sich.']] },
+  { part: 'Teil II · Die Ringe der Macht', n: 'Das Belegaer-Meer', bg: 'sea', lvl: 26,
+    intro: [['narr', 'Galadriel springt in das Meer und treibt tagelang auf einem Floß mit Schiffbrüchigen.'], ['galadriel', 'Etwas bewegt sich unter uns. Etwas Großes.']],
+    waves: [['pirate', 'pirate'], ['pirate', 'pirate', 'pirate'], ['adar_orc', 'pirate'], ['pirate', 'pirate', 'warg'], ['pirate', 'adar_orc', 'pirate']],
+    boss: ['seawurm', 'pirate'], bossLine: [['narr', 'Das Wasser kocht. Ein Wurm, länger als jedes Schiff, steigt aus der Tiefe.']],
+    outro: [['elendil', 'Ich bin Elendil, Kapitän der Getreuen. Ihr seid in Númenor.'], ['miriel', 'Fremde sind hier nicht willkommen. Doch ich höre dich an.'], ['isildur', 'Wenn es Kampf gibt, bin ich dabei.']], end: ['elendil', 'isildur', 'miriel'] },
+  { part: 'Teil II · Die Ringe der Macht', n: 'Die Südlande', bg: 'south', lvl: 29, join: ['arondir'],
+    intro: [['arondir', 'Die Erde ist vergiftet. Unter den Dörfern graben Orks ihre Tunnel.'], ['galadriel', 'Dann kommen wir gerade rechtzeitig.']],
+    waves: [['adar_orc', 'adar_orc', 'orc_archer'], ['adar_orc', 'warg'], ['orc', 'orc', 'adar_orc'], ['adar_orc', 'adar_orc', 'mordor_troll'], ['berserker', 'adar_orc', 'adar_orc']],
+    boss: ['adar', 'adar_orc'], bossLine: [['e:adar', 'Ich gebe meinen Kindern eine Heimat. Wer will mir das verwehren?']],
+    outro: [['isildur', 'Der Berg … er spuckt Feuer!'], ['narr', 'Der Orodruin erwacht. Aus den Südlanden wird Mordor.']] },
+  { part: 'Teil II · Die Ringe der Macht', n: 'Rhûn', bg: 'rhun', lvl: 32, join: ['nori', 'fremder'],
+    intro: [['nori', 'Er fiel vom Himmel. Er spricht kaum, aber er ist gut, das weiß ich.'], ['fremder', 'Immer … dem Vertrauten folgen.']],
+    waves: [['mystic', 'mystic', 'warg'], ['wight', 'mystic'], ['warg', 'warg', 'mystic'], ['mystic', 'mystic', 'mystic'], ['wight', 'wight', 'mystic']],
+    boss: ['dark_wizard', 'mystic'], bossLine: [['e:dark_wizard', 'Bist du Sauron? Nein … du bist etwas anderes.']],
+    outro: [['fremder', 'Jetzt weiß ich, wer ich bin.'], ['nori', 'Dann komm mit uns. Niemand geht allein.']] },
+  { part: 'Teil II · Die Ringe der Macht', n: 'Khazad-dûm', bg: 'khazad', lvl: 35, join: ['durin'],
+    intro: [['durin', 'Ein Elb in meinem Berg? Elrond, du hast Nerven!'], ['elrond', 'Wir brauchen das Mithril, mein Freund. Für Eregion.']],
+    waves: [['goblin', 'goblin', 'cave_troll'], ['adar_orc', 'adar_orc', 'goblin'], ['wight', 'wight'], ['cave_troll', 'cave_troll'], ['goblin', 'goblin', 'goblin', 'goblin']],
+    boss: ['damrod'], bossLine: [['narr', 'Die Hallen erbeben. Ein Hügeltroll bricht durch die Mauer.']],
+    outro: [['durin', 'Unter dem Berg schläft etwas. Wir graben nicht weiter.']] },
+  { part: 'Teil II · Die Ringe der Macht', n: 'Eregion', bg: 'eregion', lvl: 38,
+    intro: [['galadriel', 'Annatar, der Herr der Gaben. Celebrimbor vertraut ihm blind.'], ['elrond', 'Ich traue ihm nicht.']],
+    waves: [['adar_orc', 'adar_orc', 'berserker'], ['wight', 'wight', 'adar_orc'], ['mordor_troll', 'adar_orc'], ['nazgul', 'mordor_troll'], ['adar_orc', 'adar_orc', 'adar_orc', 'berserker']],
+    boss: ['annatar'], bossLine: [['e:annatar', 'Ich habe euch alles gegeben. Nun nehme ich es mir zurück.']],
+    outro: [['galadriel', 'Drei Ringe blieben rein. Solange sie leuchten, lebt die Hoffnung.'], ['narr', 'Ende der Geschichte. Doch jede Reise kann von Neuem beginnen, gefährlicher als zuvor.']] }
+];
+
 const RARITY = [
   { id: 'common', n: 'Gewöhnlich', c: '#b8b8b0', mult: 1, aff: 0 },
   { id: 'uncommon', n: 'Ungewöhnlich', c: '#5ecf5a', mult: 1.15, aff: 1 },
@@ -532,25 +435,24 @@ const LEGENDARIES = [
   { n: 'Phiole Galadriels', base: 'trinket', main: 'mag', bonus: { startShieldAll: 1, statusCh: 15 }, p: 'Kampfbeginn: Schild für alle.' }
 ];
 
+
 const ACHIEVEMENTS = [
-  { id: 'win1', n: 'Erste Schritte', d: 'Gewinne einen Kampf.', stat: 'wins', goal: 1, r: { gold: 100 } },
-  { id: 'win25', n: 'Kampferprobt', d: 'Gewinne 25 Kämpfe.', stat: 'wins', goal: 25, r: { mithril: 40 } },
-  { id: 'win100', n: 'Veteran des Ringkriegs', d: 'Gewinne 100 Kämpfe.', stat: 'wins', goal: 100, r: { mithril: 120 } },
+  { id: 'win10', n: 'Erste Schritte', d: 'Gewinne 10 Kämpfe.', stat: 'wins', goal: 10, r: { gold: 300 } },
+  { id: 'win100', n: 'Kampferprobt', d: 'Gewinne 100 Kämpfe.', stat: 'wins', goal: 100, r: { mithril: 60 } },
+  { id: 'win500', n: 'Veteran des Ringkriegs', d: 'Gewinne 500 Kämpfe.', stat: 'wins', goal: 500, r: { mithril: 200 } },
   { id: 'boss3', n: 'Bosse fallen', d: 'Besiege 3 Bosse.', stat: 'bosses', goal: 3, r: { mithril: 40 } },
-  { id: 'boss10', n: 'Bezwinger der Schatten', d: 'Besiege 10 Bosse.', stat: 'bosses', goal: 10, r: { mithril: 100 } },
-  { id: 'epic5', n: 'Schatzsucher', d: 'Finde 5 epische Gegenstände.', stat: 'epics', goal: 5, r: { mithril: 40 } },
-  { id: 'legend1', n: 'Legendär', d: 'Finde einen legendären Gegenstand.', stat: 'legends', goal: 1, r: { mithril: 60 } },
-  { id: 'heroes10', n: 'Die Gemeinschaft wächst', d: 'Besitze 10 Helden.', stat: 'heroes', goal: 10, r: { mithril: 80 } },
-  { id: 'heroes20', n: 'Rat von Elrond', d: 'Besitze 20 Helden.', stat: 'heroes', goal: 20, r: { mithril: 200 } },
+  { id: 'boss10', n: 'Bezwinger der Schatten', d: 'Besiege 10 Bosse.', stat: 'bosses', goal: 10, r: { mithril: 120 } },
+  { id: 'ch4', n: 'Die Gemeinschaft', d: 'Schließe Kapitel 4 ab.', stat: 'chapters', goal: 4, r: { mithril: 60 } },
+  { id: 'ch8', n: 'Der Ring ist vernichtet', d: 'Schließe Teil I ab.', stat: 'chapters', goal: 8, r: { mithril: 200 } },
+  { id: 'ch14', n: 'Die Ringe der Macht', d: 'Schließe Teil II ab.', stat: 'chapters', goal: 14, r: { mithril: 300 } },
+  { id: 'heroes10', n: 'Die Gemeinschaft wächst', d: 'Versammle 10 Helden.', stat: 'heroes', goal: 10, r: { mithril: 60 } },
+  { id: 'heroes23', n: 'Rat von Elrond', d: 'Versammle alle 23 Helden.', stat: 'heroes', goal: 23, r: { mithril: 250 } },
+  { id: 'epic5', n: 'Schatzsucher', d: 'Finde 5 epische Gegenstände.', stat: 'epics', goal: 5, r: { mithril: 50 } },
+  { id: 'legend1', n: 'Legendär', d: 'Finde einen legendären Gegenstand.', stat: 'legends', goal: 1, r: { mithril: 80 } },
   { id: 'evo1', n: 'Aufstieg', d: 'Entwickle einen Helden.', stat: 'evolutions', goal: 1, r: { mithril: 40 } },
-  { id: 'evo5', n: 'Legenden erwachen', d: 'Führe 5 Entwicklungen durch.', stat: 'evolutions', goal: 5, r: { mithril: 120 } },
-  { id: 'talent20', n: 'Weisheit', d: 'Verteile 20 Talentpunkte.', stat: 'talents', goal: 20, r: { gold: 800 } },
-  { id: 'lvl20', n: 'Erfahrener Held', d: 'Ein Held erreicht Stufe 20.', stat: 'maxLvl', goal: 20, r: { mithril: 60 } },
-  { id: 'enh5', n: 'Meisterschmied', d: 'Verstärke einen Gegenstand auf +5.', stat: 'maxEnh', goal: 5, r: { mithril: 50 } },
-  { id: 'tower10', n: 'Orthanc-Stürmer', d: 'Erreiche Etage 10 im Orthanc-Turm.', stat: 'tower', goal: 10, r: { mithril: 80 } },
-  { id: 'tower25', n: 'Herr des Turms', d: 'Erreiche Etage 25 im Orthanc-Turm.', stat: 'tower', goal: 25, r: { mithril: 200 } },
-  { id: 'camp1', n: 'Der Ring ist vernichtet', d: 'Schließe „Der Ringkrieg“ ab.', stat: 'camp_ringkrieg', goal: 1, r: { mithril: 200 } },
-  { id: 'camp2', n: 'Die Ringe sind geschmiedet', d: 'Schließe „Die Ringe der Macht“ ab.', stat: 'camp_ringe', goal: 1, r: { mithril: 250 } }
+  { id: 'evo5', n: 'Legenden erwachen', d: 'Führe 5 Entwicklungen durch.', stat: 'evolutions', goal: 5, r: { mithril: 150 } },
+  { id: 'lvl25', n: 'Erfahrener Held', d: 'Ein Held erreicht Stufe 25.', stat: 'maxLvl', goal: 25, r: { mithril: 80 } },
+  { id: 'enh5', n: 'Meisterschmied', d: 'Verstärke einen Gegenstand auf +5.', stat: 'maxEnh', goal: 5, r: { mithril: 50 } }
 ];
 
 const BACKGROUNDS = {

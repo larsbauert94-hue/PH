@@ -1,23 +1,23 @@
 # Ringfahrt
 
-Ein Auto-Kampf-RPG im Browser mit Helden aus „Der Herr der Ringe“ und „Die Ringe der Macht“ (inoffizielles Fan-Projekt).
+Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden aus „Der Herr der Ringe“ und „Die Ringe der Macht“ (inoffizielles Fan-Projekt).
 
 **Spielen:** `index.html` im Browser öffnen. Keine Installation, kein Build.
 
 ## Inhalt
-- **23 Helden** in drei Rollen wie in einem MMO: **Tank** (Schildwache, Bollwerk, Urgewalt), **Schaden** (Klingenmeister, Waldläufer, Schattenläufer, Zauberer) und **Heiler** (Lichtheiler, Naturheiler), jeweils mit eigener Ressource (Wut, Energie, Fokus, Mana)
-- **Automatische Kämpfe** mit Bedrohungssystem: Tanks spotten, Heiler heilen, Schadensverursacher wählen passende Fähigkeiten; Ultimates automatisch oder per Klick
-- **Flüssige Animationen:** Figuren als Vektor-Rigs mit Gelenken, interpolierte Bewegungen bei 60 fps, Partikel, Lichteffekte, Kamera-Zoom
-- **Ausrüstung** in fünf Seltenheiten inkl. 20 legendärer Gegenstände (Andúril, Stich, Nenya, Mithrilhemd …), Verstärken bis +10, Zerlegen
-- **Talentbäume** mit drei Spezialisierungen pro Klasse und **Entwicklungsstufen** (z. B. Gandalf der Graue → Gandalf der Weiße)
-- **Belohnungen:** Kapitel-Truhen, 18 Erfolge, Rekrutierung in der Taverne, endloser Orthanc-Turm
-- **Zwei Kampagnen:** „Der Ringkrieg“ (8 Kapitel) und „Die Ringe der Macht“ (6 Kapitel)
+- **Vollbild im Querformat:** Die Welt läuft ununterbrochen, Menüs liegen als Glas-Panels darüber
+- **Feste Story in 14 Kapiteln** (Der Ringkrieg & Die Ringe der Macht) mit Dialogen, Boss-Auftritten und Gefährten, die unterwegs dazustoßen
+- **23 Helden** in den Rollen Tank, Schaden und Heiler; je 3 Passive, eine häufige Aktive, eine seltene Aktive (ab Stufe 10) und eine Ultimate
+- **Eine Leiste pro Held:** Ist sie voll, folgt automatisch die Ultimate
+- **Flüssige Animationen** mit Vektor-Rigs, Parallax-Landschaften, Licht und Partikeln
+- **Ausrüstung** in fünf Seltenheiten (inkl. legendärer Gegenstände), automatisches Anlegen, Verstärken
+- **Entwicklungsstufen** mit neuem Aussehen, Erfolge mit Belohnungen
 
 ## Dateien
 - `index.html`: Seite und Stylesheet
 - `js/data.js`: Klassen, Helden, Gegner, Kampagnen, Gegenstände
-- `js/render.js`: Render-Engine (Figuren-Rigs, Animationen, Hintergründe, Icons)
+- `js/render.js`: Render-Engine (Figuren-Rigs, Charakterkarten, Parallax-Ebenen, Icons)
 - `js/core.js`: Spielstand, Werte, Beute, Talente, Entwicklung
-- `js/battle.js`: Auto-Kampf-Engine
-- `js/ui.js`: Bildschirme und Bedienung
+- `js/world.js`: Welt- und Kampf-Engine
+- `js/ui.js`: HUD, Menüs und Story-Regie
 - `classic.html`: die erste, rundenbasierte Version mit Timing-Eingaben
