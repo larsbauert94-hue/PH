@@ -2,7 +2,7 @@
 /* =====================================================================
    RINGFAHRT – Spiellogik: Profil, Werte, Passive, Ausrüstung, Belohnungen
    ===================================================================== */
-const SAVE_KEY = 'ringfahrt3-save';
+const SAVE_KEY = 'ringfahrt4-save';
 const rnd = (a, b) => a + Math.random() * (b - a);
 const ri = (a, b) => Math.floor(rnd(a, b + 1));
 const pick = a => a[Math.floor(Math.random() * a.length)];
@@ -22,15 +22,16 @@ const xpNeed = l => Math.round(30 + l * 22 + l * l * 1.6);
 const PCT_KEYS = ['crit', 'critDmg', 'lifesteal', 'healPct', 'dodge', 'threat'];
 
 function newProfile() {
-  G = { v: 3, gold: 100, mithril: 20, heroes: {}, party: [], inv: [], nextId: 1, away: {},
+  G = { v: 4, gold: 100, mithril: 20, heroes: {}, party: [], inv: [], nextId: 1, away: {}, relics: {}, tower: { best: 0, queued: false },
+    idle: { t: Date.now() }, daily: null,
     story: { ch: 0, wave: 0, loop: 0, intro: false, farm: false, bossSeen: false, mids: {} },
-    stats: { wins: 0, bosses: 0, epics: 0, legends: 0, heroes: 0, evolutions: 0, maxLvl: 1, maxEnh: 0, chapters: 0 },
+    stats: { wins: 0, bosses: 0, epics: 0, legends: 0, heroes: 0, evolutions: 0, maxLvl: 1, maxEnh: 0, chapters: 0, relics: 0, towerBest: 0, maxCombo: 0 },
     ach: {}, settings: { speed: 1, sound: true, autoEquip: true, autoParty: true } };
   save(); return G;
 }
 function newHeroState() { return { lvl: 1, xp: 0, stage: 0, eq: { weapon: null, armor: null, trinket: null } }; }
 function save() { if (G) store.set(SAVE_KEY, G); }
-function load() { const g = store.get(SAVE_KEY); if (g && g.v === 3) { G = g; return true; } return false; }
+function load() { const g = store.get(SAVE_KEY); if (g && g.v === 4) { G = g; return true; } return false; }
 
 /* ---------- Helden & Gruppe ---------- */
 function owned() { return Object.keys(G.heroes); }
@@ -54,16 +55,29 @@ function autoParty() {
   for (const k of pool) { if (out.length >= 5) break; if (!out.includes(k)) out.push(k); }
   G.party = out; save(); return out;
 }
+const AURA0 = () => ({ atk: 0, def: 0, hp: 0, spd: 0, crit: 0, mag: 0, dodge: 0, ultCharge: 0, healPct: 0, thorns: 0, startBuffRegen: 0 });
+function activeFactions(keys = G.party) {
+  const out = [];
+  for (const [id, F] of Object.entries(FACTIONS)) {
+    const n = keys.filter(k => F.m.includes(k)).length; let tier = -1;
+    F.t.forEach((t, i) => { if (n >= t[0]) tier = i; });
+    out.push({ id, F, n, tier });
+  }
+  return out;
+}
 function partyAura(keys = G.party) {
-  const a = { atk: 0, def: 0, hp: 0, spd: 0, crit: 0 };
+  const a = Object.assign(AURA0(), { _party: 1 }), add = (e) => { for (const [k, v] of Object.entries(e)) a[k] = (a[k] || 0) + v; };
   for (const k of keys) { if (!G.heroes[k]) continue; for (const ps of HEROES[k].pas) if (ps.lvl <= G.heroes[k].lvl) for (const [key, v] of Object.entries(ps.e)) { if (key === 'auraAtk') a.atk += v; if (key === 'auraDef') a.def += v; if (key === 'auraHp') a.hp += v; if (key === 'auraSpd') a.spd += v; if (key === 'auraCrit') a.crit += v; } }
+  for (const f of activeFactions(keys)) if (f.tier >= 0) add(f.F.t[f.tier][1]);
+  for (const i of Object.keys(G.relics || {})) if (RELICS[i]) add(RELICS[i].e);
   return a;
 }
 function itemById(id) { return G.inv.find(i => i.id === id); }
 function itemStats(it) { const m = 1 + .1 * (it.enh || 0); const o = {}; for (const [k, v] of Object.entries(it.stats)) o[k] = AFFIX[k]?.int ? Math.round(v * m) : (PCT_KEYS.includes(k) ? Math.round(v * m * 10) / 10 : Math.round(v * m)); return o; }
 function heroStats(key, aura) {
   const H = HEROES[key], C = CLASSES[H.cls], hs = G.heroes[key] || newHeroState();
-  aura = aura || { atk: 0, def: 0, hp: 0, spd: 0, crit: 0 };
+  aura = Object.assign(AURA0(), aura || {});
+  if (!aura._party) for (const i of Object.keys(G.relics || {})) if (RELICS[i]) for (const [k, v] of Object.entries(RELICS[i].e)) aura[k] += v;
   const lv = hs.lvl, sc = (1 + .11 * (lv - 1)) * STAGE_MULT[hs.stage];
   const flat = { hp: 0, atk: 0, mag: 0, def: 0, res: 0, spd: 0 }, p = {};
   const add = (k, v) => { if (k in flat) flat[k] += v; else p[k] = (p[k] || 0) + v; };
@@ -73,13 +87,15 @@ function heroStats(key, aura) {
   const st = {
     hp: Math.round((B.hp * sc + flat.hp) * (1 + ((p.hpPct || 0) + aura.hp) / 100)),
     atk: Math.round((B.atk * sc + flat.atk) * (1 + ((p.atkPct || 0) + aura.atk) / 100)),
-    mag: Math.round((B.mag * sc + flat.mag) * (1 + ((p.magPct || 0) + aura.atk) / 100)),
+    mag: Math.round((B.mag * sc + flat.mag) * (1 + ((p.magPct || 0) + aura.atk + aura.mag) / 100)),
     def: Math.round((B.def * sc + flat.def) * (1 + ((p.defPct || 0) + aura.def) / 100)),
     res: Math.round((B.res * sc + flat.res) * (1 + ((p.resPct || 0) + aura.def) / 100)),
     spd: Math.round((B.spd + Math.floor(lv / 10) + hs.stage + flat.spd + (p.spd || 0)) * (1 + aura.spd / 100)),
     crit: B.crit + (p.crit || 0) + aura.crit, critDmg: 60 + (p.critDmg || 0)
   };
   for (const k of ['hpPct', 'atkPct', 'magPct', 'defPct', 'resPct', 'spd', 'crit', 'critDmg']) delete p[k];
+  for (const k of ['dodge', 'ultCharge', 'healPct', 'thorns']) if (aura[k]) p[k] = (p[k] || 0) + aura[k];
+  if (aura.startBuffRegen) p.startBuffRegen = 1;
   st.p = p;
   st.power = Math.round(st.hp * .25 + (st.atk + st.mag) * 2.2 + (st.def + st.res) * 1.6 + st.spd * 4 + st.crit * 2 + (lv >= ACT2_LVL ? 40 : 0) + hs.stage * 60);
   return st;
@@ -162,7 +178,13 @@ function itemLines(it) {
 /* ---------- Story & Belohnungen ---------- */
 const LOOP_LVL = 40;
 function chapterLvl(ch = G.story.ch) { return STORY[ch].lvl + G.story.loop * LOOP_LVL; }
-function waveLvl(wave) { return chapterLvl() + Math.floor(wave / 2); }
+function waveLvl(wave) { return chapterLvl() + Math.floor(wave / 3); }
+function chapterWaves(i = G.story.ch) {
+  const C = STORY[i], w = C.waves, pool = [...new Set(w.flat())].filter(k => !ENEMIES[k].elite);
+  const plus = (grp, j) => grp.length >= 4 ? grp : [...grp, pool[(i * 3 + j) % pool.length]];
+  return [w[0], w[1], w[2], w[3], w[4], plus(w[0], 1), plus(w[2], 2), plus(w[3], 3)].slice(0, WAVES);
+}
+const isEliteWave = w => w === 3 || w === 7;
 function battleReward(kind, enemies) {
   const xp = Math.round(enemies.reduce((a, e) => a + e.xp, 0) * (kind === 'elite' ? 1.3 : 1));
   const gold = Math.round(enemies.reduce((a, e) => a + e.gold, 0) * rnd(.85, 1.15));
@@ -174,9 +196,9 @@ function battleReward(kind, enemies) {
   return { xp, gold, items, mithril };
 }
 function applyReward(rw, partyKeys) {
-  G.gold += rw.gold; G.mithril += rw.mithril; rw.items.forEach(addItem);
+  G.gold += rw.gold; G.mithril += rw.mithril; rw.items.forEach(addItem); if (rw.items.length) track('items', rw.items.length);
   const res = {};
-  for (const k of owned()) { const share = partyKeys.includes(k) ? 1 : .4; res[k] = grantXp(k, Math.round(rw.xp * share)); }
+  for (const k of owned()) { const share = partyKeys.includes(k) ? 1 : .4; res[k] = grantXp(k, Math.round(rw.xp * share)); if (res[k].ups && partyKeys.includes(k)) track('levels', res[k].ups); }
   if (G.settings.autoEquip) autoEquip();
   return res;
 }
@@ -185,3 +207,51 @@ function applyReward(rw, partyKeys) {
 function achState(a) { const v = G.stats[a.stat] || 0; return { v, done: v >= a.goal, claimed: !!G.ach[a.id] }; }
 function claimAch(a) { const s = achState(a); if (!s.done || s.claimed) return false; G.ach[a.id] = 1; if (a.r.gold) G.gold += a.r.gold; if (a.r.mithril) G.mithril += a.r.mithril; save(); return true; }
 function claimableCount() { return ACHIEVEMENTS.filter(a => { const s = achState(a); return s.done && !s.claimed; }).length; }
+
+/* ---------- Training ---------- */
+function trainCost(k) { const hs = G.heroes[k]; return Math.round(xpNeed(hs.lvl) * 1.6 + hs.lvl * 10); }
+function train(k) { const hs = G.heroes[k], c = trainCost(k); if (hs.lvl >= STAGE_CAP[hs.stage] || G.gold < c) return false; G.gold -= c; hs.lvl++; hs.xp = 0; G.stats.maxLvl = Math.max(G.stats.maxLvl, hs.lvl); track('levels', 1); save(); return true; }
+
+/* ---------- Lagerfeuer-Truhe (Belohnungen über Zeit) ---------- */
+const IDLE_CAP_MIN = 8 * 60;
+function idleState() {
+  const min = Math.min(IDLE_CAP_MIN, Math.max(0, (Date.now() - (G.idle?.t || Date.now())) / 60000)), lvl = chapterLvl();
+  return { min, gold: Math.floor(min * (4 + lvl * 1.6)), xp: Math.floor(min * (5 + lvl * 3)), items: Math.floor(min / 25), mithril: Math.floor(min / 60) * 2, full: min >= IDLE_CAP_MIN };
+}
+function claimIdle() {
+  const st = idleState(); if (st.min < 1) return null;
+  const items = []; for (let i = 0; i < Math.min(st.items, 12); i++) items.push(genItem(chapterLvl() + 1, rollRarity('elite')));
+  const rw = { gold: st.gold, xp: st.xp, mithril: st.mithril, items };
+  const res = applyReward(rw, G.party); G.idle.t = Date.now(); save();
+  return { rw, res };
+}
+
+/* ---------- Tägliche Aufträge ---------- */
+function today() { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+function ensureDaily() {
+  if (G.daily && G.daily.day === today()) return G.daily;
+  const pool = QUESTS.slice(); const picks = [];
+  while (picks.length < 4 && pool.length) picks.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0].id);
+  G.daily = { day: today(), ids: picks, c: {}, claimed: {}, bonus: false }; save(); return G.daily;
+}
+function track(stat, n = 1) { if (!G) return; const d = ensureDaily(); d.c[stat] = (d.c[stat] || 0) + n; }
+function questReward(q) { const lvl = chapterLvl(); return { gold: 150 + lvl * 25, mithril: 6 + Math.floor(lvl / 8) }; }
+function questState(id) { const q = QUESTS.find(x => x.id === id), d = ensureDaily(), v = d.c[q.stat] || 0; return { q, v, done: v >= q.goal, claimed: !!d.claimed[id], r: questReward(q) }; }
+function claimQuest(id) { const st = questState(id); if (!st.done || st.claimed) return false; G.daily.claimed[id] = 1; G.gold += st.r.gold; G.mithril += st.r.mithril; save(); return true; }
+function dailyBonusReady() { const d = ensureDaily(); return !d.bonus && d.ids.every(id => d.claimed[id]); }
+function claimDailyBonus() { if (!dailyBonusReady()) return null; G.daily.bonus = true; const it = genItem(chapterLvl() + 2, Math.random() < .2 ? 4 : 3); addItem(it); G.mithril += 30; if (G.settings.autoEquip) autoEquip(); save(); return it; }
+function questsClaimable() { const d = ensureDaily(); return d.ids.filter(id => { const s2 = questState(id); return s2.done && !s2.claimed; }).length + (dailyBonusReady() ? 1 : 0); }
+
+/* ---------- Relikte ---------- */
+function grantRelic(i) { if (!RELICS[i] || G.relics[i]) return null; G.relics[i] = 1; G.stats.relics = Object.keys(G.relics).length; save(); return RELICS[i]; }
+
+/* ---------- Orthanc-Turm ---------- */
+function towerFloor() { return G.tower.best + 1; }
+function towerLvl(f = towerFloor()) { return Math.round(4 + f * 2.2); }
+function towerGroup(f = towerFloor()) {
+  const pool = STORY.filter(c => c.lvl <= towerLvl(f) + 4); const C = pool.length ? pool[(f * 7) % pool.length] : STORY[0];
+  if (f % 10 === 0) return { group: C.boss, kind: 'boss', bg: C.bg };
+  const w = C.waves[(f * 3) % C.waves.length];
+  return { group: f % 5 === 0 ? [...w, 'mordor_troll'].slice(0, 5) : w, kind: f % 5 === 0 ? 'elite' : 'normal', bg: C.bg };
+}
+function towerReward(f) { return { gold: 120 + f * 40, mithril: 4 + Math.floor(f / 2) + (f % 5 === 0 ? 15 : 0) }; }

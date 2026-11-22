@@ -67,10 +67,10 @@ class World {
   }
   addEnemy(key, lvl, kind) {
     const E = ENEMIES[key], m = 1 + .15 * (lvl - 1) + .002 * (lvl - 1) * (lvl - 1), D = DIFF_E;
-    const hpMul = (E.boss ? 4.6 : E.elite ? 3 : 2.6) * D.hp;
+    const ps = clamp(.55 + .09 * this.heroes.length, .72, 1), hpMul = (E.boss ? 4.6 : E.elite ? 3 : 2.6) * D.hp * ps;
     const u = this.prep({
       side: 'enemy', key, name: E.n, type: E.type, look: Object.assign({ wpn: E.wpn || 'sword' }, E.look), wpn: E.wpn || 'claws',
-      maxHp: Math.round(E.hp * m * hpMul), atk: Math.round(E.atk * m * D.dmg * 3.3), mag: Math.round(E.mag * m * D.dmg * 3.3), def: Math.round(E.def * m), res: Math.round(E.res * m),
+      maxHp: Math.round(E.hp * m * hpMul), atk: Math.round(E.atk * m * D.dmg * 3.3 * ps), mag: Math.round(E.mag * m * D.dmg * 3.3 * ps), def: Math.round(E.def * m), res: Math.round(E.res * m),
       spd: E.spd, crit: 5, critDmg: 50, p: {}, boss: !!E.boss, elite: !!E.elite || kind === 'elite', tags: E.tags || [], lvl, statuses: [], cd: {}, threat: 0,
       skills: E.sk.map(id => ESK[id]), xp: Math.round(E.xp * (1 + .22 * (lvl - 1))), gold: Math.round(E.g * (1 + .16 * (lvl - 1))), transform: E.transform, ranged: !!E.ranged,
       atkStat: E.look.glowC && E.wpn === 'staff' ? 'mag' : 'atk'
@@ -238,6 +238,11 @@ class World {
   ai(u) {
     const foes = this.foesOf(u), friends = this.friendsOf(u); if (!foes.length) return null;
     const basic = basicSkill(u);
+    if (u.side === 'enemy' && u.boss) {
+      u.acts = (u.acts || 0) + 1;
+      if (u.charging) { u.charging = false; const mag = u.mag > u.atk; return { sk: { n: bossMega(u), anim: mag ? 'cast' : 'spin', fx: u.type === 'dragon' || u.key === 'balrog' ? 'fire' : mag ? 'dark' : 'stone', tgt: 'all', dmg: 1.9, stat: mag ? 'mag' : 'atk', st: [['stun', .3, 1]], mega: 1 }, t: null }; }
+      if (u.acts % 4 === 0) return { sk: { n: 'sammelt Kraft …', anim: 'shout', fx: 'dark', tgt: 'self', charge: 1 }, t: null };
+    }
     if (u.side === 'enemy') {
       let opts = u.skills.filter(s => !((u.cd[s.n] || 0) > 0)).filter(s => {
         if (s.summon) return this.enemies.filter(alive).length < 5;
@@ -271,11 +276,19 @@ class World {
 
   /* ---------- Aktion ---------- */
   async perform(u, sk, target, isUlt) {
+    sk = Object.assign({}, sk);
     const foes = this.foesOf(u);
     if (isUlt) u.energy = 0;
     if (sk.cd) u.cd[sk.n] = sk.cd;
     if (u.side === 'hero' && !isUlt) u.energy = Math.min(100, u.energy + 14 * (1 + (u.p.ultCharge || 0) / 100));
-    if (!sk.basic) this.h.banner?.(isUlt ? `${u.name}: ${sk.n}` : sk.n, u.side === 'enemy' ? 'foe' : isUlt ? 'ult' : '', u);
+    if (sk.charge) { u.charging = true; this.h.banner?.(`⚠ ${u.name} sammelt Kraft!`, 'warn'); this.flash('#ff2a1a', 300); sfx('crit'); }
+    else if (sk.mega) { this.h.banner?.(`${u.name}: ${sk.n}`, 'foe'); this.focus(u, 1.26, 1000); this.shake(4); this.flash('#ff5a1a', 450); }
+    else if (!sk.basic) this.h.banner?.(isUlt ? `${u.name}: ${sk.n}` : sk.n, u.side === 'enemy' ? 'foe' : isUlt ? 'ult' : '', u);
+    if (isUlt && u.side === 'hero') {
+      this.combo = this.time - (this.lastUlt ?? -1e9) < 3800 ? (this.combo || 1) + 1 : 1; this.lastUlt = this.time;
+      if (this.combo >= 2) { sk = Object.assign({}, sk, { comboMul: 1 + .25 * (this.combo - 1) }); this.h.combo?.(this.combo); }
+      this.h.ultUsed?.(u);
+    }
     this.h.log?.(u, sk);
     if (isUlt) { this.focus(u, 1.26, 1100); sfx('ult'); this.flash(u.side === 'hero' ? '#ffe9a8' : '#ff3a1a', 500); this.fxs.push({ k: 'pillar', x: u.x, y: u.y, c: '#ffe080', t: 0, dur: 800 }); this.shake(2); this.h.ult?.(u, sk); await this.wait(500); }
     const hits = sk.hits || 1, hitSet = new Set(), counters = [];
@@ -365,7 +378,7 @@ class World {
     if (t.p?.dodge && Math.random() < t.p.dodge / 100) { this.num(t, 'Ausgewichen', '#c8c8c8'); sfx('miss'); return 0; }
     const stat = sk.stat || (sk.basic ? a.atkStat : 'atk');
     const A = effStat(a, stat), D = effStat(t, stat === 'mag' ? 'res' : 'def');
-    let d = (sk.dmg || 1) * A * (1.5 * A) / (1.5 * A + D) * mult;
+    let d = (sk.dmg || 1) * A * (1.5 * A) / (1.5 * A + D) * mult * (sk.comboMul || 1);
     const hpF = t.hp / t.maxHp, ap = a.p || {}, tp = t.p || {};
     if (sk.bonusTag && t.tags?.includes(sk.bonusTag)) d *= 1.4;
     if (sk.bossBonus && t.boss) d *= sk.bossBonus;
@@ -375,6 +388,7 @@ class World {
     if (ap.lowHpDmg) d *= 1 + ap.lowHpDmg * (1 - a.hp / a.maxHp);
     if (ap.vsOrk && t.tags?.includes('ork')) d *= 1 + ap.vsOrk;
     if (ap.vsGeist && t.tags?.includes('geist')) d *= 1 + ap.vsGeist;
+    if (ap.bossDmg && t.boss) d *= 1 + ap.bossDmg / 100;
     if (hasS(t, 'mark')) d *= 1.3;
     if (hasS(t, 'guard')) d *= .6;
     if (tp.dmgRed) d *= 1 - tp.dmgRed / 100;
@@ -385,6 +399,7 @@ class World {
     const sh = hasS(t, 'shield');
     if (sh) { const ab = Math.min(sh.val, dmg); sh.val -= ab; dmg -= ab; if (sh.val <= 0) rmS(t, 'shield'); if (ab) this.burst(t.x + t.ox, t.y + t.oy - t.h * .5, 'ice', 4); }
     t.hp = Math.max(0, t.hp - dmg);
+    if (crit && a.side === 'hero') this.h.crit?.();
     this.num(t, dmg === 0 ? 'Schild' : (crit ? dmg + '!' : dmg), dmg === 0 ? '#a8d4ff' : crit ? '#ffd040' : t.side === 'hero' ? '#ff9a8a' : '#ffffff', crit ? 2 : 1);
     t.flash = 110; t.kb = (t.side === 'hero' ? -1 : 1) * (crit ? 3.5 : 2); if (t.anim.n === 'idle' || t.anim.n === 'hurt') this.setAnim(t, 'hurt');
     this.shake(crit ? 2.5 : 1.1); sfx(crit ? 'crit' : 'hit');
@@ -417,7 +432,8 @@ class World {
   revive(t, pct) { if (alive(t)) return; t.hp = Math.max(1, Math.round(t.maxHp * pct)); t.statuses = []; t.holdAnim = null; this.setAnim(t, 'idle'); t.fade = 1; this.num(t, 'Belebt', '#9fe07a'); this.burst(t.x, t.y - 8, 'holy', 16, .8, 1); this.fxs.push({ k: 'pillar', x: t.x, y: t.y, c: '#ffe080', t: 0, dur: 650 }); }
   die(u) {
     if (u.p?.reviveSelf && !u.usedRevive) { u.usedRevive = 1; u.hp = Math.round(u.maxHp * u.p.reviveSelf); this.num(u, 'Unbeugsam', '#ffe080'); this.burst(u.x, u.y - u.h * .5, 'holy', 14, 1, .6); return; }
-    u.hp = 0; u.statuses = []; this.setAnim(u, 'dead'); sfx('die');
+    u.hp = 0; u.statuses = []; u.charging = false; this.setAnim(u, 'dead'); sfx('die');
+    if (u.side === 'enemy') this.h.kill?.(u);
     this.burst(u.x, u.y - u.h * .5, u.side === 'enemy' ? 'dark' : 'slash', 10, 1);
     if (u.side === 'hero') {
       const saver = this.heroes.find(h => alive(h) && h.p.reviveAlly && !h.usedReviveAlly);
@@ -504,6 +520,7 @@ class World {
     if (u.flash > 0) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.min(1, u.flash / 110) * .55; RIG.draw(ctx, u.type, u.look, u.anim.n, u.anim.el, gt + u.gt0); ctx.globalCompositeOperation = 'source-over'; }
     ctx.restore(); ctx.globalAlpha = 1;
     if (hasS(u, 'shield') && alive(u)) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .22 + Math.sin(gt / 200) * .06; const r = u.h * .62; const g = ctx.createRadialGradient(x, y - u.h * .5, r * .5, x, y - u.h * .5, r); g.addColorStop(0, 'rgba(120,180,255,0)'); g.addColorStop(1, 'rgba(160,210,255,.9)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y - u.h * .5, r * .75, r, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+    if (u.charging && alive(u)) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .35 + Math.sin(gt / 90) * .2; const g = ctx.createRadialGradient(x, y - u.h * .5, 0, x, y - u.h * .5, u.h * .9); g.addColorStop(0, 'rgba(255,60,30,.7)'); g.addColorStop(1, 'rgba(255,30,10,0)'); ctx.fillStyle = g; ctx.fillRect(x - u.h, y - u.h * 1.5, u.h * 2, u.h * 1.8); ctx.restore(); }
     if (u.side === 'hero' && u.energy >= 100 && alive(u)) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .25 + Math.sin(gt / 150) * .12; const g = ctx.createRadialGradient(x, y - u.h * .5, 0, x, y - u.h * .5, u.h * .7); g.addColorStop(0, 'rgba(255,220,120,.6)'); g.addColorStop(1, 'rgba(255,200,80,0)'); ctx.fillStyle = g; ctx.fillRect(x - u.h, y - u.h * 1.3, u.h * 2, u.h * 1.6); ctx.restore(); }
     if (this.active === u && alive(u)) { const ty = y - u.h - 11 + Math.sin(gt / 180) * 1.2; ctx.fillStyle = '#ffd97a'; ctx.beginPath(); ctx.moveTo(x - 2, ty); ctx.lineTo(x + 2, ty); ctx.lineTo(x, ty + 2.4); ctx.fill(); }
   }
@@ -576,3 +593,6 @@ function basicSkill(u) {
   const fx = w === 'bow' ? 'arrow' : mag ? (['#c060ff', '#b080ff'].includes(u.look.glowC) ? 'dark' : 'light') : u.type === 'quad' || u.type === 'spider' ? 'bite' : ['hammer', 'club', 'mace', 'claws', 'pan'].includes(w) ? 'stone' : 'slash';
   return { n: 'Angriff', basic: 1, anim, fx, tgt: 'single', dmg: 1, stat: mag ? 'mag' : 'atk' };
 }
+
+const MEGA = { balrog: 'Flammen von Udûn', smaug: 'Drachenfeuer', sauron: 'Macht des Einen', witch_king: 'Schrei von Angmar', annatar: 'Gabe der Vernichtung', sauron_rop: 'Gabe der Vernichtung', shelob: 'Netz der Finsternis', necromancer: 'Schatten von Dol Guldur', azog: 'Hass des Schänders' };
+function bossMega(u) { return MEGA[u.key] || 'Vernichtungsschlag'; }

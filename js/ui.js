@@ -57,8 +57,12 @@ function updateHud() {
   $('#chapPart').textContent = ch.part + (G.story.loop ? ` · Heldenreise ${G.story.loop + 1}` : '');
   $('#chapName').textContent = `${G.story.ch + 1}. ${ch.n}`;
   const w = G.story.wave;
-  $('#pips').innerHTML = [0, 1, 2, 3, 4].map(i => `<i class="${i < w ? 'done' : i === w ? 'cur' : ''}"></i>`).join('') + `<b class="${w >= 5 ? 'cur' : ''}">✦</b>`;
-  $('#farm').hidden = !(G.story.farm && w >= 5);
+  $('#pips').innerHTML = Array.from({ length: WAVES }, (_, i) => `<i class="${i < w ? 'done' : i === w ? 'cur' : ''} ${isEliteWave(i) ? 'el' : ''}"></i>`).join('') + `<b class="${w >= WAVES ? 'cur' : ''}">✦</b>`;
+  $('#farm').hidden = !(G.story.farm && w >= WAVES);
+  const syn = activeFactions().filter(f => f.tier >= 0).map(f => `<span style="--fc:${f.F.c}" title="${esc(f.F.n)}: ${esc(f.F.t[f.tier][2])}">${f.F.ic}<b>${f.n}</b></span>`).join('');
+  if ($('#syn').dataset.v !== syn) { $('#syn').innerHTML = syn; $('#syn').dataset.v = syn; }
+  const idle = idleState(); $('#chestFill').style.height = Math.min(100, idle.min / 120 * 100) + '%'; $('#chest').classList.toggle('ready', idle.min >= 30); $('#chestT').textContent = idle.min >= 60 ? Math.floor(idle.min / 60) + ' h' : Math.floor(idle.min) + ' min';
+  const qc = questsClaimable(); $('#qBadge').hidden = !qc; $('#qBadge').textContent = qc;
   $('#gold').textContent = fmt(G.gold); $('#mith').textContent = fmt(G.mithril);
   $('#power').textContent = fmt(G.party.reduce((a, k) => a + heroStats(k).power, 0));
   const cc = claimableCount(); $('#achBadge').hidden = !cc; $('#achBadge').textContent = cc;
@@ -74,6 +78,7 @@ function updateHud() {
   if (boss) { $('#bossName').textContent = boss.name; $('#bossFill').style.width = (boss.hp / boss.maxHp * 100) + '%'; }
 }
 let bannerT = 0;
+function comboFx(n) { const c = $('#combo'); c.innerHTML = `<small>Gemeinschafts-Kombo</small>×${n}`; c.className = 'show'; clearTimeout(comboFx.t); comboFx.t = setTimeout(() => c.className = '', 1600); G.stats.maxCombo = Math.max(G.stats.maxCombo, n); if (n === 2) track('combos', 1); sfx('ult'); }
 function banner(txt, cls) { const b = $('#banner'); b.textContent = txt; b.className = 'show ' + (cls || ''); clearTimeout(bannerT); bannerT = setTimeout(() => b.className = '', cls === 'ult' ? 1400 : 900); }
 function lootPop(items, gold) {
   const box = $('#loot');
@@ -152,6 +157,19 @@ function onResult(r, kind) {
   }
   save(); updateHud();
 }
+async function towerRun() {
+  const f = towerFloor(), tg = towerGroup(f), prevBg = W.bgKey;
+  G.tower.queued = false; save();
+  W.setBg('helm'); await splash(`<div class="ctitle"><div class="kicker">Orthanc-Turm</div><h1>Etage</h1><h2>${f}</h2></div>`, 1800, 'chap');
+  applyParty(); await W.walk(1000);
+  const r = await W.fight(tg.group, towerLvl(f), tg.kind);
+  if (r.win) {
+    G.tower.best = f; G.stats.towerBest = Math.max(G.stats.towerBest, f); track('tower', 1);
+    const tr = towerReward(f); onResult(r, tg.kind); G.gold += tr.gold; G.mithril += tr.mithril;
+    toast(`Orthanc-Turm Etage ${f} bezwungen: +${fmt(tr.gold)} ◆ +${tr.mithril} ✧`, 'lvl'); save();
+  } else { onResult(r, tg.kind); toast(`Etage ${f} war zu stark. Werdet stärker und versucht es erneut.`, 'unlock'); }
+  W.setBg(prevBg);
+}
 async function director() {
   while (true) {
     const ch = STORY[G.story.ch]; W.setBg(ch.bg);
@@ -164,32 +182,35 @@ async function director() {
       applyParty(); G.story.intro = true; save();
     }
     const w = G.story.wave, mk = G.story.ch + '-' + w;
-    if (w < 5) {
+    if (G.tower.queued) { await towerRun(); continue; }
+    if (w < WAVES) {
       if ((ch.mid?.[w] || ch.midLine?.[w]) && !G.story.mids[mk]) {
         await dialog(ch.midLine?.[w]); for (const k of ch.mid?.[w] || []) { joinHero(k); applyParty(); await joinSplash(k); }
         G.story.mids[mk] = 1; save();
       }
       applyParty(); await W.walk(1500);
-      const kind = w === 3 ? 'elite' : 'normal';
-      const r = await W.fight(ch.waves[w], waveLvl(w), kind);
+      const kind = isEliteWave(w) ? 'elite' : 'normal';
+      const r = await W.fight(chapterWaves()[w], waveLvl(w), kind);
       onResult(r, kind);
-      if (r.win) G.story.wave++; else { G.story.wave = Math.max(0, w - 1); banner('Rückzug! Die Gruppe sammelt sich.', 'foe'); }
+      if (r.win) { G.story.wave++; track('wins', 1); } else { G.story.wave = Math.max(0, w - 1); banner('Rückzug! Die Gruppe sammelt sich.', 'foe'); }
       save(); continue;
     }
     if (G.story.farm) {
       applyParty(); await W.walk(1500);
-      const r = await W.fight(ch.waves[4], waveLvl(4), 'normal'); onResult(r, 'normal'); continue;
+      const r = await W.fight(chapterWaves()[WAVES - 1], waveLvl(WAVES - 1), 'normal'); onResult(r, 'normal'); continue;
     }
     if (!G.story.bossSeen) { await dialog(ch.bossLine); G.story.bossSeen = true; save(); }
     applyParty(); await W.walk(1200);
     const bk = ch.boss.find(k => ENEMIES[k].boss) || ch.boss[0]; await bossSplash(bk);
-    const r = await W.fight(ch.boss, waveLvl(5) + 1, 'boss');
+    const r = await W.fight(ch.boss, waveLvl(WAVES) + 1, 'boss');
     onResult(r, 'boss');
     if (r.win) {
-      G.stats.bosses++; await W.wait(400);
+      G.stats.bosses++; track('bosses', 1); await W.wait(400);
       await dialog(ch.outro);
       for (const k of ch.end || []) { joinHero(k); applyParty(); await joinSplash(k); }
       for (const k of ch.away || []) { G.away[k] = 1; toast(`${esc(HEROES[k].n)} hat die Gruppe verlassen …`, 'unlock'); }
+      const relic = G.story.loop === 0 ? grantRelic(G.story.ch) : null;
+      if (relic) { W.pendingParty = 1; await splash(`<div class="cdone relic"><div class="kicker">Relikt gefunden</div><canvas class="ric" data-ic="${relic.ic}" data-c="${relic.c}"></canvas><h1>${esc(relic.n)}</h1><p>Dauerhafter Gruppenbonus: <b>${esc(relic.d)}</b></p><div class="dhint">Tippen zum Fortfahren</div></div>`, 0, 'doneS'); }
       G.stats.chapters = Math.max(G.stats.chapters, G.story.ch + 1 + G.story.loop * STORY.length);
       const chest = genItem(chapterLvl() + 2, Math.random() < .25 ? 4 : 3); addItem(chest); const mith = 20 + G.story.ch * 4; G.mithril += mith;
       if (G.settings.autoEquip) autoEquip();
@@ -220,11 +241,16 @@ function openHeroes() {
   const locked = Object.keys(HEROES).filter(k => !G.heroes[k]);
   openSheet('Helden', `
     <div class="party-row"><div class="pr-title">${own.length} von ${Object.keys(HEROES).length} Helden <small>${G.settings.autoParty ? 'Gruppe wird automatisch aufgestellt' : 'Eigene Aufstellung'}</small></div><button class="btn small ${G.settings.autoParty ? 'on' : ''}" id="autoP">Auto-Aufstellung</button></div>
+    ${factionPanel()}
     <div class="grid">${own.map(k => heroCard(k)).join('')}${locked.map(k => heroCard(k, 1)).join('')}</div>`, s => {
     s.querySelectorAll('.hcard[data-k]').forEach(b => b.onclick = () => { sfx('click'); openHero(b.dataset.k); });
     s.querySelector('#autoP').onclick = () => { G.settings.autoParty = !G.settings.autoParty; if (G.settings.autoParty) { autoParty(); W.pendingParty = 1; buildHud(); } save(); openHeroes(); };
   });
 }
+function factionPanel() {
+  return `<div class="facs">${activeFactions().map(f => `<div class="fac ${f.tier >= 0 ? 'on' : ''}" style="--fc:${f.F.c}"><span class="fi">${f.F.ic}</span><div><b>${esc(f.F.n)}</b><small>${f.F.t.map((t, i) => `<i class="${f.tier >= i ? 'act' : ''}">${t[0]}: ${esc(t[2])}</i>`).join(' · ')}</small></div><span class="fn">${f.n}</span></div>`).join('')}</div>`;
+}
+function heroFactions(k) { return Object.values(FACTIONS).filter(F => F.m.includes(k)).map(F => `<span class="fchip" style="--fc:${F.c}">${F.ic} ${esc(F.n)}</span>`).join(''); }
 function skillRow(type, s, locked, note) {
   return `<div class="sk ${type} ${locked ? 'locked' : ''}"><div class="sk-h"><span class="sk-t">${{ ult: 'Ultimate', act: 'Aktiv', act2: 'Aktiv II', pas: 'Passiv' }[type]}</span><b>${esc(s.n)}</b>${note ? `<small>${note}</small>` : ''}</div><p>${esc(s.d)}</p></div>`;
 }
@@ -237,6 +263,7 @@ function openHero(k) {
       <div class="hero-art" style="--rc:${ROLE_COL[C.role]}"><canvas id="bigArt"></canvas><div class="ha-foot">${stars(hs.stage)}<span>${esc(heroTitle(k))}</span></div></div>
       <div class="hero-info">
         <div class="hi-top"><span class="role r-${C.role}">${ROLES[C.role].n}</span><span class="muted">${esc(C.n)} · ${esc(C.sub)}</span></div>
+        <div class="hi-fac">${heroFactions(k)}</div>
         <div class="power">⚡ ${fmt(st.power)}<small>Kampfkraft</small></div>
         <div class="lvl"><span>Stufe ${hs.lvl}<small>/${cap}</small></span><div class="bar"><i style="width:${hs.lvl >= cap ? 100 : hs.xp / xpNeed(hs.lvl) * 100}%"></i></div></div>
         <div class="stats">${[['Leben', st.hp], [magic ? 'Magie' : 'Angriff', magic ? st.mag : st.atk], ['Verteidigung', st.def], ['Tempo', st.spd], ['Krit', st.crit + ' %']].map(([n, v]) => `<div><small>${n}</small><b>${typeof v === 'number' ? fmt(v) : v}</b></div>`).join('')}</div>
@@ -247,6 +274,7 @@ function openHero(k) {
         ${H.pas.map(p => skillRow('pas', p, hs.lvl < p.lvl, hs.lvl < p.lvl ? `ab Stufe ${p.lvl}` : '')).join('')}
         <h3>Ausrüstung</h3><div class="gear">${gear}</div>
         <div class="acts">
+          <button class="btn" id="train" ${hs.lvl >= cap || G.gold < trainCost(k) ? 'disabled' : ''}>Training +1 Stufe <small>◆${fmt(trainCost(k))}</small></button>
           <button class="btn" id="bestEq">Beste Ausrüstung</button>
           <button class="btn ${inP ? '' : 'primary'}" id="toggleP" ${G.away[k] ? 'disabled' : ''}>${inP ? 'Aus der Gruppe' : 'In die Gruppe'}</button>
           ${ev ? `<button class="btn ${ev.ok ? 'gold' : ''}" id="evo" ${ev.ok ? '' : 'disabled'}>Entwickeln <small>${ev.lvlOk ? '' : 'ab Stufe ' + cap + ' · '}◆${fmt(ev.cost.gold)} ✧${ev.cost.mithril}</small></button>` : '<span class="muted">Höchste Entwicklung erreicht</span>'}
@@ -257,6 +285,7 @@ function openHero(k) {
     let si = 0, t0 = performance.now();
     const loop = now => { const a = seq[si]; const dur = a === 'idle' ? 2600 : a === 'victory' ? 1800 : RIG.animTime(a) + 300; if (now - t0 > dur) { si = (si + 1) % seq.length; t0 = now; } RIG.card(cv, 'hum', heroLook(k), { col: ROLE_COL[C.role], seed: k, anim: seq[si], el: now - t0, gt: now, zoom: 1.02 }); artRaf = requestAnimationFrame(loop); };
     artRaf = requestAnimationFrame(loop);
+    s.querySelector('#train').onclick = () => { if (train(k)) { sfx('level'); toast(`${esc(H.n)} erreicht Stufe ${G.heroes[k].lvl}`, 'lvl'); W.pendingParty = 1; openHero(k); } };
     s.querySelector('#bestEq').onclick = () => { const n = autoEquip([k]); toast(n ? 'Ausrüstung verbessert' : 'Bereits optimal ausgerüstet', 'mini'); W.pendingParty = 1; openHero(k); };
     s.querySelector('#toggleP').onclick = () => {
       G.settings.autoParty = false;
@@ -279,8 +308,89 @@ function openBag() {
     s.querySelector('#salv').onclick = () => { let g = 0; G.inv.filter(it => it.r <= 1 && !equippedBy(it.id)).forEach(it => g += salvage(it)); save(); toast(`Zerlegt: +${fmt(g)} ◆`, 'mini'); openBag(); };
   });
 }
-function openStory() {
-  openSheet('Die Geschichte', `<div class="story-list">${STORY.map((c, i) => { const done = i < G.story.ch || G.story.loop > 0, cur = i === G.story.ch; const joins = [...(c.join || []), ...Object.values(c.mid || {}).flat(), ...(c.end || [])]; return `<div class="st ${done ? 'done' : ''} ${cur ? 'cur' : ''} ${!done && !cur ? 'locked' : ''}"><div class="st-n">${i + 1}</div><div class="st-i"><small>${esc(c.part)}</small><b>${esc(c.n)}</b>${cur ? `<span>${G.story.wave >= 5 ? 'Boss' : 'Welle ' + (G.story.wave + 1) + ' von 5'}</span>` : ''}${joins.length ? `<div class="st-j">${joins.map(k => `<span class="${G.heroes[k] ? '' : 'lk'}">${G.heroes[k] ? esc(HEROES[k].n) : '???'}</span>`).join('')}</div>` : ''}</div><div class="st-s">${done ? '✓' : cur ? '▶' : '🔒'}</div></div>`; }).join('')}</div>`);
+const PARTS = ['Teil I · Der Hobbit', 'Teil II · Der Ringkrieg', 'Teil III · Die Ringe der Macht'];
+const PART_COL = ['#2e8a4a', '#b8402a', '#3a5ab8'];
+function chapterStatus(i) { if (i < G.story.ch || G.story.loop > 0) return 'done'; if (i === G.story.ch) return 'cur'; return 'locked'; }
+function drawMap(cv, part, sel) {
+  const dpr = Math.min(2, devicePixelRatio || 1), W0 = cv.clientWidth, H0 = cv.clientHeight; cv.width = W0 * dpr; cv.height = H0 * dpr;
+  const c = cv.getContext('2d'), sx = cv.width / 100, sy = cv.height / 75, X = x => x * sx, Y = y => y * sy, r = Math.min(sx, sy);
+  const g = c.createRadialGradient(cv.width * .5, cv.height * .45, 10, cv.width * .5, cv.height * .5, cv.width * .7); g.addColorStop(0, '#ecdcb4'); g.addColorStop(1, '#a8916a'); c.fillStyle = g; c.fillRect(0, 0, cv.width, cv.height);
+  c.fillStyle = 'rgba(70,110,150,.3)'; c.beginPath(); c.moveTo(0, 0); c.lineTo(X(10), 0); c.quadraticCurveTo(X(4), Y(40), X(12), Y(75)); c.lineTo(0, Y(75)); c.fill();
+  c.strokeStyle = 'rgba(70,110,150,.5)'; c.lineWidth = r * .6; c.beginPath(); c.moveTo(X(56), Y(12)); c.bezierCurveTo(X(52), Y(35), X(60), Y(50), X(62), Y(75)); c.stroke();
+  const mtn = (x0, y0, x1, y1, n) => { c.fillStyle = 'rgba(90,70,50,.4)'; for (let i = 0; i <= n; i++) { const x = X(x0 + (x1 - x0) * i / n), y = Y(y0 + (y1 - y0) * i / n); c.beginPath(); c.moveTo(x - r * 1.5, y + r); c.lineTo(x, y - r * 1.5); c.lineTo(x + r * 1.5, y + r); c.fill(); } };
+  mtn(42, 8, 44, 44, 12); mtn(64, 52, 82, 52, 8); mtn(64, 66, 82, 66, 8); mtn(66, 52, 66, 66, 5); mtn(40, 4, 70, 6, 10);
+  const wood = (x, y, rx, ry) => { c.fillStyle = 'rgba(60,90,50,.3)'; c.beginPath(); c.ellipse(X(x), Y(y), rx * sx, ry * sy, 0, 0, Math.PI * 2); c.fill(); };
+  wood(62, 26, 7, 12); wood(47, 48, 3, 3); wood(53, 44, 2.5, 2.5);
+  const idx = STORY.map((ch, i) => i).filter(i => STORY[i].part === PARTS[part]), col = PART_COL[part];
+  c.setLineDash([r * 1.4, r * .9]); c.lineWidth = r * .55; c.strokeStyle = col; c.beginPath();
+  idx.forEach((i, j) => { const p = STORY[i].map; j ? c.lineTo(X(p[0]), Y(p[1])) : c.moveTo(X(p[0]), Y(p[1])); }); c.stroke(); c.setLineDash([]);
+  cv._hits = [];
+  idx.forEach(i => {
+    const p = STORY[i].map, st = chapterStatus(i), R = r * (st === 'cur' ? 3.1 : 2.6), x = X(p[0]), y = Y(p[1]);
+    if (st === 'cur') { c.fillStyle = 'rgba(192,57,30,.25)'; c.beginPath(); c.arc(x, y, R * 1.7, 0, Math.PI * 2); c.fill(); }
+    if (i === sel) { c.strokeStyle = '#fff6d0'; c.lineWidth = r * .6; c.beginPath(); c.arc(x, y, R + r * 1.1, 0, Math.PI * 2); c.stroke(); }
+    c.beginPath(); c.arc(x, y, R, 0, Math.PI * 2); c.fillStyle = st === 'cur' ? '#c0391e' : st === 'done' ? '#b8862e' : '#8a8070'; c.fill(); c.lineWidth = r * .4; c.strokeStyle = '#2a1a0a'; c.stroke();
+    c.fillStyle = '#fff'; c.font = `800 ${r * 2.8}px Cinzel, serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(st === 'done' ? '✓' : st === 'locked' ? '🔒' : i + 1, x, y + r * .2);
+    const lbl = STORY[i].n.replace(/ & .*/, ''); c.font = `700 ${r * 2.3}px "Alegreya Sans", sans-serif`; const tw = c.measureText(lbl).width, lx = Math.min(cv.width - tw / 2 - r, Math.max(tw / 2 + r, x)), ly = y + R + r * 2.6;
+    c.fillStyle = 'rgba(255,248,230,.85)'; c.fillRect(lx - tw / 2 - r * .6, ly - r * 1.4, tw + r * 1.2, r * 2.8); c.fillStyle = '#2a1a0a'; c.fillText(lbl, lx, ly);
+    cv._hits.push({ i, x: x / dpr, y: y / dpr, r: Math.max(22, R / dpr + 8) });
+  });
+}
+function chapterCard(i) {
+  const C = STORY[i], st = chapterStatus(i), joins = [...(C.join || []), ...Object.values(C.mid || {}).flat(), ...(C.end || [])].filter((k, j, a) => a.indexOf(k) === j);
+  const boss = C.boss.find(k => ENEMIES[k].boss) || C.boss[0], seen = st !== 'locked';
+  return `<div class="chcard ${st}"><div class="cc-art"><canvas data-card="${boss}" data-enemy="1" data-bust="1" class="${seen ? '' : 'sil'}"></canvas></div><div class="cc-info">
+    <small>${esc(C.part)} · Kapitel ${i + 1}</small><h3>${esc(C.n)}</h3>
+    <div class="cc-st">${st === 'done' ? '✓ Abgeschlossen' : st === 'cur' ? (G.story.wave >= WAVES ? '▶ Jetzt: Bosskampf' : `▶ Jetzt: Welle ${G.story.wave + 1} von ${WAVES}`) : '🔒 Noch nicht erreicht'}</div>
+    <div class="cc-row"><b>Boss</b><span>${seen ? esc(ENEMIES[boss].n) : '???'}</span></div>
+    ${joins.length ? `<div class="cc-row"><b>Gefährten</b><span>${joins.map(k => G.heroes[k] ? esc(HEROES[k].n) : '???').join(', ')}</span></div>` : ''}
+    <div class="cc-row"><b>Relikt</b><span>${G.relics[i] ? esc(RELICS[i].n) + ' · ' + esc(RELICS[i].d) : '???'}</span></div>
+    <div class="cc-row"><b>Gegnerstufe</b><span>${C.lvl + G.story.loop * LOOP_LVL}–${C.lvl + G.story.loop * LOOP_LVL + 4}</span></div></div></div>`;
+}
+function openStory(part, sel) {
+  if (part === undefined) part = Math.max(0, PARTS.indexOf(STORY[G.story.ch].part));
+  if (sel === undefined || STORY[sel]?.part !== PARTS[part]) sel = STORY[G.story.ch].part === PARTS[part] ? G.story.ch : STORY.findIndex(c => c.part === PARTS[part]);
+  const f = towerFloor(), tg = towerGroup(f);
+  openSheet('Die Reise', `<div class="ptabs">${PARTS.map((p, i) => `<button class="ptab ${i === part ? 'on' : ''}" data-part="${i}" style="--c:${PART_COL[i]}">${esc(p.split(' · ')[1])}</button>`).join('')}</div>
+    <div class="mapwrap"><canvas id="map" class="map"></canvas><div class="maphint">Tippe auf eine Station für Details</div></div>
+    <div id="chDetail">${chapterCard(sel)}</div>
+    <div class="tower"><div><div class="kicker">Herausforderung</div><b>Orthanc-Turm · Etage ${f}</b><small>Gegnerstufe ${towerLvl(f)} · Belohnung ◆${fmt(towerReward(f).gold)} ✧${towerReward(f).mithril} · Bestwert: Etage ${G.tower.best}</small></div><button class="btn gold" id="tw" ${G.tower.queued ? 'disabled' : ''}>${G.tower.queued ? 'Nach diesem Kampf' : 'Herausfordern'}</button></div>`, s => {
+    const cv = s.querySelector('#map');
+    requestAnimationFrame(() => drawMap(cv, part, sel));
+    cv.onclick = e => { const rc = cv.getBoundingClientRect(), x = e.clientX - rc.left, y = e.clientY - rc.top; const h = (cv._hits || []).map(h => ({ ...h, d: Math.hypot(h.x - x, h.y - y) })).filter(h => h.d < h.r).sort((a, b) => a.d - b.d)[0]; if (h) { sfx('click'); sel = h.i; drawMap(cv, part, sel); s.querySelector('#chDetail').innerHTML = chapterCard(sel); paintCards(s.querySelector('#chDetail')); } };
+    s.querySelectorAll('[data-part]').forEach(b => b.onclick = () => { sfx('click'); openStory(+b.dataset.part); });
+    s.querySelector('#tw').onclick = () => { G.tower.queued = true; save(); toast('Die Gruppe zieht nach diesem Kampf zum Orthanc-Turm.', 'lvl'); openStory(part, sel); };
+  });
+}
+function introHelp() {
+  return splash(`<div class="help"><div class="kicker">So funktioniert Ringfahrt</div><h1>Willkommen, Gefährte</h1><ul>
+    <li><b>Kämpfe laufen von selbst.</b> Die Helden setzen ihre Fähigkeiten automatisch ein.</li>
+    <li><b>Goldene Leiste</b> unter jedem Helden: Ist sie voll, folgt die Ultimate.</li>
+    <li><b>Oben links</b> siehst du Kapitel, Wellen und aktive Bündnisse.</li>
+    <li><b>Oben rechts</b> öffnest du Helden, Beutel, die Reise-Karte, Aufträge und Relikte.</li>
+    <li><b>Unten links</b> sammelt die Lagerfeuer-Truhe Belohnungen, auch wenn du nicht spielst.</li></ul><div class="dhint">Tippen zum Starten</div></div>`, 0, 'helpS');
+}
+function openQuests() {
+  const d = ensureDaily();
+  openSheet('Tägliche Aufträge', `<p class="muted">Jeden Tag gibt es vier neue Aufträge. Wer alle abschließt, öffnet die Bonustruhe.</p><div class="achs">${d.ids.map(id => { const st = questState(id); return `<div class="ach ${st.claimed ? 'claimed' : st.done ? 'ready' : ''}"><div><b>${esc(st.q.n)}</b><div class="bar"><i style="width:${Math.min(100, st.v / st.q.goal * 100)}%"></i></div><small>${Math.min(st.v, st.q.goal)} / ${st.q.goal}</small></div><div class="ar"><span>◆ ${fmt(st.r.gold)} ✧ ${st.r.mithril}</span>${st.claimed ? '<small>Erhalten</small>' : `<button class="btn small ${st.done ? 'gold' : ''}" data-q="${id}" ${st.done ? '' : 'disabled'}>Abholen</button>`}</div></div>`; }).join('')}
+    <div class="ach bonus ${d.bonus ? 'claimed' : dailyBonusReady() ? 'ready' : ''}"><div><b>Bonustruhe</b><small>Alle vier Aufträge abholen: ✧ 30 und ein epischer oder legendärer Gegenstand</small></div><div class="ar">${d.bonus ? '<small>Erhalten</small>' : `<button class="btn small ${dailyBonusReady() ? 'gold' : ''}" id="qb" ${dailyBonusReady() ? '' : 'disabled'}>Öffnen</button>`}</div></div></div>`, s => {
+    s.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { if (claimQuest(b.dataset.q)) { sfx('loot'); updateHud(); openQuests(); } });
+    const qb = s.querySelector('#qb'); if (qb) qb.onclick = () => { const it = claimDailyBonus(); if (it) { sfx('join'); lootPop([it], 0); W.pendingParty = 1; updateHud(); openQuests(); } };
+  });
+}
+function openRelics() {
+  const n = Object.keys(G.relics).length, a = partyAura();
+  openSheet('Schatzkammer', `<p class="muted">Jeder Kapitel-Boss hinterlässt beim ersten Sieg ein Relikt. Ihre Boni gelten dauerhaft für alle Helden. ${n} von ${RELICS.length} gefunden.</p>
+    <div class="relics">${RELICS.map((r, i) => G.relics[i] ? `<div class="rel" style="--rc:${r.c}"><canvas class="ic" data-ic="${r.ic}" data-c="${r.c}"></canvas><b>${esc(r.n)}</b><small>${esc(r.d)}</small></div>` : `<div class="rel lk"><div class="ic empty"></div><b>???</b><small>Kapitel ${i + 1}: ${esc(STORY[i].n)}</small></div>`).join('')}</div>`);
+}
+function openChest() {
+  const st = idleState();
+  openSheet('Lagerfeuer-Truhe', `<div class="chestbox"><div class="kicker">Während du fort warst</div><p>Die Gefährten sammeln am Lagerfeuer Vorräte, auch wenn du nicht spielst (bis zu ${IDLE_CAP_MIN / 60} Stunden).</p>
+    <div class="chest-r"><span>◆ ${fmt(st.gold)} Gold</span><span>★ ${fmt(st.xp)} EP</span><span>✧ ${st.mithril} Mithril</span><span>▣ ${st.items} Gegenstände</span></div>
+    <p class="muted">Gesammelt seit ${st.min >= 60 ? Math.floor(st.min / 60) + ' h ' + Math.floor(st.min % 60) + ' min' : Math.floor(st.min) + ' min'}${st.full ? ' · Truhe voll!' : ''}</p>
+    <button class="btn gold big" id="claimIdle" ${st.min >= 1 ? '' : 'disabled'}>Einsammeln</button></div>`, s => {
+    s.querySelector('#claimIdle').onclick = () => { const r = claimIdle(); if (!r) return; sfx('join'); lootPop(r.rw.items.slice(0, 6), r.rw.gold); if (r.rw.mithril) toast(`+${r.rw.mithril} ✧ Mithril`, 'mini'); toast(`+${fmt(r.rw.xp)} EP für die Gruppe`, 'lvl'); W.pendingParty = 1; updateHud(); closeSheet(); };
+  });
 }
 function openAch() {
   openSheet('Erfolge', `<div class="achs">${ACHIEVEMENTS.map(a => { const s = achState(a); return `<div class="ach ${s.claimed ? 'claimed' : s.done ? 'ready' : ''}"><div><b>${esc(a.n)}</b><small>${esc(a.d)}</small><div class="bar"><i style="width:${Math.min(100, s.v / a.goal * 100)}%"></i></div></div><div class="ar"><span>${a.r.gold ? '◆ ' + fmt(a.r.gold) : ''}${a.r.mithril ? '✧ ' + a.r.mithril : ''}</span>${s.claimed ? '<small>Erhalten</small>' : `<button class="btn small ${s.done ? 'gold' : ''}" data-a="${a.id}" ${s.done ? '' : 'disabled'}>Abholen</button>`}</div></div>`; }).join('')}</div>`, s => {
@@ -311,7 +421,7 @@ function layoutMode() {
 function boot() {
   const has = load();
   if (!has) { newProfile(); for (const k of STORY[0].join) joinHero(k); save(); }
-  W = new World($('#world'), { banner });
+  W = new World($('#world'), { banner, combo: comboFx, ultUsed: () => track('ults', 1), crit: () => track('crits', 1), kill: u => { if (u.tags?.includes('ork')) track('orcs', 1); if (u.tags?.includes('tier')) track('beasts', 1); } });
   layoutMode();
   W.speed = G.settings.speed || 1;
   W.bgKey = STORY[G.story.ch].bg;
@@ -322,12 +432,17 @@ function boot() {
   setInterval(updateHud, 100); updateHud();
   $('#title').hidden = false; document.body.classList.add('titled');
   $('#tContinue').textContent = has ? `Weiterspielen · Kapitel ${G.story.ch + 1}` : 'Reise beginnen';
-  $('#tContinue').onclick = () => { if (started) return; started = true; ac(); sfx('join'); $('#title').classList.add('out'); document.body.classList.remove('titled'); setTimeout(() => $('#title').hidden = true, 600); W.walking = false; W.heroes.forEach(h => W.setAnim(h, 'idle')); director(); };
+  $('#tContinue').onclick = async () => { if (started) return; started = true; ac(); sfx('join'); $('#title').classList.add('out'); document.body.classList.remove('titled'); setTimeout(() => $('#title').hidden = true, 600); W.walking = false; W.heroes.forEach(h => W.setAnim(h, 'idle')); if (!G.seenHelp) { await introHelp(); G.seenHelp = 1; save(); } director(); };
   $('#nHeroes').onclick = () => { sfx('click'); openHeroes(); };
   $('#nBag').onclick = () => { sfx('click'); openBag(); };
   $('#nStory').onclick = () => { sfx('click'); openStory(); };
   $('#nAch').onclick = () => { sfx('click'); openAch(); };
   $('#nOpt').onclick = () => { sfx('click'); openSettings(); };
+  $('#nQuest').onclick = () => { sfx('click'); openQuests(); };
+  $('#nRelic').onclick = () => { sfx('click'); openRelics(); };
+  $('#chest').onclick = () => { sfx('click'); openChest(); };
+  $('#syn').onclick = () => { sfx('click'); openHeroes(); };
+  ensureDaily();
   $('#spd').onclick = () => { G.settings.speed = G.settings.speed >= 3 ? 1 : G.settings.speed + 1; W.speed = G.settings.speed; $('#spd').textContent = G.settings.speed + '×'; save(); };
   $('#spd').textContent = (G.settings.speed || 1) + '×';
   $('#farm').onclick = () => { G.story.farm = false; save(); toast('Der Boss wird erneut herausgefordert!', 'lvl'); updateHud(); };
