@@ -4,1306 +4,310 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Alegreya:ital,wght@0,400;0,600;1,400&family=Alegreya+Sans:wght@400;500;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;900&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;0,800;1,400&display=swap">
 <style>
-/* Layout: one-screen game. Title → Gemeinschaft wählen → Kapitelkarte (Knoten-Reihen) → Kampfbühne (Gegner oben, Helden unten, Befehle am Fuß). Bewusst einheitlich dunkel: Mittelerde bei Nacht. */
+/* Layout: Lager (Szene + Kachelmenü) → Kapitelkarte → Kampfbühne (Canvas 16:9, HUD darunter). Bewusst einheitlich dunkel: Mittelerde bei Nacht. */
 :root{
-  --ink:#0d1112;       /* Nachtgrund */
-  --ink-2:#151b1c;     /* Flächen */
-  --ink-3:#1f2828;     /* erhabene Flächen */
-  --line:#34413d;      /* Linien */
-  --fg:#e7e0cc;        /* Pergamenttext */
-  --muted:#98a296;     /* gedämpft */
-  --gold:#d6ae57;      /* Ringgold, Akzent */
-  --gold-2:#f3d78f;
-  --ember:#d2603e;     /* Glut, Gefahr */
-  --elf:#93c6c0;       /* Elbensilber */
-  --moss:#86a85d;      /* Heilung */
-  --hp:#c24a3b; --mp:#4d86bd; --lim:#d6ae57;
-  --font-display:'Cinzel', 'Trajan Pro', 'Times New Roman', Georgia, serif;
-  --font-body:'Alegreya', Georgia, 'Times New Roman', serif;
-  --font-ui:'Alegreya Sans', 'Segoe UI', system-ui, sans-serif;
+  --bg:#0f1216;       /* Nacht */
+  --panel:#171c22;    /* Tafeln */
+  --panel-2:#1f262e;
+  --line:#2f3a44;
+  --fg:#e9e2cf;       /* Pergament */
+  --muted:#93a0a6;
+  --gold:#e0b552; --gold-2:#ffd97a;
+  --ember:#d86240;
+  --tank:#6fa3e0; --dd:#e0745a; --heal:#7fd17a;
+  --font-pixel:'Cinzel','Trajan Pro',Georgia,serif;
+  --font-body:'Alegreya Sans','Segoe UI',system-ui,sans-serif;
   color-scheme:dark;
 }
 [hidden]{display:none!important}
 html,body{height:100%}
-body{background:var(--ink);color:var(--fg);font-family:var(--font-body);font-size:16px;line-height:1.45;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:16px;line-height:1.45;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
 *{box-sizing:border-box}
 button{font:inherit;color:inherit}
-#app{min-height:100%;display:flex;flex-direction:column}
-.wrap{width:100%;max-width:1040px;margin:0 auto;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:20px}
-h1,h2,h3{font-family:var(--font-display);text-wrap:balance;margin:0;letter-spacing:.02em}
-.eyebrow{font-family:var(--font-ui);text-transform:uppercase;letter-spacing:.16em;font-size:12px;color:var(--gold);font-weight:700}
-.muted{color:var(--muted)}
-.btn{appearance:none;border:1px solid var(--line);background:var(--ink-3);padding:10px 16px;border-radius:6px;cursor:pointer;font-family:var(--font-ui);font-weight:700;font-size:15px;letter-spacing:.02em;transition:background .15s,border-color .15s,transform .1s;touch-action:manipulation}
-.btn:hover:not(:disabled){border-color:var(--gold);background:#273230}
+canvas.pix,canvas.pt,canvas.ic{display:block}
+h1,h2,h3{font-family:var(--font-pixel);font-weight:600;margin:0;letter-spacing:.02em;text-wrap:balance}
+.wrap{max-width:1100px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px}
+.wrap.narrow{max-width:760px}
+.muted{color:var(--muted)} .center{text-align:center} .gold-t{color:var(--gold-2)}
+.kicker{font-family:var(--font-pixel);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.row.center{justify-content:center}
+/* Pixel-Rahmen */
+.btn{font-family:var(--font-body);font-size:15px;font-weight:700;letter-spacing:.02em;background:linear-gradient(#27303a,#1c232b);border:1px solid #3a4652;border-radius:9px;padding:9px 15px;cursor:pointer;color:var(--fg);
+  box-shadow:0 1px 0 #ffffff10 inset, 0 4px 12px #0006;transition:transform .12s ease, background .15s, border-color .15s, box-shadow .15s;touch-action:manipulation}
+.btn:hover:not(:disabled){border-color:var(--gold);transform:translateY(-1px);box-shadow:0 1px 0 #ffffff10 inset, 0 6px 16px #0008}
 .btn:active:not(:disabled){transform:translateY(1px)}
-.btn:focus-visible{outline:2px solid var(--gold-2);outline-offset:2px}
+.btn:focus-visible{outline:2px solid var(--gold-2);outline-offset:3px}
 .btn:disabled{opacity:.4;cursor:not-allowed}
-.btn.primary{background:linear-gradient(#e2bd68,#b98d36);color:#1c1407;border-color:#f0d590}
-.btn.primary:hover:not(:disabled){background:linear-gradient(#f0cd7a,#c89a3e)}
-.btn.ghost{background:transparent}
-.btn.small{padding:6px 10px;font-size:13px}
-.row-gap{display:flex;gap:10px;flex-wrap:wrap}
+.btn.primary{background:linear-gradient(#f0c766,#b8862e);color:#1d1406;border-color:#ffe2a0}
+.btn.primary:hover:not(:disabled){background:linear-gradient(#ffd77a,#c8963a)}
+.btn.danger{background:linear-gradient(#7a3328,#5a2018);border-color:#9a4a3a}
+.btn.ghost{background:#ffffff06;box-shadow:none}
+.btn.on{background:linear-gradient(#4a4020,#2e2812);border-color:var(--gold);color:var(--gold-2)}
+.btn.small{font-size:13px;padding:5px 9px}
+.btn.big{font-size:19px;padding:13px 22px}
+.panel{background:linear-gradient(160deg,#1c232b,#14191f);padding:22px;border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 40px #0008}
+.bar{height:6px;background:#06080a;position:relative;overflow:hidden;border-radius:99px}
+.bar i{display:block;height:100%;width:0;transition:width .35s cubic-bezier(.2,.8,.2,1);border-radius:99px}
+.bar.hp i{background:linear-gradient(#7fe07a,#3fa040)}
+.bar.xp i{background:linear-gradient(#ffe08a,#c89a30)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--panel-2);border:1px solid var(--gold);border-radius:10px;padding:9px 16px;z-index:90;font-weight:700;animation:fadeup .35s ease-out}
+#modal{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.72);display:grid;place-items:center;padding:16px}
+#modal .mbox{max-width:720px;width:100%;max-height:calc(100% - 32px);overflow:auto;background:linear-gradient(160deg,#1e252d,#14191f);padding:22px;border:1px solid var(--gold);border-radius:16px;animation:fadeup .3s ease-out}
+.help h3{margin:14px 0 4px;color:var(--gold-2);font-size:16px} .help ul{padding-left:20px;margin:4px 0}
+.r-tank{color:var(--tank)} .r-dd{color:var(--dd)} .r-heal{color:var(--heal)}
+.role{font-family:var(--font-pixel);font-size:11px;padding:1px 6px;box-shadow:0 0 0 1px currentColor;display:inline-block;line-height:1.4}
+.role.r-tank{color:var(--tank)} .role.r-dd{color:var(--dd)} .role.r-heal{color:var(--heal)}
 
-/* ---------- Titel ---------- */
-.title-screen{flex:1;display:grid;place-items:center;text-align:center;background:
-  radial-gradient(ellipse 80% 60% at 50% 100%, rgba(210,96,62,.18), transparent 70%),
-  radial-gradient(ellipse 60% 50% at 50% 0%, rgba(147,198,192,.08), transparent 70%), var(--ink)}
-.title-screen .wrap{display:flex;flex-direction:column;align-items:center;gap:18px}
-.ring{width:132px;height:132px;border-radius:50%;position:relative;margin-bottom:6px;
-  background:conic-gradient(from 0deg,#8a6420,#f6dc95,#a47826,#f9e3a4,#8a6420);
-  -webkit-mask:radial-gradient(circle,transparent 52%,#000 53%,#000 66%,transparent 67%);
-          mask:radial-gradient(circle,transparent 52%,#000 53%,#000 66%,transparent 67%);
-  animation:spin 14s linear infinite;filter:drop-shadow(0 0 18px rgba(214,174,87,.6))}
-.ring-glow{position:relative}
-.ring-glow::after{content:"";position:absolute;inset:18px;border-radius:50%;box-shadow:0 0 40px 6px rgba(210,96,62,.25);pointer-events:none}
-@keyframes spin{to{transform:rotate(360deg)}}
-.logo{font-size:clamp(44px,11vw,88px);font-weight:900;letter-spacing:.08em;background:linear-gradient(#f8e7b4,#c99a42 60%,#8f6522);-webkit-background-clip:text;background-clip:text;color:transparent}
-.tagline{font-style:italic;color:var(--muted);max-width:34em}
-.menu{display:flex;flex-direction:column;gap:10px;width:min(320px,100%)}
-.menu .btn{padding:13px 18px;font-size:16px}
-.opts{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
-.toggle{border:1px solid var(--line);background:transparent;border-radius:999px;padding:6px 12px;font-family:var(--font-ui);font-size:13px;cursor:pointer;color:var(--muted)}
-.toggle.on{color:var(--gold-2);border-color:var(--gold)}
-.foot{font-size:12px;color:var(--muted);font-family:var(--font-ui);max-width:40em}
+/* Titel */
+.title{min-height:100%;display:flex;flex-direction:column}
+.tscene{width:100%;max-height:52vh;aspect-ratio:256/100;display:block;object-fit:cover}
+.title-in{display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px}
+.logo{font-size:clamp(44px,12vw,96px);font-weight:900;letter-spacing:.1em;background:linear-gradient(#fff4cf,#e0b552 55%,#8a5e1e);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 14px #000)}
+.lead{max-width:36em;color:#d6cfbd;margin:0}
+.menu{display:flex;flex-direction:column;gap:12px;width:min(320px,100%);margin-top:6px}
+.confirm{font-size:14px;color:var(--muted)}
+.foot{font-size:12px;color:var(--muted);max-width:40em}
 
-/* ---------- Auswahl ---------- */
-.select-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:16px}
-.hcard{position:relative;border:1px solid var(--line);background:var(--ink-2);border-radius:10px;padding:14px;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:8px;transition:border-color .15s, transform .15s}
-.hcard:hover{border-color:#5b6a62}
-.hcard.sel{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold), 0 0 24px rgba(214,174,87,.18)}
-.hcard .top{display:flex;gap:12px;align-items:center}
-.hcard .em{font-size:40px;width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 40% 35%, var(--c), #0000 75%);flex:none}
-.hcard h3{font-size:18px}
-.hcard .role{font-family:var(--font-ui);font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em}
-.stat-lines{display:grid;grid-template-columns:auto 1fr;gap:3px 8px;font-family:var(--font-ui);font-size:12px;align-items:center}
-.sbar{height:5px;background:#000a;border-radius:3px;overflow:hidden}
-.sbar i{display:block;height:100%;background:var(--elf)}
-.hcard .sk{font-size:13px;color:var(--muted)}
-.badge-sel{position:absolute;top:10px;right:12px;font-family:var(--font-ui);font-weight:800;color:var(--gold);font-size:13px}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
-.seg button{background:transparent;border:0;padding:8px 14px;cursor:pointer;font-family:var(--font-ui);font-weight:700;color:var(--muted)}
-.seg button.on{background:var(--ink-3);color:var(--gold-2)}
-.bar-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:18px}
+/* Kopfzeile */
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:#0b0e11ee;box-shadow:0 2px 0 #06080a}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:21;background:#0b0e11}
+.tb-in{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:12px;padding:8px max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px))}
+.tb-title{font-size:clamp(16px,3.5vw,22px);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.res{display:flex;gap:10px;font-family:var(--font-pixel);font-size:15px;white-space:nowrap}
+.res .gold{color:var(--gold-2)} .res .mith{color:#a8e0ff} .res .pow{color:#ffb070}
 
-/* ---------- Karte ---------- */
-.map-screen{flex:1}
-.map-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-end;flex-wrap:wrap}
-.map-head h2{font-size:clamp(26px,5vw,38px)}
-.purse{font-family:var(--font-ui);display:flex;gap:12px;flex-wrap:wrap;font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
-.purse b{color:var(--fg)}
-.party-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:16px 0}
-.pmini{border:1px solid var(--line);background:var(--ink-2);border-radius:8px;padding:8px;display:flex;gap:8px;align-items:center;min-width:0}
-.pmini .em{font-size:26px;flex:none}
-.pmini .info{min-width:0;flex:1;font-family:var(--font-ui);font-size:12px}
-.pmini .info b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.path{display:flex;flex-direction:column;gap:10px;margin-top:8px;position:relative}
-.prow{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;position:relative}
-.prow::before{content:attr(data-step);position:absolute;left:0;top:50%;transform:translateY(-50%);font-family:var(--font-ui);font-size:11px;color:var(--muted);letter-spacing:.14em}
-.node{width:clamp(96px,26vw,150px);border:1px solid var(--line);background:var(--ink-2);border-radius:10px;padding:10px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;font-family:var(--font-ui)}
-.node .gl{font-size:24px;line-height:1.2;font-family:var(--font-display)}
-.node .nl{font-weight:800;font-size:14px}
-.node .nd{font-size:11px;color:var(--muted)}
-.node.cur{border-color:var(--gold);animation:breathe 2.2s ease-in-out infinite}
-.node.cur:hover{background:#263129}
-.node.done{border-color:var(--moss);background:#1a2419}
-.node.skip{opacity:.3}
-.node.future{opacity:.55;cursor:default}
-.node:disabled{cursor:default}
-.node.t-boss{width:clamp(180px,50vw,280px);border-color:#6b2a1c;background:linear-gradient(#2a1611,#170d0b)}
-.node.t-boss.cur{border-color:var(--ember)}
-@keyframes breathe{50%{box-shadow:0 0 18px rgba(214,174,87,.35)}}
-.connector{height:10px;width:2px;background:var(--line);margin:0 auto}
+/* Lager */
+.scene-box{border-radius:16px;overflow:hidden;box-shadow:0 12px 40px #000a;margin:4px 0 16px}
+.scene-box canvas{width:100%;display:block;aspect-ratio:256/100}
+.runbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#2a2412;padding:10px 14px;border:1px solid var(--gold);border-radius:12px;margin-bottom:14px}
+.runbar span{flex:1;min-width:12em}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.tile{background:linear-gradient(160deg,#1e252d,#151a20);border:1px solid var(--line);border-radius:14px;cursor:pointer;padding:16px 10px;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;box-shadow:0 8px 20px #0006;transition:transform .18s cubic-bezier(.2,.8,.2,1), border-color .18s, box-shadow .18s;color:var(--fg)}
+.tile:hover{transform:translateY(-4px);border-color:var(--gold);box-shadow:0 14px 28px #0009}
+.tile .tg{font-size:28px;color:var(--gold);font-family:var(--font-pixel);line-height:1}
+.tile .tn{font-family:var(--font-pixel);font-size:17px}
+.tile .td{font-size:13px;color:var(--muted)}
+.tile.hot{border-color:var(--gold);animation:glow 1.4s ease-in-out infinite alternate}
+@keyframes glow{to{background:#2e2a18}}
+@keyframes fadeup{from{opacity:0;transform:translate(var(--tx,0),10px)}to{opacity:1;transform:translate(var(--tx,0),0)}}
+#app>*{animation:screenin .35s ease-out}
+@keyframes screenin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.toast{--tx:-50%}
 
-/* ---------- Kampf ---------- */
-.battle{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden;min-height:100%}
-.battle::before{content:"";position:absolute;left:0;right:0;bottom:30%;height:38%;background:var(--mount,#0a0e0e);opacity:.9;
-  clip-path:polygon(0 100%,0 62%,8% 48%,15% 58%,24% 30%,31% 44%,38% 26%,47% 50%,55% 22%,63% 40%,70% 32%,79% 55%,87% 38%,94% 52%,100% 42%,100% 100%);pointer-events:none}
-.battle::after{content:"";position:absolute;inset:auto 0 0 0;height:32%;background:linear-gradient(transparent,rgba(0,0,0,.55));pointer-events:none}
-.battle > *{position:relative;z-index:1}
-.bg-shire{background:radial-gradient(ellipse 90% 50% at 50% 105%, #3c5a2a 0%, transparent 70%), linear-gradient(#22343a,#121b17 70%);--mount:#16241c}
-.bg-weather{background:radial-gradient(ellipse 70% 40% at 50% 0%, #3b4660 0%, transparent 70%), linear-gradient(#1a2130,#0c0f15);--mount:#0f141c}
-.bg-moria{background:radial-gradient(ellipse 80% 45% at 50% 108%, #7a2c12 0%, transparent 65%), linear-gradient(#0b0b0c,#100907);--mount:#050505}
-.bg-amonhen{background:radial-gradient(ellipse 80% 50% at 50% 0%, #48604a 0%, transparent 70%), linear-gradient(#1b2b22,#0c1410);--mount:#102018}
-.bg-helm{background:radial-gradient(ellipse 80% 40% at 30% 0%, #3f4652 0%, transparent 70%), linear-gradient(#1a1d24,#0c0d10);--mount:#121418}
-.bg-cirith{background:radial-gradient(ellipse 70% 45% at 50% 0%, #3d2550 0%, transparent 70%), linear-gradient(#150f1a,#09070b);--mount:#0d0911}
-.bg-pelennor{background:radial-gradient(ellipse 90% 45% at 50% 105%, #6a3418 0%, transparent 70%), linear-gradient(#2a2220,#110c0a);--mount:#1a1210}
-.bg-doom{background:radial-gradient(ellipse 70% 55% at 50% 108%, #a1260e 0%, transparent 65%), linear-gradient(#1c0b08,#0a0505);--mount:#120605}
-.bhead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px max(16px, env(safe-area-inset-right, 0px)) 6px max(16px, env(safe-area-inset-left, 0px));flex-wrap:wrap}
-.bhead .chap{font-family:var(--font-display);font-size:14px;color:var(--gold-2);letter-spacing:.06em}
-.tl{display:flex;gap:4px;align-items:center;font-family:var(--font-ui);font-size:11px;color:var(--muted)}
-.tl .tlc{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:17px;background:#000a;border:1px solid var(--line);flex:none}
-.tl .tlc.h{border-color:#5d7f86}
-.tl .tlc.e{border-color:#7a3527}
-.tl .tlc.now{border-color:var(--gold);box-shadow:0 0 10px rgba(214,174,87,.6);width:36px;height:36px;font-size:20px}
-.side{display:flex;justify-content:center;gap:clamp(5px,2vw,16px);flex-wrap:nowrap;padding:8px max(12px, env(safe-area-inset-left, 0px))}
-.side.enemies{padding-top:clamp(10px,4vh,40px)}
-.unit{flex:0 1 132px;min-width:0;border:1px solid rgba(255,255,255,.08);background:rgba(10,13,14,.72);backdrop-filter:blur(2px);border-radius:10px;padding:8px 6px 6px;text-align:center;transition:transform .18s ease, opacity .3s, filter .3s;position:relative;font-family:var(--font-ui)}
-.unit .face{font-size:clamp(30px,8vw,50px);line-height:1.15;height:1.2em;display:grid;place-items:center;filter:var(--tint,none)}
-.unit.boss .face{font-size:clamp(46px,12vw,78px)}
-.unit.boss{flex:0 1 200px;border-color:rgba(210,96,62,.5)}
-.unit.elite{border-color:rgba(214,174,87,.35)}
-.unit .un{font-weight:800;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.unit .ul{font-size:10px;color:var(--muted);letter-spacing:.06em}
-.bar{height:6px;background:#000c;border-radius:3px;overflow:hidden;margin-top:3px}
-.bar i{display:block;height:100%;width:100%;transition:width .35s ease}
-.bar.hp i{background:linear-gradient(90deg,#a63a2e,#d8604b)}
-.bar.hp.low i{background:linear-gradient(90deg,#c22,#f44)}
-.bar.mp i{background:linear-gradient(90deg,#335f8c,#5b9bd5)}
-.bar.lim{height:4px}
-.bar.lim i{background:linear-gradient(90deg,#9c7425,#f0cf7f)}
-.bar.lim.full i{animation:limglow .8s ease-in-out infinite alternate}
-@keyframes limglow{to{filter:brightness(1.6)}}
-.num{font-size:11px;font-variant-numeric:tabular-nums;color:#cfc8b4;display:flex;justify-content:space-between;gap:4px}
-.sts{display:flex;flex-wrap:wrap;gap:2px;justify-content:center;min-height:14px;margin-top:3px}
-.chip{font-size:9px;font-weight:800;padding:1px 4px;border-radius:3px;letter-spacing:.03em;background:#000a;border:1px solid currentColor;line-height:1.2;font-variant-numeric:tabular-nums}
-.unit.active{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 0 22px rgba(214,174,87,.35)}
-.unit.dead{opacity:.32;filter:grayscale(1)}
-.unit.targetable{cursor:pointer;border-color:var(--ember);box-shadow:0 0 0 1px var(--ember),0 0 18px rgba(210,96,62,.45);animation:tpulse 1s ease-in-out infinite}
-.unit.targetable.ally{border-color:var(--moss);box-shadow:0 0 0 1px var(--moss),0 0 18px rgba(134,168,93,.45)}
-@keyframes tpulse{50%{transform:translateY(-3px)}}
-.unit.lunge-up{transform:translateY(-22px) scale(1.05)}
-.unit.lunge-down{transform:translateY(22px) scale(1.05)}
-.unit.shake{animation:shake .35s}
-@keyframes shake{20%{transform:translateX(-7px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
-.unit.flash .face{animation:flash .3s}
-@keyframes flash{50%{filter:brightness(3) saturate(0)}}
-.unit.invis .face{opacity:.25}
-.mid{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;min-height:70px;padding:4px 16px}
-#banner{font-family:var(--font-display);font-size:clamp(16px,4vw,22px);color:var(--gold-2);text-shadow:0 2px 10px #000;min-height:1.4em;text-align:center;transition:opacity .2s}
-#banner.foe{color:#f19a7e}
-#blog{font-size:13px;color:#cfc8b4;text-align:center;max-width:36em;min-height:3.6em;font-family:var(--font-body)}
-#blog div{opacity:.55}
-#blog div:last-child{opacity:1}
-.cmd{background:linear-gradient(rgba(8,10,11,.88),rgba(8,10,11,.98));border-top:1px solid var(--line);padding:10px max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));min-height:132px}
-.cmd .who{font-family:var(--font-ui);font-size:13px;color:var(--muted);margin-bottom:8px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.cmd .who b{color:var(--gold-2);font-family:var(--font-display);font-size:15px}
-.cmdgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;max-width:1040px;margin:0 auto}
-.cbtn{appearance:none;text-align:left;border:1px solid var(--line);background:var(--ink-3);border-radius:7px;padding:7px 10px;cursor:pointer;display:flex;flex-direction:column;gap:1px;font-family:var(--font-ui);min-width:0;touch-action:manipulation}
-.cbtn:hover:not(:disabled){border-color:var(--gold)}
-.cbtn:focus-visible{outline:2px solid var(--gold-2)}
-.cbtn:disabled{opacity:.38;cursor:not-allowed}
-.cbtn .cn{font-weight:800;font-size:14px;display:flex;justify-content:space-between;gap:6px}
-.cbtn .cn small{font-weight:700;color:#86b2e0;font-variant-numeric:tabular-nums}
-.cbtn .cd{font-size:11px;color:var(--muted);line-height:1.25}
-.cbtn.ult{border-color:var(--gold);background:linear-gradient(#3a2e14,#231c0d)}
-.cbtn.ult:not(:disabled){animation:breathe 1.4s ease-in-out infinite}
-.cbtn.alt{background:transparent}
-.cmd .inner{max-width:1040px;margin:0 auto}
+/* Abenteuer */
+.camp{margin-bottom:24px}
+.camp-h{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px}
+.camp-h h2{font-size:26px}
+.camp-h p{margin:4px 0 0}
+.camp.locked .chapters{opacity:.5}
+.lockmsg{font-family:var(--font-pixel);color:var(--muted)}
+.chapters{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.chap{background:linear-gradient(160deg,#1e252d,#151a20);cursor:pointer;text-align:left;padding:10px 12px 10px 74px;position:relative;min-height:76px;display:flex;flex-direction:column;gap:2px;border:1px solid var(--line);border-radius:12px}
+.chap:hover:not(:disabled){border:1px solid var(--gold);border-radius:12px}
+.chap:disabled{cursor:not-allowed}
+.chap.locked{opacity:.45}
+.chap.done{border:1px solid #4f8a4a;border-radius:12px}
+.chap-boss{position:absolute;left:8px;top:50%;transform:translateY(-50%);width:56px;height:52px}
+.chn{font-family:var(--font-pixel);font-size:16px}
+.chl,.chs{font-size:13px;color:var(--muted)}
+.chap.done .chs{color:#8fd38a}
+.intro{display:flex;flex-direction:column;gap:6px}
+.big{font-size:clamp(26px,6vw,40px)}
+.story{font-size:18px;max-width:36em}
+.story p{margin:0 0 10px}
+.bg-shire{background:linear-gradient(#1c2a1c,#141a14)} .bg-weather{background:linear-gradient(#1a2030,#11141c)} .bg-moria{background:linear-gradient(#1c1210,#0e0a0a)}
+.bg-amonhen{background:linear-gradient(#18261c,#0f1712)} .bg-helm{background:linear-gradient(#1c2026,#111316)} .bg-cirith{background:linear-gradient(#1c1224,#0e0a12)}
+.bg-pelennor{background:linear-gradient(#2a1a12,#140e0a)} .bg-doom{background:linear-gradient(#2a0e0a,#120606)} .bg-snow{background:linear-gradient(#1e2836,#121820)}
+.bg-sea{background:linear-gradient(#142234,#0c1420)} .bg-south{background:linear-gradient(#2a1e12,#16100a)} .bg-rhun{background:linear-gradient(#221a2a,#120e16)}
+.bg-khazad{background:linear-gradient(#161c24,#0c1014)} .bg-eregion{background:linear-gradient(#2a1a1a,#140e0e)}
 
-/* ---------- QTE ---------- */
-#qte{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:radial-gradient(circle at 50% 50%, rgba(5,7,8,.72) 0, rgba(5,7,8,.6) 160px, rgba(0,0,0,.45) 100%);touch-action:manipulation;cursor:pointer;user-select:none;-webkit-user-select:none}
-.qbox{position:relative;width:240px;height:240px;display:grid;place-items:center}
-.qtarget,.qring{position:absolute;width:96px;height:96px;border-radius:50%;left:50%;top:50%;margin:-48px 0 0 -48px}
-.qtarget{border:4px solid var(--gold);box-shadow:0 0 24px rgba(214,174,87,.6), inset 0 0 18px rgba(214,174,87,.35)}
-#qte.def .qtarget{border-color:var(--elf);box-shadow:0 0 24px rgba(147,198,192,.6), inset 0 0 18px rgba(147,198,192,.3)}
-.qring{border:3px solid #fff;will-change:transform}
-.qlabel{position:absolute;top:-34px;left:-60px;right:-60px;text-align:center;font-family:var(--font-display);font-size:20px;color:var(--gold-2);text-shadow:0 2px 8px #000}
-#qte.def .qlabel{color:#bfe6e1}
-.qhint{position:absolute;bottom:-6px;left:-60px;right:-60px;text-align:center;font-family:var(--font-ui);font-size:12px;color:#d8d2c0;opacity:.85}
-.qres{position:absolute;font-family:var(--font-display);font-weight:900;font-size:30px;text-shadow:0 2px 10px #000;opacity:0}
-.qres.show{animation:pop .4s ease-out forwards}
-@keyframes pop{0%{opacity:0;transform:scale(.6)}40%{opacity:1;transform:scale(1.15)}100%{opacity:1;transform:scale(1)}}
+/* Karte */
+.partystrip{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-bottom:16px}
+.pm{display:flex;gap:6px;align-items:center;background:var(--panel);padding:6px;min-width:0;border:1px solid var(--line);border-radius:12px}
+.pm canvas{width:36px;height:36px;flex:none}
+.pm>div{min-width:0;flex:1;font-size:13px}
+.pm b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-pixel);font-weight:500}
+.pm.dead{opacity:.45}
+.path{display:flex;flex-direction:column;align-items:center}
+.prow{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.conn{width:4px;height:12px;background:var(--line)}
+.node{width:clamp(96px,26vw,150px);background:linear-gradient(160deg,#1e252d,#151a20);color:var(--fg);padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;border:1px solid var(--line);border-radius:12px}
+.node .ng{font-size:22px;font-family:var(--font-pixel);color:var(--gold)}
+.node .nn{font-family:var(--font-pixel);font-size:15px;text-align:center}
+.node .nd{font-size:12px;color:var(--muted);text-align:center}
+.node.cur{border:1px solid var(--gold);border-radius:12px;animation:glow 1.2s ease-in-out infinite alternate}
+.node.done{border:1px solid #4f8a4a;border-radius:12px;background:#18241a}
+.node.skip{opacity:.25} .node.future{opacity:.6;cursor:default} .node:disabled{cursor:default}
+.node.n-boss{width:clamp(200px,60vw,300px);background:#2a1410}
+.node.n-boss .ng{color:var(--ember)}
 
-/* ---------- FX ---------- */
-#fx{position:fixed;inset:0;pointer-events:none;z-index:70}
-.float{position:fixed;transform:translate(-50%,0);font-family:var(--font-display);font-weight:900;font-size:22px;text-shadow:0 2px 0 #000,0 0 10px #000;animation:floatUp 1s ease-out forwards;white-space:nowrap}
-.float.crit{font-size:30px;color:#ffd36b}
-.float.heal{color:#9fe07a}
-.float.miss{color:#bbb;font-size:16px}
-.float.parry{color:#bfe6e1}
-.float.buff{color:#f3d78f;font-size:15px}
-.float.debuff{color:#e58c6c;font-size:15px}
-.float.dmg{color:#fff}
-@keyframes floatUp{0%{opacity:0;transform:translate(-50%,8px) scale(.8)}15%{opacity:1;transform:translate(-50%,-6px) scale(1.12)}100%{opacity:0;transform:translate(-50%,-46px) scale(1)}}
-.ultflash{position:fixed;inset:0;display:grid;place-items:center;z-index:65;pointer-events:none;background:radial-gradient(circle, rgba(214,174,87,.28), rgba(0,0,0,.6));animation:ultf 1.1s ease-out forwards}
-.ultflash span{font-family:var(--font-display);font-weight:900;font-size:clamp(26px,7vw,54px);color:var(--gold-2);text-shadow:0 0 24px rgba(214,174,87,.8);text-align:center;padding:0 16px}
-@keyframes ultf{0%{opacity:0}15%{opacity:1}80%{opacity:1}100%{opacity:0}}
+/* Kampf */
+.bscreen{display:flex;flex-direction:column;min-height:100%;max-width:1100px;margin:0 auto;animation:none}
+.bhead{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:8px max(12px,env(safe-area-inset-right,0px)) 8px max(12px,env(safe-area-inset-left,0px))}
+.blabel{font-family:var(--font-pixel);color:var(--gold-2)}
+.bctl{display:flex;gap:6px;flex-wrap:wrap}
+.stage{position:relative;border-radius:14px;overflow:hidden;box-shadow:0 10px 40px #000a;margin:0 max(8px,env(safe-area-inset-left,0px))}
+#bcv{display:block;width:100%;aspect-ratio:16/9}
+#banner{position:absolute;left:50%;top:20%;transform:translate(-50%,-6px) scale(.96);font-family:var(--font-pixel);font-weight:700;letter-spacing:.04em;font-size:clamp(14px,3.4vw,26px);color:#fff;text-shadow:0 2px 12px #000,0 0 3px #000;opacity:0;transition:opacity .2s, transform .25s cubic-bezier(.2,.8,.2,1);pointer-events:none;white-space:nowrap;max-width:96%;overflow:hidden;text-overflow:ellipsis}
+#banner.show{opacity:1;transform:translate(-50%,0) scale(1)}
+#banner.foe{color:#ff9a7e} #banner.ult{color:var(--gold-2);font-size:clamp(18px,4.6vw,36px)}
+#bossbar{position:absolute;left:50%;top:8px;transform:translateX(-50%);width:min(60%,420px);text-align:center;font-family:var(--font-pixel);font-size:clamp(11px,2.4vw,15px);text-shadow:1px 1px 0 #000}
+.bar.boss{height:8px;border:1px solid var(--line);border-radius:12px}
+.bar.boss i{background:linear-gradient(#ff6a4a,#a8201a)}
+.hud{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;padding:8px max(12px,env(safe-area-inset-right,0px)) 4px max(12px,env(safe-area-inset-left,0px))}
+.hc{background:var(--panel);display:flex;gap:6px;padding:6px;align-items:flex-start;position:relative;min-width:0;border:1px solid var(--line);border-radius:12px}
+.hc.act{border:1px solid var(--gold);border-radius:12px}
+.hc.dead{opacity:.4;filter:grayscale(1)}
+.hc canvas{width:40px;height:40px;flex:none}
+.hcb{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.hcb b{font-family:var(--font-pixel);font-weight:500;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hc .bar.hp{height:9px}
+.hc .bar.hp span{position:absolute;right:3px;top:-2px;font-family:var(--font-pixel);font-size:10px;text-shadow:1px 1px 0 #000}
+.hc .bar.rs{height:4px} .hc .bar.en{height:4px} .hc .bar.en i{background:var(--gold)} .hc .bar.en.full i{background:#fff6c0;animation:glow 0.5s infinite alternate}
+.hst{display:flex;gap:3px;flex-wrap:wrap;font-family:var(--font-pixel);font-size:9px;min-height:11px}
+.ultb{position:absolute;right:4px;bottom:4px;font-family:var(--font-pixel);font-weight:700;font-size:12px;background:linear-gradient(#ffd77a,#b8862e);color:#1a1206;border:1px solid #ffe9a8;border-radius:8px;padding:3px 8px;cursor:pointer;animation:ultpulse .7s infinite alternate}
+@keyframes ultpulse{to{box-shadow:0 0 14px #ffd77a}}
+.ultb.queued{background:#fff6c0}
+.blog{padding:4px max(12px,env(safe-area-inset-right,0px)) 12px max(12px,env(safe-area-inset-left,0px));font-size:13px;color:var(--muted);min-height:2.4em}
+.blog b.hero{color:#a8d0ff} .blog b.enemy{color:#ff9a7e}
 
-/* ---------- Panels ---------- */
-.panel{border:1px solid var(--line);background:var(--ink-2);border-radius:12px;padding:18px}
-.center-screen{flex:1;display:grid;place-items:center}
-.story{max-width:38em;font-size:18px;line-height:1.6}
-.story p{margin:0 0 12px}
-.big-num{font-family:var(--font-display);font-size:13px;letter-spacing:.3em;color:var(--gold)}
-.reward-list{display:grid;gap:8px;margin:14px 0}
-.rl{display:flex;gap:10px;align-items:center;font-family:var(--font-ui)}
-.rl .em{font-size:24px;width:32px;text-align:center}
-.rl .xpb{flex:1;max-width:220px}
-.lvlup{color:var(--gold-2);font-weight:800}
-.shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-top:14px}
-.shop-item{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--ink-3);display:flex;flex-direction:column;gap:6px}
-.shop-item h3{font-size:16px}
-.shop-item p{margin:0;font-size:14px;color:var(--muted);flex:1}
-.price{font-family:var(--font-ui);font-weight:800;color:var(--gold-2);font-variant-numeric:tabular-nums}
-#modal{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.7);display:grid;place-items:center;padding:16px}
-#modal .mbox{max-width:760px;width:100%;max-height:calc(100% - 32px);overflow:auto;background:var(--ink-2);border:1px solid var(--line);border-radius:12px;padding:20px}
-.help h3{font-size:16px;margin:14px 0 4px;color:var(--gold-2)}
-.help p,.help li{font-size:15px}
-.help ul{padding-left:20px;margin:4px 0}
-.hero-detail{display:grid;grid-template-columns:auto 1fr;gap:12px;border-top:1px solid var(--line);padding:12px 0}
-.hero-detail .em{font-size:42px}
-.kv{font-family:var(--font-ui);font-size:13px;display:flex;gap:10px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
-.kv span b{color:var(--fg)}
-.sklist{font-size:13px;color:var(--muted);margin-top:4px}
-.sklist b{color:var(--fg)}
-.sklist .locked{opacity:.5}
-.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);background:var(--ink-3);border:1px solid var(--gold);padding:8px 14px;border-radius:8px;z-index:90;font-family:var(--font-ui);font-size:14px}
+/* Ergebnisse */
+.rewards{display:flex;gap:16px;flex-wrap:wrap;font-family:var(--font-pixel);font-size:18px;margin:10px 0 14px;color:var(--gold-2)}
+.xprow{display:grid;grid-template-columns:36px 9em 1fr auto;gap:8px;align-items:center;margin:6px 0}
+.xprow canvas{width:36px;height:36px}
+.xn{font-family:var(--font-pixel)} .xn small{color:var(--muted)}
+.up{color:var(--gold-2);font-family:var(--font-pixel)} .cap{color:#ff9a7e;font-size:13px}
+.loots{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;margin-top:8px}
+.loots.list{grid-template-columns:1fr}
+.loot{display:flex;gap:10px;align-items:flex-start;background:var(--panel-2);padding:8px 10px;min-width:0;border:1px solid var(--line);border-left:3px solid var(--rc,#888);border-radius:12px}
+.loot.r0{--rc:#b8b8b0} .loot.r1{--rc:#5ecf5a} .loot.r2{--rc:#4f9ae8} .loot.r3{--rc:#b46ae8} .loot.r4{--rc:#f09a2a}
+.loot.r4{background:linear-gradient(90deg,#3a2810,var(--panel-2))}
+.loot>div{display:flex;flex-direction:column;min-width:0}
+.loot b{font-family:var(--font-pixel);font-weight:500}
+.loot small{font-size:12.5px}
+.loot .leg{color:#f0c070}
+.ic{width:42px;height:42px;flex:none;background:radial-gradient(#1e252d,#0a0c0f);border:1px solid var(--rc,#888);border-radius:10px}
+.loot.reveal{animation:reveal .5s ease-out both}
+.loot.reveal:nth-child(2){animation-delay:.15s}.loot.reveal:nth-child(3){animation-delay:.3s}.loot.reveal:nth-child(4){animation-delay:.45s}
+@keyframes reveal{from{transform:scale(.85);filter:brightness(3)}to{transform:none;filter:none}}
+.lrow{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+.lact{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;font-family:var(--font-pixel);font-size:13px}
+.pos{color:#8fd38a} .neg{color:#e08a7a}
+.newheroes{display:flex;gap:16px;flex-wrap:wrap}
+.nh{display:flex;flex-direction:column;align-items:center;gap:2px}
+.nh canvas{width:112px;height:104px}
 
+/* Gruppe & Helden */
+.slots{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:12px 0}
+.slot{background:linear-gradient(160deg,#1e252d,#151a20);color:var(--fg);padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:150px;justify-content:center;border:1px solid var(--line);border-radius:12px;font-size:13px;cursor:pointer}
+.slot.empty{color:var(--muted);font-family:var(--font-pixel);cursor:default;border:1px dashed #3a444e;border-radius:12px}
+.slot canvas,.rh canvas.pix{width:84px;height:84px}
+.slot b,.rh b{font-family:var(--font-pixel);font-weight:500}
+.warn{background:#3a1a14;padding:8px 12px;margin:6px 0;border:1px solid #8a3a2a;border-radius:10px}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 10px}
+.roster{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.rh{background:linear-gradient(160deg,#1e252d,#151a20);color:var(--fg);padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;cursor:pointer;border:1px solid var(--line);border-radius:12px;font-size:13px;position:relative}
+.rh:hover{border:1px solid var(--gold);border-radius:12px}
+.rh.in{border:1px solid var(--gold);border-radius:12px;background:#242014}
+.rh small{color:var(--muted)}
+.rh.tav{cursor:default}
+.rh.small{flex-direction:row;gap:8px}
+.rh.small canvas{width:36px;height:36px}
+.badge{font-family:var(--font-pixel);font-size:11px;background:#3a4a2a;padding:1px 6px;color:#d8f0b0}
+.badge.evo{background:#5a3a10;color:var(--gold-2)}
+.givelist{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:12px}
+.hero-head{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center;margin-bottom:12px}
+.hero-head canvas.big{width:84px;height:84px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.hero-head h2{font-size:28px} .hero-head h2 small{font-size:16px;color:var(--gold)}
+.hero-head p{margin:6px 0 0}
+.hmeta{display:flex;gap:10px;flex-wrap:wrap;font-size:14px;color:var(--muted);margin:4px 0 6px;align-items:center}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:14px}
+.tab{font-family:var(--font-pixel);background:var(--panel);color:var(--fg);padding:8px 14px;cursor:pointer;border:1px solid var(--line);border-radius:12px}
+.tab.on{background:#2e2a18;border:1px solid var(--gold);border-radius:12px;color:var(--gold-2)}
+.hero-over{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:16px}
+.preview{background:var(--panel);padding:10px;border:1px solid var(--line);border-radius:12px}
+.preview canvas{width:100%;aspect-ratio:96/64;display:block;background:radial-gradient(#26303a,#12161a)}
+.animbtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.statgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 16px;font-size:15px}
+.statgrid div{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding:3px 0}
+.statgrid b{font-family:var(--font-pixel);font-weight:500;font-variant-numeric:tabular-nums}
+.passives{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.passives span{font-size:12.5px;background:#20302a;padding:2px 7px;color:#b8e8c8}
+.tactic{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:10px 0}
+.skills{display:grid;gap:8px;margin-top:6px}
+.sk{background:var(--panel);padding:8px 12px;border:1px solid var(--line);border-radius:12px}
+.sk b{font-family:var(--font-pixel);font-weight:500}
+.sk small{display:block;color:var(--muted)}
+.sk p{margin:2px 0 0;font-size:14px}
+.sk.locked{opacity:.5}
+.sk.ult{border:1px solid var(--gold);border-radius:12px}
+.gear{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.gslot{background:var(--panel);padding:10px;border:1px solid var(--line);border-radius:12px;min-width:0}
+.gsh{font-family:var(--font-pixel);color:var(--gold);margin-bottom:6px}
+.tpoints{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.tpoints b{font-family:var(--font-pixel);font-size:20px;color:var(--gold-2)}
+.tree{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.branch{background:var(--panel);padding:10px;display:flex;flex-direction:column;align-items:stretch;border:1px solid var(--line);border-radius:12px}
+.branch h3{font-size:17px;margin-bottom:8px;display:flex;justify-content:space-between;gap:8px} .branch h3 small{color:var(--muted);font-size:12px}
+.tnode{background:var(--panel-2);padding:8px 10px;text-align:left;display:grid;grid-template-columns:1fr auto;gap:2px 8px;cursor:pointer;border:1px solid var(--line);border-radius:12px}
+.tnode b{font-family:var(--font-pixel);font-weight:500}
+.tnode .rk{font-family:var(--font-pixel);color:var(--gold-2)}
+.tnode small{grid-column:1/-1;color:var(--muted);font-size:12.5px}
+.tnode.has{border:1px solid #6a8a3a;border-radius:10px}
+.tnode.cap{background:#2a2414}
+.tnode.cap.has{border:1px solid var(--gold);border-radius:12px}
+.tnode.lock{opacity:.4}
+.tnode:not(:disabled):hover{background:#2c3640}
+.tnode:disabled{cursor:default}
+.tline{width:4px;height:10px;background:var(--line);margin:0 auto}
+.evo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center}
+.evs{background:var(--panel);padding:10px;display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;width:200px;border:1px solid var(--line);border-radius:12px}
+.evs canvas{width:112px;height:104px}
+.evs b{font-family:var(--font-pixel)} .evs small{color:var(--muted);font-size:12.5px}
+.evs.cur{border:1px solid var(--gold);border-radius:12px} .evs.past{opacity:.6}
+.evarrow{font-size:24px;color:var(--gold)}
+.evobox{margin-top:16px;text-align:center}
+.achs{display:grid;gap:8px}
+.ach{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;background:var(--panel);padding:10px 14px;border:1px solid var(--line);border-radius:12px}
+.ach b{font-family:var(--font-pixel);font-weight:500}
+.ach small{display:block;color:var(--muted)}
+.ach .bar{margin:4px 0;max-width:260px}
+.ach.ready{border:1px solid var(--gold);border-radius:12px} .ach.claimed{opacity:.55}
+.ar{display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-family:var(--font-pixel)}
+.foes{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}
+.foe{display:flex;flex-direction:column;align-items:center}
+.foe canvas{width:84px;height:78px}
+
+@media (max-width:760px){
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .hero-over{grid-template-columns:1fr}
+  .gear,.tree{grid-template-columns:1fr}
+  .slots{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .partystrip{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .xprow{grid-template-columns:36px 1fr;}
+  .xprow .bar{grid-column:2}
+  .lrow{grid-template-columns:1fr}
+}
 @media (max-width:560px){
-  .party-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .cmdgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .cbtn .cd{display:none}
-  .prow::before{display:none}
-  .tl .tlc{width:24px;height:24px;font-size:13px}
-  .tl .tlc.now{width:30px;height:30px;font-size:17px}
-  .tl .lbl{display:none}
-  .unit{padding:6px 4px 4px}
-  .cmd{min-height:110px}
+  .hud{grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+  .hc{flex-direction:column;align-items:center;padding:4px}
+  .hc canvas{width:30px;height:30px}
+  .hcb{width:100%}
+  .hcb b{font-size:11px;text-align:center}
+  .hst{display:none}
+  .res{font-size:13px;gap:6px}
+  .tb-in .btn.small{padding:4px 6px}
 }
-@media (prefers-reduced-motion:reduce){
-  .ring,.node.cur,.cbtn.ult,.unit.targetable,.bar.lim.full i{animation:none}
-}
+@media (prefers-reduced-motion:reduce){.tile.hot,.node.cur,.loot.reveal,.ultb{animation:none}}
 </style>
 
 <div id="app"></div>
-<div id="fx"></div>
-<div id="qte" hidden>
-  <div class="qbox">
-    <div class="qlabel" id="qlabel"></div>
-    <div class="qtarget"></div>
-    <div class="qring" id="qring"></div>
-    <div class="qres" id="qres"></div>
-    <div class="qhint" id="qhint">Tippen oder Leertaste, wenn sich die Ringe decken</div>
-  </div>
-</div>
 <div id="modal" hidden></div>
-
-<script>
-'use strict';
-/* =========================================================
-   RINGFAHRT – rundenbasiertes Action-RPG
-   Inspiriert von: Final Fantasy X (Zugreihenfolge), Paper Mario /
-   Clair Obscur (Timing-Angriffe & Paraden), Slay the Spire (Kapitelkarte),
-   klassische JRPGs (Limit-/Ultimate-Leiste, Statuseffekte).
-   ========================================================= */
-const $ = s => document.querySelector(s);
-const rnd = (a,b) => a + Math.random()*(b-a);
-const ri = (a,b) => Math.floor(rnd(a,b+1));
-const pick = a => a[Math.floor(Math.random()*a.length)];
-const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
-const alive = u => u && u.hp > 0;
-const esc = s => String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-
-const SAVE_KEY='ringfahrt-save-v1', SET_KEY='ringfahrt-settings-v1';
-const store={
-  get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},
-  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},
-  del(k){try{localStorage.removeItem(k)}catch(e){}}
-};
-let SET = Object.assign({auto:false, sound:true, speed:1}, store.get(SET_KEY)||{});
-const saveSet = () => store.set(SET_KEY, SET);
-const sleep = ms => new Promise(r=>setTimeout(r, ms / (SET.speed||1)));
-
-/* ---------------- Audio ---------------- */
-let AC=null;
-function ac(){ if(!SET.sound) return null; if(!AC){ try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){return null} } if(AC.state==='suspended') AC.resume(); return AC; }
-function tone(f,d=.1,type='square',vol=.05,slide=0,delay=0){ const a=ac(); if(!a) return; const t=a.currentTime+delay; const o=a.createOscillator(), g=a.createGain(); o.type=type; o.frequency.setValueAtTime(f,t); if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t+d); g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.0001,t+d); o.connect(g).connect(a.destination); o.start(t); o.stop(t+d+.02); }
-function noise(d=.1,vol=.08,freq=900){ const a=ac(); if(!a) return; const len=Math.floor(a.sampleRate*d); const b=a.createBuffer(1,len,a.sampleRate); const ch=b.getChannelData(0); for(let i=0;i<len;i++) ch[i]=(Math.random()*2-1)*(1-i/len); const s=a.createBufferSource(); s.buffer=b; const f=a.createBiquadFilter(); f.type='lowpass'; f.frequency.value=freq; const g=a.createGain(); g.gain.value=vol; s.connect(f).connect(g).connect(a.destination); s.start(); }
-const SFX={
-  hit(){noise(.1,.1,1200); tone(150,.1,'square',.03,-70)},
-  crit(){noise(.2,.14,2200); tone(240,.2,'sawtooth',.05,-170)},
-  perfect(){tone(880,.08,'triangle',.06); tone(1320,.14,'triangle',.05,0,.06)},
-  good(){tone(660,.09,'triangle',.05)},
-  miss(){tone(220,.16,'sine',.05,-90)},
-  parry(){noise(.05,.08,4000); tone(1500,.05,'square',.03); tone(2000,.16,'triangle',.04,0,.04)},
-  heal(){tone(520,.15,'sine',.05,220); tone(780,.22,'sine',.04,220,.08)},
-  buff(){[392,523,659].forEach((f,i)=>tone(f,.12,'triangle',.045,0,i*.07))},
-  level(){[523,659,784,1046].forEach((f,i)=>tone(f,.2,'triangle',.06,0,i*.1))},
-  click(){tone(460,.04,'triangle',.03)},
-  die(){tone(320,.45,'sawtooth',.045,-260)},
-  ult(){[262,330,392,523,659,784].forEach((f,i)=>tone(f,.28,'sawtooth',.035,0,i*.06))},
-  win(){[392,494,587,784].forEach((f,i)=>tone(f,.25,'triangle',.06,0,i*.13))},
-  lose(){[392,349,311,262].forEach((f,i)=>tone(f,.35,'sine',.06,0,i*.2))}
-};
-const sfx = n => { try{ SFX[n] && SFX[n]() }catch(e){} };
-
-/* ---------------- Daten ---------------- */
-const DIFF={
-  easy:{n:'Leicht',hp:.8,dmg:.72,win:{p:100,g:220}},
-  normal:{n:'Normal',hp:1,dmg:1,win:{p:72,g:165}},
-  hard:{n:'Schwer',hp:1.35,dmg:1.4,win:{p:55,g:130}}
-};
-const STATUS={
-  bleed:{n:'Blutung',l:'BLUT',c:'#e0645a',bad:1,d:'Verliert jede Runde 5 % LP.'},
-  burn:{n:'Brand',l:'BRAND',c:'#f08a3c',bad:1,d:'Verliert jede Runde 6 % LP.'},
-  poison:{n:'Morgulgift',l:'GIFT',c:'#9bd06a',bad:1,d:'Verliert jede Runde 7 % LP.'},
-  stun:{n:'Betäubt',l:'BETÄUBT',c:'#f3d78f',bad:1,d:'Setzt den nächsten Zug aus.'},
-  atkUp:{n:'Stärke',l:'ATK+',c:'#f3b36b',d:'+30 % Angriff und Magie.'},
-  atkDown:{n:'Schwäche',l:'ATK−',c:'#b48fd8',bad:1,d:'−25 % Angriff und Magie.'},
-  defUp:{n:'Wacht',l:'DEF+',c:'#93c6c0',d:'+50 % Verteidigung und Widerstand.'},
-  defDown:{n:'Rüstungsbruch',l:'DEF−',c:'#d88f8f',bad:1,d:'−35 % Verteidigung und Widerstand.'},
-  shield:{n:'Schild',l:'SCHILD',c:'#a8d4ff',d:'Absorbiert Schaden.'},
-  taunt:{n:'Provokation',l:'PROV',c:'#ff9d6b',d:'Feinde müssen dieses Ziel angreifen.'},
-  regen:{n:'Erholung',l:'REG',c:'#9fe07a',d:'Heilt jede Runde 8 % LP.'},
-  invis:{n:'Unsichtbar',l:'UNSICHTBAR',c:'#c7c7c7',d:'Kann nicht angegriffen werden.'},
-  mark:{n:'Markiert',l:'MARKE',c:'#ffdf7a',bad:1,d:'Erleidet 30 % mehr Schaden.'},
-  slow:{n:'Lähmung',l:'LANGSAM',c:'#8fa8d8',bad:1,d:'−30 % Tempo.'},
-  haste:{n:'Eile',l:'EILE',c:'#7fe0d0',d:'+35 % Tempo.'},
-  counter:{n:'Vergeltung',l:'KONTER',c:'#f0b070',d:'Kontert Einzelangriffe.'},
-  enrage:{n:'Raserei',l:'RASEREI',c:'#ff5a3c',d:'+25 % Angriff und Magie.'}
-};
-
-const HEROES={
-  aragorn:{n:'Aragorn',t:'Erbe Isildurs',role:'Klingenmeister',i:'⚔️',c:'#3b6ea8',hp:120,mp:32,atk:17,def:11,mag:7,res:9,spd:11,crit:.1,atkName:'Andúril',
-    sk:['a_hieb','a_ruf','a_hand','a_wirbel'],ult:'a_ult'},
-  legolas:{n:'Legolas',t:'Prinz des Düsterwalds',role:'Bogenschütze',i:'🏹',c:'#4f8f4a',hp:92,mp:34,atk:16,def:7,mag:8,res:10,spd:16,crit:.2,atkName:'Elbenpfeil',
-    sk:['l_doppel','l_blick','l_hagel','l_meister'],ult:'l_ult'},
-  gimli:{n:'Gimli',t:'Sohn Glóins',role:'Bollwerk',i:'🪓',c:'#8a5a2e',hp:136,mp:26,atk:18,def:13,mag:3,res:7,spd:8,crit:.08,atkName:'Axthieb',
-    sk:['g_axt','g_baruk','g_spalt','g_liste'],ult:'g_ult'},
-  gandalf:{n:'Gandalf',t:'Der Graue Pilger',role:'Zauberer',i:'🧙',c:'#7a7f86',hp:86,mp:60,atk:9,def:6,mag:19,res:14,spd:10,crit:.06,atkName:'Stabschlag',atkStat:'mag',
-    sk:['ga_blitz','ga_feuer','ga_schild','ga_licht','ga_bann'],ult:'ga_ult'},
-  frodo:{n:'Frodo',t:'Ringträger',role:'Schattenläufer',i:'💍',c:'#c49a3a',hp:82,mp:30,atk:12,def:7,mag:9,res:13,spd:14,crit:.16,atkName:'Stich',
-    sk:['f_stich','f_ring','f_phiole','f_mut'],ult:'f_ult'},
-  sam:{n:'Samweis',t:'Der Getreue',role:'Versorger',i:'🍳',c:'#6e8a3a',hp:106,mp:36,atk:13,def:10,mag:11,res:10,spd:10,crit:.08,atkName:'Kurzschwert',
-    sk:['s_pfanne','s_proviant','s_treue','s_eintopf'],ult:'s_ult'},
-  boromir:{n:'Boromir',t:'Hauptmann Gondors',role:'Schildträger',i:'🛡️',c:'#9b3b33',hp:140,mp:26,atk:16,def:14,mag:4,res:8,spd:9,crit:.08,atkName:'Breitschwert',
-    sk:['b_stoss','b_horn','b_vergelt','b_gefecht'],ult:'b_ult'},
-  eowyn:{n:'Éowyn',t:'Schildmaid Rohans',role:'Klingentänzerin',i:'🗡️',c:'#5a8fa0',hp:100,mp:30,atk:17,def:9,mag:6,res:9,spd:13,crit:.15,atkName:'Klinge',
-    sk:['e_tanz','e_ritt','e_schildmaid','e_keinmann'],ult:'e_ult'}
-};
-
-/* tgt: enemy | enemies | randomEnemies | ally | allies | self ; kind: phys | mag | heal | buff | revive | summon */
-const SKILLS={
-  attack:{n:'Angriff',d:'Grundangriff. +4 MP.',cost:0,tgt:'enemy',kind:'auto',pow:1,mpGain:4},
-  // Aragorn
-  a_hieb:{n:'Andúril-Hieb',d:'Kräftiger Hieb (160 %), 50 % Blutung.',cost:8,tgt:'enemy',kind:'phys',pow:1.6,eff:[{s:'bleed',ch:.5,dur:3}],lvl:1},
-  a_ruf:{n:'Sammelruf',d:'Alle Gefährten: Stärke (3).',cost:12,tgt:'allies',kind:'buff',eff:[{s:'atkUp',dur:3,on:'allies'}],lvl:1},
-  a_hand:{n:'Hände des Königs',d:'Heilt 35 % LP eines Gefährten und entfernt Leiden.',cost:10,tgt:'ally',kind:'heal',healPct:.35,cleanse:1,lvl:3},
-  a_wirbel:{n:'Klingenwirbel',d:'2 Hiebe gegen alle Feinde (je 85 %).',cost:16,tgt:'enemies',kind:'phys',pow:.85,hits:2,lvl:6},
-  a_ult:{n:'Der König kehrt wieder',d:'Alle Feinde 240 %. Gefährten: Stärke & Erholung.',tgt:'enemies',kind:'phys',pow:2.4,ult:1,eff:[{s:'atkUp',dur:3,on:'allies'},{s:'regen',dur:3,on:'allies'}]},
-  // Legolas
-  l_doppel:{n:'Doppelschuss',d:'2 Pfeile (je 80 %), hohe Krit-Chance.',cost:6,tgt:'enemy',kind:'phys',pow:.8,hits:2,critB:.1,lvl:1},
-  l_blick:{n:'Elbenblick',d:'Leichter Schuss, markiert das Ziel (+30 % Schaden, 3). Schneller Zug.',cost:5,tgt:'enemy',kind:'phys',pow:.5,eff:[{s:'mark',dur:3}],delay:.6,lvl:1},
-  l_hagel:{n:'Pfeilhagel',d:'3 Salven auf alle Feinde (je 55 %).',cost:14,tgt:'enemies',kind:'phys',pow:.55,hits:3,lvl:3},
-  l_meister:{n:'Meisterschuss',d:'Präziser Schuss (230 %), +30 % Krit, 35 % Betäubung.',cost:15,tgt:'enemy',kind:'phys',pow:2.3,critB:.3,eff:[{s:'stun',ch:.35,dur:1}],lvl:6},
-  l_ult:{n:'Sturm des Düsterwalds',d:'6 Pfeile auf zufällige Feinde (je 85 %).',tgt:'randomEnemies',kind:'phys',pow:.85,hits:6,ult:1},
-  // Gimli
-  g_axt:{n:'Axtwurf',d:'135 % Schaden, 70 % Rüstungsbruch.',cost:6,tgt:'enemy',kind:'phys',pow:1.35,eff:[{s:'defDown',ch:.7,dur:3}],lvl:1},
-  g_baruk:{n:'Baruk Khazâd!',d:'Selbst: Stärke (3), Wacht & Provokation (2).',cost:8,tgt:'self',kind:'buff',eff:[{s:'atkUp',dur:3,on:'self'},{s:'defUp',dur:2,on:'self'},{s:'taunt',dur:2,on:'self'}],lvl:1},
-  g_spalt:{n:'Spaltender Hieb',d:'Alle Feinde 100 %, 25 % Betäubung.',cost:14,tgt:'enemies',kind:'phys',pow:1,eff:[{s:'stun',ch:.25,dur:1}],lvl:3},
-  g_liste:{n:'Einer mehr für die Liste',d:'Wuchtiger Schlag (270 %). Langsamer Zug.',cost:14,tgt:'enemy',kind:'phys',pow:2.7,delay:1.3,lvl:6},
-  g_ult:{n:'Zorn von Khazad-dûm',d:'Alle Feinde 210 %, 60 % Betäubung.',tgt:'enemies',kind:'phys',pow:2.1,ult:1,eff:[{s:'stun',ch:.6,dur:1}]},
-  // Gandalf
-  ga_blitz:{n:'Stabblitz',d:'Magieschaden 160 %.',cost:8,tgt:'enemy',kind:'mag',pow:1.6,lvl:1},
-  ga_feuer:{n:'Flamme von Anor',d:'Alle Feinde 100 % Magie, 60 % Brand.',cost:16,tgt:'enemies',kind:'mag',pow:1,eff:[{s:'burn',ch:.6,dur:3}],lvl:1},
-  ga_schild:{n:'Schutzbann',d:'Alle Gefährten: Schild (Magie × 1,6).',cost:14,tgt:'allies',kind:'buff',eff:[{s:'shield',dur:3,on:'allies',val:1.6}],lvl:1},
-  ga_licht:{n:'Licht der Istari',d:'Heilt alle Gefährten (90 % Magie) und entfernt Leiden.',cost:18,tgt:'allies',kind:'heal',pow:.9,cleanse:1,lvl:3},
-  ga_bann:{n:'Du kannst nicht vorbei!',d:'Magie 240 %, betäubt sicher.',cost:24,tgt:'enemy',kind:'mag',pow:2.4,eff:[{s:'stun',ch:1,dur:1}],lvl:6},
-  ga_ult:{n:'Der Weiße Reiter',d:'Alle Feinde 240 % Magie, heilt alle Gefährten um 30 %.',tgt:'enemies',kind:'mag',pow:2.4,ult:1,eff:[{s:'healPct',v:.3,on:'allies'}]},
-  // Frodo
-  f_stich:{n:'Stich leuchtet',d:'130 % Schaden, +35 % gegen Orks.',cost:4,tgt:'enemy',kind:'phys',pow:1.3,critB:.1,bonusTag:'ork',lvl:1},
-  f_ring:{n:'Der Eine Ring',d:'Unsichtbar & Stärke (2). Erhöht die Last des Rings.',cost:0,tgt:'self',kind:'buff',eff:[{s:'invis',dur:2,on:'self'},{s:'atkUp',dur:2,on:'self'}],delay:.5,corrupt:25,lvl:1},
-  f_phiole:{n:'Phiole Galadriels',d:'Alle Feinde 90 % Magie, 80 % Schwäche.',cost:12,tgt:'enemies',kind:'mag',pow:.9,eff:[{s:'atkDown',ch:.8,dur:3}],lvl:3},
-  f_mut:{n:'Mut der Halblinge',d:'Alle Gefährten: Eile (3) und +8 MP.',cost:14,tgt:'allies',kind:'buff',eff:[{s:'haste',dur:3,on:'allies'},{s:'mp',v:8,on:'allies'}],lvl:6},
-  f_ult:{n:'Für das Auenland!',d:'Garantierter kritischer Treffer (320 %).',tgt:'enemy',kind:'phys',pow:3.2,alwaysCrit:1,ult:1},
-  // Sam
-  s_pfanne:{n:'Bratpfanne',d:'125 % Schaden, 30 % Betäubung.',cost:5,tgt:'enemy',kind:'phys',pow:1.25,eff:[{s:'stun',ch:.3,dur:1}],lvl:1},
-  s_proviant:{n:'Proviant',d:'Heilt einen Gefährten (150 % Magie) + Erholung.',cost:8,tgt:'ally',kind:'heal',pow:1.5,eff:[{s:'regen',dur:3,on:'target'}],lvl:1},
-  s_treue:{n:'Treuer Beschützer',d:'Selbst: Provokation & Wacht (2).',cost:7,tgt:'self',kind:'buff',eff:[{s:'taunt',dur:2,on:'self'},{s:'defUp',dur:2,on:'self'}],lvl:3},
-  s_eintopf:{n:'Kaninchen mit Kräutern',d:'Heilt alle (100 % Magie) + Erholung.',cost:20,tgt:'allies',kind:'heal',pow:1,eff:[{s:'regen',dur:3,on:'allies'}],lvl:6},
-  s_ult:{n:'Ich kann dich tragen!',d:'Belebt alle Gefallenen (50 %), heilt alle um 40 %.',tgt:'allies',kind:'revive',ult:1},
-  // Boromir
-  b_stoss:{n:'Schildstoß',d:'110 % Schaden, 35 % Betäubung.',cost:6,tgt:'enemy',kind:'phys',pow:1.1,eff:[{s:'stun',ch:.35,dur:1}],lvl:1},
-  b_horn:{n:'Horn Gondors',d:'Selbst: Provokation (3). Gefährten: Wacht (2).',cost:10,tgt:'allies',kind:'buff',eff:[{s:'taunt',dur:3,on:'self'},{s:'defUp',dur:2,on:'allies'}],lvl:1},
-  b_vergelt:{n:'Vergeltung',d:'Selbst: Konter & Wacht (3).',cost:10,tgt:'self',kind:'buff',eff:[{s:'counter',dur:3,on:'self'},{s:'defUp',dur:3,on:'self'}],lvl:3},
-  b_gefecht:{n:'Letztes Gefecht',d:'180 % Schaden, bis doppelt so stark bei wenig LP.',cost:15,tgt:'enemy',kind:'phys',pow:1.8,lowHpBonus:1,lvl:6},
-  b_ult:{n:'Für Gondor!',d:'Alle Feinde 180 %. Gefährten: Schild (Angriff × 2).',tgt:'enemies',kind:'phys',pow:1.8,ult:1,eff:[{s:'shield',dur:3,on:'allies',val:2,valStat:'atk'}]},
-  // Éowyn
-  e_tanz:{n:'Klingentanz',d:'2 schnelle Hiebe (je 80 %).',cost:6,tgt:'enemy',kind:'phys',pow:.8,hits:2,lvl:1},
-  e_ritt:{n:'Ritt der Rohirrim',d:'Alle Feinde 95 %.',cost:12,tgt:'enemies',kind:'phys',pow:.95,lvl:1},
-  e_schildmaid:{n:'Schildmaid',d:'Selbst: Stärke & Eile (3).',cost:8,tgt:'self',kind:'buff',eff:[{s:'atkUp',dur:3,on:'self'},{s:'haste',dur:3,on:'self'}],lvl:3},
-  e_keinmann:{n:'Kein Mann bin ich!',d:'200 % Schaden, gegen Bosse ×1,8.',cost:18,tgt:'enemy',kind:'phys',pow:2,bossBonus:1.8,lvl:6},
-  e_ult:{n:'Tod!',d:'Alle Feinde 220 %. Gefährten: Stärke (3).',tgt:'enemies',kind:'phys',pow:2.2,ult:1,eff:[{s:'atkUp',dur:3,on:'allies'}]}
-};
-
-const ESKILLS={
-  e_slash:{n:'Hieb',tgt:'enemy',kind:'phys',pow:1,w:3},
-  e_heavy:{n:'Wuchtschlag',tgt:'enemy',kind:'phys',pow:1.5,w:1.5,delay:1.2},
-  e_bite:{n:'Biss',tgt:'enemy',kind:'phys',pow:1,w:3,eff:[{s:'bleed',ch:.35,dur:3}]},
-  e_howl:{n:'Heulen',tgt:'allies',kind:'buff',w:1,cd:4,eff:[{s:'atkUp',dur:3,on:'allies'}]},
-  e_arrow:{n:'Pfeilschuss',tgt:'enemy',kind:'phys',pow:1.1,w:3},
-  e_volley:{n:'Pfeilsalve',tgt:'enemies',kind:'phys',pow:.6,w:1.4},
-  e_shriek:{n:'Schrei der Ringgeister',tgt:'enemies',kind:'mag',pow:.55,w:1.5,cd:3,eff:[{s:'atkDown',ch:.6,dur:2}]},
-  e_morgul:{n:'Morgulklinge',tgt:'enemy',kind:'mag',pow:1.4,w:2,eff:[{s:'poison',ch:.7,dur:3}]},
-  e_drain:{n:'Grabeskälte',tgt:'enemy',kind:'mag',pow:1.2,w:2,eff:[{s:'slow',ch:.6,dur:2}]},
-  e_smash:{n:'Keulenschwung',tgt:'enemies',kind:'phys',pow:.85,w:2,eff:[{s:'stun',ch:.2,dur:1}]},
-  e_web:{n:'Spinnennetz',tgt:'enemy',kind:'phys',pow:.3,w:1.2,cd:3,eff:[{s:'stun',ch:.75,dur:1}]},
-  e_sting:{n:'Giftstachel',tgt:'enemy',kind:'phys',pow:1.6,w:2,eff:[{s:'poison',ch:.85,dur:3}]},
-  e_whip:{n:'Flammenpeitsche',tgt:'enemies',kind:'mag',pow:.95,w:2,eff:[{s:'burn',ch:.55,dur:3}]},
-  e_firesword:{n:'Flammenschwert',tgt:'enemy',kind:'phys',pow:2,w:1.5,delay:1.2},
-  e_staff:{n:'Blitz aus Orthanc',tgt:'enemy',kind:'mag',pow:1.5,w:3},
-  e_voice:{n:'Stimme Sarumans',tgt:'enemies',kind:'mag',pow:.4,w:1.5,cd:3,eff:[{s:'atkDown',ch:.7,dur:2},{s:'slow',ch:.4,dur:2}]},
-  e_summon:{n:'Ruf nach Isengart',tgt:'self',kind:'summon',summon:'uruk',w:1.6,cd:4},
-  e_brood:{n:'Brut Kankras',tgt:'self',kind:'summon',summon:'spiderling',w:1.4,cd:4},
-  e_summon_naz:{n:'Ruf der Neun',tgt:'self',kind:'summon',summon:'nazgul',w:1.2,cd:6},
-  e_trample:{n:'Zertrampeln',tgt:'enemies',kind:'phys',pow:1.15,w:2},
-  e_mace:{n:'Morgul-Streitkolben',tgt:'enemy',kind:'phys',pow:1.8,w:2,eff:[{s:'defDown',ch:.6,dur:3}]},
-  e_darkness:{n:'Welle der Finsternis',tgt:'enemies',kind:'mag',pow:1.05,w:2,eff:[{s:'randomDebuff',ch:.6,dur:2}]},
-  e_gaze:{n:'Blick des Auges',tgt:'enemy',kind:'mag',pow:1.9,w:1.5,eff:[{s:'mark',ch:1,dur:3}]},
-  e_dark_might:{n:'Dunkle Macht',tgt:'self',kind:'buff',w:.8,cd:5,eff:[{s:'regen',dur:3,on:'self'},{s:'atkUp',dur:3,on:'self'}]},
-  e_warcry:{n:'Kriegsschrei',tgt:'allies',kind:'buff',w:1,cd:4,eff:[{s:'atkUp',dur:3,on:'allies'}]}
-};
-for(const k in SKILLS) SKILLS[k].id=k;
-for(const k in ESKILLS) ESKILLS[k].id=k;
-
-const ENEMIES={
-  wolf:{n:'Wilder Wolf',i:'🐺',hp:42,atk:10,def:4,mag:3,res:3,spd:13,sk:['e_bite','e_bite','e_howl'],xp:18,g:5,tags:['tier']},
-  wight:{n:'Grabunhold',i:'💀',hp:80,atk:10,def:6,mag:13,res:10,spd:9,sk:['e_drain','e_slash'],xp:30,g:14,tags:['geist']},
-  orc:{n:'Ork',i:'👺',hp:58,atk:12,def:6,mag:3,res:4,spd:9,sk:['e_slash','e_heavy'],xp:20,g:8,tags:['ork']},
-  orc_archer:{n:'Ork-Schütze',i:'🏹',tint:'hue-rotate(250deg) saturate(.6) brightness(.8)',hp:46,atk:12,def:4,mag:3,res:4,spd:12,sk:['e_arrow','e_arrow','e_volley'],xp:20,g:9,tags:['ork']},
-  goblin:{n:'Moria-Ork',i:'👺',tint:'hue-rotate(80deg) brightness(.8)',hp:40,atk:10,def:3,mag:2,res:3,spd:14,sk:['e_slash','e_bite'],xp:15,g:6,tags:['ork']},
-  warg:{n:'Warg',i:'🐺',tint:'brightness(.55) sepia(.6) hue-rotate(-20deg)',hp:72,atk:13,def:5,mag:3,res:4,spd:14,sk:['e_bite','e_bite','e_howl'],xp:26,g:10,tags:['tier']},
-  uruk:{n:'Uruk-hai',i:'👹',hp:84,atk:15,def:9,mag:3,res:6,spd:10,sk:['e_slash','e_heavy'],xp:30,g:12,tags:['ork']},
-  berserker:{n:'Uruk-Berserker',i:'👹',tint:'saturate(1.8) brightness(1.1)',hp:100,atk:18,def:6,mag:3,res:5,spd:11,sk:['e_heavy','e_slash','e_warcry'],xp:38,g:15,tags:['ork']},
-  cave_troll:{n:'Höhlentroll',i:'🧌',hp:220,atk:20,def:12,mag:3,res:6,spd:6,sk:['e_smash','e_heavy','e_slash'],xp:70,g:30,tags:['troll'],elite:1},
-  spiderling:{n:'Spinnenbrut',i:'🕷️',hp:38,atk:11,def:4,mag:3,res:4,spd:15,sk:['e_sting','e_bite'],xp:14,g:5,tags:['tier']},
-  haradrim:{n:'Haradrim',i:'🗡️',tint:'hue-rotate(300deg) saturate(1.4)',hp:70,atk:14,def:8,mag:3,res:6,spd:11,sk:['e_arrow','e_slash'],xp:28,g:12,tags:[]},
-  olifant:{n:'Olifant',i:'🐘',tint:'sepia(.5) brightness(.8)',hp:320,atk:20,def:14,mag:3,res:8,spd:5,sk:['e_trample','e_heavy'],xp:90,g:40,tags:['tier'],elite:1},
-  mordor_troll:{n:'Bergtroll',i:'🧌',tint:'brightness(.65) contrast(1.3)',hp:210,atk:22,def:14,mag:3,res:7,spd:7,sk:['e_smash','e_heavy'],xp:75,g:30,tags:['troll'],elite:1},
-  nazgul:{n:'Ringgeist',i:'👤',tint:'brightness(.35) drop-shadow(0 0 6px #c22)',hp:150,atk:14,def:8,mag:15,res:12,spd:11,sk:['e_morgul','e_shriek','e_slash'],xp:60,g:25,tags:['geist'],elite:1},
-  // Bosse
-  black_rider:{n:'Schwarzer Reiter',i:'🐎',tint:'brightness(.3) drop-shadow(0 0 8px #b11)',hp:270,atk:13,def:8,mag:14,res:11,spd:11,sk:['e_morgul','e_shriek','e_slash'],xp:90,g:50,tags:['geist'],boss:1},
-  balrog:{n:'Balrog',i:'👿',tint:'drop-shadow(0 0 14px #ff5a1f) saturate(1.5)',hp:420,atk:22,def:13,mag:20,res:13,spd:9,sk:['e_whip','e_firesword','e_heavy'],xp:180,g:90,tags:['dämon'],boss:1},
-  lurtz:{n:'Lurtz',i:'👹',tint:'brightness(.75) contrast(1.4) drop-shadow(0 0 8px #fff3)',hp:330,atk:21,def:12,mag:4,res:8,spd:11,sk:['e_heavy','e_arrow','e_slash','e_warcry'],xp:170,g:80,tags:['ork'],boss:1},
-  saruman:{n:'Saruman',i:'🧙‍♂️',tint:'grayscale(1) brightness(1.5) drop-shadow(0 0 10px #fff8)',hp:360,atk:10,def:10,mag:23,res:18,spd:12,sk:['e_staff','e_voice','e_summon','e_staff'],xp:220,g:110,tags:[],boss:1},
-  shelob:{n:'Kankra',i:'🕷️',tint:'brightness(.6) drop-shadow(0 0 12px #6a2a8a)',hp:420,atk:23,def:15,mag:6,res:12,spd:12,sk:['e_sting','e_web','e_bite','e_brood'],xp:250,g:120,tags:['tier'],boss:1},
-  witch_king:{n:'Hexenkönig von Angmar',i:'👑',tint:'brightness(.5) drop-shadow(0 0 12px #c22)',hp:460,atk:23,def:14,mag:23,res:16,spd:11,sk:['e_mace','e_shriek','e_morgul','e_dark_might'],xp:300,g:150,tags:['geist'],boss:1},
-  sauron:{n:'Sauron',i:'👁️',tint:'drop-shadow(0 0 18px #ff3c00) saturate(1.6)',hp:560,atk:26,def:17,mag:27,res:17,spd:10,sk:['e_darkness','e_gaze','e_mace','e_summon_naz','e_dark_might'],xp:0,g:0,tags:[],boss:1}
-};
-
-const ITEMS={
-  lembas:{n:'Lembas',d:'Elbenbrot. Heilt 50 % LP eines Gefährten.',tgt:'ally',price:30,common:1},
-  miruvor:{n:'Miruvor',d:'Cordial aus Bruchtal. +50 % MP und +25 Ultimate.',tgt:'ally',price:30,common:1},
-  athelas:{n:'Athelas',d:'Königskraut. Belebt einen Gefallenen (40 %) oder heilt 30 % und entfernt Leiden.',tgt:'anyAlly',price:45,common:1},
-  entwasser:{n:'Ent-Trunk',d:'Alle Gefährten: Stärke & Wacht (3).',tgt:'allies',price:55,battleOnly:1},
-  sternenglas:{n:'Sternenglas',d:'Licht Earendils: Schaden an allen Feinden und Schwäche (2).',tgt:'enemies',price:80,battleOnly:1}
-};
-
-const CH=[
-  {n:'Das Auenland',bg:'bg-shire',lvl:1,
-   story:['Bilbos Geburtstagsfest ist vorüber, und in Beutelsend liegt ein schlichter goldener Ring auf dem Kaminsims. Gandalf hat sein Geheimnis gelüftet: Es ist der Eine Ring.','Schwarze Reiter fragen in Hobbingen nach einem Beutlin. Die Gefährten müssen das Auenland verlassen, bevor die Straße nach Bockland gesperrt ist.'],
-   normal:[['wolf','wolf'],['wolf','wolf','wolf'],['wight']],elite:[['wight','wolf'],['wolf','wolf','wolf','wolf']],boss:['black_rider']},
-  {n:'Die Wetterspitze',bg:'bg-weather',lvl:2,
-   story:['Hinter Bree führt Streicher die Gruppe durch die Mückenwassermoore. Auf der alten Wachtturm-Ruine von Amon Sûl brennt nachts ein kleines Feuer.','Fünf dunkle Gestalten steigen den Hang hinauf. Ihre Klingen sind kalt wie Grabstein.'],
-   normal:[['orc','orc'],['orc','orc_archer'],['wolf','warg']],elite:[['warg','warg','orc']],boss:['nazgul','nazgul']},
-  {n:'Die Minen von Moria',bg:'bg-moria',lvl:4,
-   story:['Der Caradhras hat die Gemeinschaft zurückgewiesen. Es bleibt nur der Weg unter dem Berg: Khazad-dûm, die verlassene Zwergenstadt.','In der Kammer Mazarbul hallen Trommeln aus der Tiefe. Etwas Älteres als die Orks erwacht in den Feuern unter der Brücke.'],
-   normal:[['goblin','goblin','goblin'],['goblin','goblin','orc_archer'],['orc','goblin']],elite:[['cave_troll','goblin']],boss:['balrog']},
-  {n:'Amon Hen',bg:'bg-amonhen',lvl:6,
-   story:['Nach Lothlórien treiben die Boote den Anduin hinab bis zu den Argonath. Am Hang von Amon Hen trennt sich die Gemeinschaft.','Aus dem Wald brechen Uruk-hai mit der weißen Hand auf dem Schild. Ihr Anführer ist schneller und stärker als jeder Ork zuvor.'],
-   normal:[['uruk','uruk'],['uruk','orc_archer','orc'],['berserker']],elite:[['berserker','uruk']],boss:['lurtz','uruk']},
-  {n:'Helms Klamm & Isengart',bg:'bg-helm',lvl:8,
-   story:['Rohan steht am Abgrund. Das Volk zieht sich in die Hornburg zurück, während zehntausend Uruk-hai durch den Regen marschieren.','Wenn die Mauer hält, wartet Isengart. Im Turm Orthanc sitzt der Weiße Zauberer, und seine Stimme ist gefährlicher als jedes Heer.'],
-   normal:[['uruk','berserker'],['uruk','uruk','uruk'],['warg','uruk']],elite:[['warg','warg','berserker']],boss:['saruman']},
-  {n:'Cirith Ungol',bg:'bg-cirith',lvl:10,
-   story:['Über die Treppen von Cirith Ungol klettert der Weg hinauf an die Grenze Mordors. Der Führer Sméagol schaut sich zu oft um.','Im Tunnel riecht es nach Fäulnis. Netze, dick wie Taue, hängen in der Dunkelheit, und dahinter wartet etwas mit vielen Augen.'],
-   normal:[['orc','orc','orc_archer'],['spiderling','spiderling','spiderling'],['uruk','orc_archer']],elite:[['mordor_troll']],boss:['shelob','spiderling']},
-  {n:'Die Pelennor-Felder',bg:'bg-pelennor',lvl:12,
-   story:['Minas Tirith brennt. Die Rammbock-Bestie Grond schlägt gegen das Tor, als im Morgengrauen die Hörner Rohans erklingen.','Über dem Schlachtfeld kreist ein geflügelter Schatten. Kein lebender Mann kann den Herrn der Neun aufhalten, sagt die alte Weissagung.'],
-   normal:[['haradrim','haradrim','orc'],['orc','orc','mordor_troll'],['uruk','haradrim']],elite:[['olifant'],['nazgul','haradrim']],boss:['witch_king']},
-  {n:'Der Schicksalsberg',bg:'bg-doom',lvl:14,
-   story:['Vor dem Schwarzen Tor fordern die Heerführer des Westens Sauron heraus, um sein Auge abzulenken. Weit im Osten kriecht der Ringträger den Orodruin hinauf.','In den Feuern des Schicksalsbergs wurde der Ring geschmiedet. Nur dort kann er vernichtet werden, und der Dunkle Herrscher stellt sich euch selbst entgegen.'],
-   normal:[['mordor_troll','orc'],['nazgul','orc_archer'],['uruk','uruk','berserker']],elite:[['mordor_troll','mordor_troll'],['nazgul','nazgul']],boss:['sauron']}
-];
-
-const NODE={
-  battle:{g:'⚔',n:'Kampf',d:'Feinde auf dem Weg'},
-  elite:{g:'☠',n:'Elite',d:'Gefährlich, reiche Beute'},
-  event:{g:'?',n:'Begegnung',d:'Unbekanntes Ereignis'},
-  rest:{g:'♨',n:'Lagerfeuer',d:'Rasten oder üben'},
-  shop:{g:'⚖',n:'Händler',d:'Vorräte & Schmied'},
-  boss:{g:'✦',n:'Boss',d:''}
-};
-
-/* ---------------- Spielstand ---------------- */
-let S=null;   // persistenter Zustand
-let B=null;   // Kampf
-
-function xpNeed(l){ return Math.round(25 + l*22 + l*l*1.5); }
-function heroStats(h){
-  const b=HEROES[h.key], m=1+.12*(h.lvl-1), w=1+.08*(h.wpn||0), r=1+.08*(h.arm||0);
-  return {maxHp:Math.round(b.hp*m*r), maxMp:Math.round(b.mp*(1+.06*(h.lvl-1))), atk:Math.round(b.atk*m*w), mag:Math.round(b.mag*m*w), def:Math.round(b.def*m*r), res:Math.round(b.res*m*r), spd:b.spd, crit:b.crit};
-}
-function newHero(k){ const h={key:k,lvl:1,xp:0,limit:0,wpn:0,arm:0,corruption:0}; const st=heroStats(h); h.hp=st.maxHp; h.mp=st.maxMp; return h; }
-function heroSkills(h){ const b=HEROES[h.key]; return b.sk.map(id=>SKILLS[id]).filter(s=>s.lvl<=h.lvl); }
-function save(){ if(S) store.set(SAVE_KEY, S); }
-function snapshot(){ const c=JSON.parse(JSON.stringify(S)); delete c.snap; S.snap=c; }
-
-/* ---------------- Rendering-Hilfen ---------------- */
-const app=$('#app');
-function screen(html, cls=''){ app.innerHTML=`<div class="${cls}" style="flex:1;display:flex;flex-direction:column">${html}</div>`; window.scrollTo(0,0); }
-function toast(msg){ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2200); }
-function modal(html){ const m=$('#modal'); m.innerHTML=`<div class="mbox">${html}</div>`; m.hidden=false; m.onclick=e=>{ if(e.target===m) closeModal(); }; }
-function closeModal(){ const m=$('#modal'); m.hidden=true; m.innerHTML=''; }
-function bar(cls,v,max){ return `<div class="bar ${cls}${cls==='hp'&&v/max<.3?' low':''}"><i style="width:${clamp(v/max*100,0,100)}%"></i></div>`; }
-
-/* ---------------- Titel ---------------- */
-function titleScreen(){
-  const sv=store.get(SAVE_KEY);
-  screen(`<div class="title-screen"><div class="wrap">
-    <div class="ring-glow"><div class="ring"></div></div>
-    <div class="eyebrow">Ein rundenbasiertes Action-RPG</div>
-    <h1 class="logo">Ringfahrt</h1>
-    <p class="tagline">Führe vier Gefährten vom Auenland bis zum Schicksalsberg. Triff im richtigen Moment, pariere die Hiebe der Feinde und entfessle die Kraft der Gemeinschaft.</p>
-    <div class="menu">
-      <button class="btn primary" id="b-new">Neue Reise</button>
-      ${sv&&sv.party?`<button class="btn" id="b-cont">Reise fortsetzen · ${esc(CH[sv.ch]?CH[sv.ch].n:'')}</button>`:''}
-      <button class="btn ghost" id="b-help">Anleitung</button>
-    </div>
-    <div class="opts">${optToggles()}</div>
-    <p class="foot">Inoffizielles Fan-Spiel. Figuren und Orte nach J.R.R. Tolkien; alle Texte, Grafiken und Spielmechaniken sind eigene Umsetzungen.</p>
-  </div></div>`);
-  $('#b-new').onclick=()=>{ sfx('click'); partySelect(); };
-  if($('#b-cont')) $('#b-cont').onclick=()=>{ sfx('click'); S=store.get(SAVE_KEY); if(S.pending==='intro') chapterIntro(); else mapScreen(); };
-  $('#b-help').onclick=()=>helpModal();
-  bindToggles();
-}
-function optToggles(){
-  return `<button class="toggle ${SET.auto?'on':''}" data-opt="auto" title="Timing-Eingaben automatisch (immer „Gut“ beim Angriff)">Auto-Timing: ${SET.auto?'an':'aus'}</button>
-  <button class="toggle ${SET.sound?'on':''}" data-opt="sound">Ton: ${SET.sound?'an':'aus'}</button>
-  <button class="toggle on" data-opt="speed">Tempo: ${SET.speed}×</button>`;
-}
-function bindToggles(root=document){
-  root.querySelectorAll('[data-opt]').forEach(b=>b.onclick=()=>{
-    const k=b.dataset.opt;
-    if(k==='speed') SET.speed = SET.speed===1?1.5:SET.speed===1.5?2:1; else SET[k]=!SET[k];
-    saveSet(); sfx('click');
-    const p=b.parentElement; p.innerHTML=optToggles(); bindToggles(p);
-  });
-}
-function helpModal(){
-  modal(`<div class="help">
-    <h2>Anleitung</h2>
-    <h3>Die Reise</h3>
-    <p>Acht Kapitel führen vom Auenland zum Schicksalsberg. Auf jeder Kapitelkarte wählst du pro Etappe einen Weg: Kampf, Elite, Begegnung, Lagerfeuer oder Händler. Am Ende wartet ein Boss. Lebenspunkte und MP bleiben zwischen den Kämpfen erhalten, plane also deine Rast.</p>
-    <h3>Zugreihenfolge</h3>
-    <p>Wer schneller ist, handelt öfter. Die Leiste oben zeigt die nächsten Züge. Manche Fähigkeiten sind schnell (früher wieder dran), schwere Schläge verzögern den nächsten Zug.</p>
-    <h3>Timing-Angriffe</h3>
-    <p>Bei jedem Angriff schrumpft ein weißer Ring auf den goldenen Kreis zu. Tippe oder drücke <b>Leertaste</b>, wenn sie sich decken:</p>
-    <ul><li><b>Perfekt</b>: 150 % Schaden, höhere Krit-Chance, Ultimate-Bonus</li><li><b>Gut</b>: 115 %</li><li><b>Daneben</b>: 85 %</li></ul>
-    <h3>Paraden</h3>
-    <p>Greift ein Feind an, erscheint ein silberner Kreis. <b>Perfekt</b> pariert den Treffer vollständig und kontert bei Einzelangriffen. <b>Gut</b> halbiert den Schaden.</p>
-    <h3>Ultimate-Leiste</h3>
-    <p>Die goldene Leiste füllt sich durch Treffer, perfekte Eingaben und erlittenen Schaden. Ist sie voll, kann der Held seine Ultimate einsetzen.</p>
-    <h3>Zustände</h3>
-    <ul>${Object.values(STATUS).map(s=>`<li><span class="chip" style="color:${s.c}">${s.l}</span> <b>${s.n}</b>: ${s.d}</li>`).join('')}</ul>
-    <h3>Der Eine Ring</h3>
-    <p>Frodo kann den Ring überstreifen und unsichtbar werden. Jede Nutzung erhöht die Last. Bei 100 bricht Frodo für einen Zug zusammen.</p>
-    <div class="row-gap" style="margin-top:16px"><button class="btn primary" onclick="closeModal()">Verstanden</button></div>
-  </div>`);
-}
-
-/* ---------------- Gemeinschaft wählen ---------------- */
-function partySelect(){
-  let sel=['aragorn','legolas','gandalf','sam'], diff='normal';
-  const maxS={hp:140,atk:19,mag:19,def:14,spd:16};
-  function draw(){
-    screen(`<div class="wrap">
-      <div class="eyebrow">Neue Reise</div>
-      <h2 style="font-size:clamp(26px,5vw,40px)">Wähle deine Gemeinschaft</h2>
-      <p class="muted" style="margin:6px 0 0">Vier Gefährten ziehen los. Mische Kämpfer, Heiler und Unterstützer.</p>
-      <div class="select-grid">${Object.entries(HEROES).map(([k,h])=>{
-        const idx=sel.indexOf(k);
-        return `<button class="hcard ${idx>=0?'sel':''}" data-k="${k}" aria-pressed="${idx>=0}">
-          ${idx>=0?`<span class="badge-sel">${idx+1}</span>`:''}
-          <div class="top"><div class="em" style="--c:${h.c}">${h.i}</div><div><h3>${h.n}</h3><div class="role">${h.role}</div></div></div>
-          <div class="stat-lines">
-            ${[['LP','hp'],['ANG','atk'],['MAG','mag'],['VER','def'],['TEM','spd']].map(([l,s])=>`<span>${l}</span><div class="sbar"><i style="width:${h[s]/maxS[s]*100}%"></i></div>`).join('')}
-          </div>
-          <div class="sk">${h.sk.map(id=>SKILLS[id]).filter(s=>s.lvl<=1).map(s=>s.n).join(' · ')} · <i>Ultimate:</i> ${SKILLS[h.ult].n}</div>
-        </button>`}).join('')}</div>
-      <div class="bar-actions">
-        <div class="row-gap" style="align-items:center"><span class="eyebrow" style="color:var(--muted)">Schwierigkeit</span>
-          <div class="seg">${Object.entries(DIFF).map(([k,d])=>`<button data-d="${k}" class="${k===diff?'on':''}">${d.n}</button>`).join('')}</div></div>
-        <div class="row-gap"><button class="btn ghost" id="b-back">Zurück</button><button class="btn primary" id="b-go" ${sel.length===4?'':'disabled'}>Aufbrechen (${sel.length}/4)</button></div>
-      </div></div>`);
-    app.querySelectorAll('.hcard').forEach(c=>c.onclick=()=>{ const k=c.dataset.k; const i=sel.indexOf(k); if(i>=0) sel.splice(i,1); else if(sel.length<4) sel.push(k); else { sel.shift(); sel.push(k); } sfx('click'); draw(); });
-    app.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{ diff=b.dataset.d; sfx('click'); draw(); });
-    $('#b-back').onclick=titleScreen;
-    $('#b-go').onclick=()=>{ if(sel.length!==4) return; sfx('buff');
-      S={v:1,diff,party:sel.map(newHero),gold:40,items:{lembas:2,miruvor:1,athelas:1,entwasser:0,sternenglas:0},ch:0,map:null,smith:0,stats:{battles:0,perfect:0,parry:0},pending:'intro'};
-      save(); chapterIntro(); };
-  }
-  draw();
-}
-
-/* ---------------- Kapitel ---------------- */
-function chapterIntro(){
-  const c=CH[S.ch]; S.pending='intro'; save();
-  screen(`<div class="center-screen ${c.bg}" style="flex:1"><div class="wrap" style="display:flex;flex-direction:column;gap:14px;align-items:flex-start">
-    <div class="big-num">KAPITEL ${['I','II','III','IV','V','VI','VII','VIII'][S.ch]} VON VIII</div>
-    <h2 style="font-size:clamp(32px,7vw,56px);color:var(--gold-2)">${c.n}</h2>
-    <div class="story">${c.story.map(p=>`<p>${p}</p>`).join('')}</div>
-    <p class="muted" style="font-family:var(--font-ui);font-size:14px;margin:0">Gegnerstufe ${c.lvl}–${c.lvl+1}</p>
-    <button class="btn primary" id="b-on">Weiter</button></div></div>`);
-  $('#b-on').onclick=()=>{ sfx('click');
-    // Gefährten zum Kapitelstart vollständig erholt
-    S.party.forEach(h=>{ const st=heroStats(h); h.hp=Math.max(h.hp, Math.round(st.maxHp*.6)); h.mp=Math.max(h.mp, Math.round(st.maxMp*.6)); if(h.hp<=0) h.hp=Math.round(st.maxHp*.6); });
-    S.map=genMap(); S.pending=null; snapshot(); save(); mapScreen(); };
-}
-function genMap(){
-  const rows=[]; const W={battle:44,elite:14,event:22,rest:10,shop:10};
-  for(let r=0;r<4;r++){
-    const n= r===0?2:ri(2,3); const set=new Set();
-    if(r===3) set.add('rest');
-    let guard=0;
-    while(set.size<n && guard++<50){
-      let tot=0; const pool=Object.entries(W).filter(([k])=>!(r===0&&(k==='elite'||k==='shop'||k==='rest')));
-      pool.forEach(([,w])=>tot+=w); let x=Math.random()*tot; let t='battle';
-      for(const [k,w] of pool){ x-=w; if(x<=0){t=k;break;} }
-      set.add(t);
-    }
-    if(r===0) set.add('battle');
-    rows.push([...set].slice(0,3));
-  }
-  rows.push(['boss']);
-  return {rows,cur:0,picks:[]};
-}
-
-/* ---------------- Karte ---------------- */
-function mapScreen(){
-  const c=CH[S.ch], M=S.map; save();
-  const roman=['I','II','III','IV','V','VI','VII','VIII'][S.ch];
-  const bossName=CH[S.ch].boss.map(k=>ENEMIES[k].n).filter((v,i,a)=>a.indexOf(v)===i).join(' & ');
-  screen(`<div class="map-screen ${c.bg}" style="flex:1"><div class="wrap">
-    <div class="map-head">
-      <div><div class="eyebrow">Kapitel ${roman}</div><h2>${c.n}</h2></div>
-      <div class="purse"><span>Gold <b>${S.gold}</b></span>${Object.entries(ITEMS).map(([k,it])=>`<span>${it.n} <b>${S.items[k]||0}</b></span>`).join('')}</div>
-    </div>
-    <div class="party-strip">${S.party.map(h=>{ const st=heroStats(h), b=HEROES[h.key]; return `<div class="pmini"><div class="em">${b.i}</div><div class="info"><b>${b.n} · St. ${h.lvl}</b>${bar('hp',h.hp,st.maxHp)}${bar('mp',h.mp,st.maxMp)}<span class="muted">${h.hp}/${st.maxHp} LP</span></div></div>`}).join('')}</div>
-    <div class="path">${M.rows.map((row,ri_)=>{
-      const step = ri_===M.rows.length-1 ? 'BOSS' : `ETAPPE ${ri_+1}`;
-      return `${ri_>0?'<div class="connector"></div>':''}<div class="prow" data-step="${step}">${row.map((t,ni)=>{
-        const nd=NODE[t]; let st='future';
-        if(ri_<M.cur) st = M.picks[ri_]===ni ? 'done' : 'skip';
-        else if(ri_===M.cur) st='cur';
-        const label = t==='boss'? bossName : nd.n; const desc = t==='boss'? 'Endgegner des Kapitels' : nd.d;
-        return `<button class="node t-${t} ${st}" data-r="${ri_}" data-n="${ni}" ${st==='cur'?'':'disabled'}><span class="gl">${nd.g}</span><span class="nl">${label}</span><span class="nd">${desc}</span></button>`;
-      }).join('')}</div>`; }).join('')}</div>
-    <div class="row-gap" style="justify-content:center;margin-top:22px">
-      <button class="btn" id="b-party">Gefährten & Vorräte</button>
-      <button class="btn ghost" id="b-help">Anleitung</button>
-      <button class="btn ghost" id="b-menu">Speichern & Titel</button>
-    </div>
-  </div></div>`);
-  app.querySelectorAll('.node.cur').forEach(b=>b.onclick=()=>{ sfx('click'); enterNode(+b.dataset.n); });
-  $('#b-party').onclick=partyModal; $('#b-help').onclick=helpModal; $('#b-menu').onclick=()=>{ save(); titleScreen(); };
-}
-function enterNode(ni){
-  const M=S.map, t=M.rows[M.cur][ni]; M.picks[M.cur]=ni;
-  const c=CH[S.ch];
-  if(t==='battle') startBattle(pick(c.normal), c.lvl, 'normal');
-  else if(t==='elite') startBattle(pick(c.elite), c.lvl+1, 'elite');
-  else if(t==='boss') startBattle(c.boss, c.lvl+1, 'boss');
-  else if(t==='rest') restScreen();
-  else if(t==='shop') shopScreen();
-  else eventScreen();
-}
-function nodeDone(){
-  const M=S.map;
-  if(M.rows[M.cur][0]==='boss'){
-    S.ch++;
-    if(S.ch>=CH.length){ victoryScreen(); return; }
-    S.party.forEach(h=>{ const st=heroStats(h); h.hp=st.maxHp; h.mp=st.maxMp; });
-    chapterIntro(); return;
-  }
-  M.cur++; save(); mapScreen();
-}
-
-/* Gefährten-Übersicht + Gegenstände außerhalb des Kampfes */
-function partyModal(){
-  const usable=['lembas','miruvor','athelas'];
-  modal(`<h2>Gefährten</h2>
-    <p class="muted" style="margin:4px 0 10px">Gold ${S.gold} · Vorräte: ${Object.entries(ITEMS).map(([k,it])=>`${it.n} ${S.items[k]||0}`).join(', ')}</p>
-    ${S.party.map((h,i)=>{ const b=HEROES[h.key], st=heroStats(h);
-      return `<div class="hero-detail"><div class="em">${b.i}</div><div style="min-width:0">
-        <h3>${b.n} <span class="muted" style="font-size:14px">· ${b.t} · Stufe ${h.lvl}</span></h3>
-        <div class="kv"><span>LP <b>${h.hp}/${st.maxHp}</b></span><span>MP <b>${h.mp}/${st.maxMp}</b></span><span>ANG <b>${st.atk}</b></span><span>MAG <b>${st.mag}</b></span><span>VER <b>${st.def}</b></span><span>WID <b>${st.res}</b></span><span>TEM <b>${st.spd}</b></span><span>EP <b>${h.xp}/${xpNeed(h.lvl)}</b></span>${h.wpn?`<span>Waffe <b>+${h.wpn}</b></span>`:''}${h.arm?`<span>Rüstung <b>+${h.arm}</b></span>`:''}${h.key==='frodo'?`<span>Last des Rings <b>${h.corruption||0}</b></span>`:''}</div>
-        <div class="sklist">${b.sk.map(id=>{const s=SKILLS[id]; return `<div class="${s.lvl>h.lvl?'locked':''}"><b>${s.n}</b> (${s.cost} MP${s.lvl>h.lvl?`, ab Stufe ${s.lvl}`:''}): ${s.d}</div>`}).join('')}<div><b>Ultimate · ${SKILLS[b.ult].n}</b>: ${SKILLS[b.ult].d}</div></div>
-        <div class="row-gap" style="margin-top:8px">${usable.map(k=>`<button class="btn small" data-use="${k}" data-h="${i}" ${(S.items[k]||0)>0?'':'disabled'}>${ITEMS[k].n} nutzen</button>`).join('')}</div>
-      </div></div>`}).join('')}
-    <div class="row-gap" style="margin-top:12px"><button class="btn primary" onclick="closeModal();mapScreen()">Schließen</button></div>`);
-  $('#modal').querySelectorAll('[data-use]').forEach(b=>b.onclick=()=>{
-    const k=b.dataset.use, h=S.party[+b.dataset.h], st=heroStats(h);
-    if(k==='lembas'){ if(h.hp>=st.maxHp) return toast('LP bereits voll'); h.hp=Math.min(st.maxHp, h.hp+Math.round(st.maxHp*.5)); }
-    if(k==='miruvor'){ h.mp=Math.min(st.maxMp, h.mp+Math.round(st.maxMp*.5)); h.limit=Math.min(100,(h.limit||0)+25); }
-    if(k==='athelas'){ if(h.hp>=st.maxHp) return toast('LP bereits voll'); h.hp=Math.min(st.maxHp, h.hp+Math.round(st.maxHp*(h.hp<=0?.4:.3))); }
-    S.items[k]--; sfx('heal'); save(); partyModal();
-  });
-}
-
-/* ---------------- Kampf ---------------- */
-let UID=0;
-function heroUnit(h){ const b=HEROES[h.key], st=heroStats(h);
-  return {uid:++UID,side:'hero',key:h.key,ref:h,name:b.n,icon:b.i,lvl:h.lvl,...st,hp:clamp(h.hp,0,st.maxHp),mp:clamp(h.mp,0,st.maxMp),limit:h.limit||0,statuses:[],next:0,cds:{},atkStat:b.atkStat||'atk',atkName:b.atkName,tags:[]}; }
-function enemyUnit(key,lvl,kind){ const d=ENEMIES[key], m=1+.16*(lvl-1), dh=DIFF[S.diff].hp;
-  const bossMul = (kind==='boss' && !d.boss) ? 1.25 : 1;
-  const hp=Math.round(d.hp*m*dh*bossMul);
-  return {uid:++UID,side:'enemy',key,name:d.n,icon:d.i,tint:d.tint,lvl,maxHp:hp,hp,maxMp:0,mp:0,atk:Math.round(d.atk*m),def:Math.round(d.def*m),mag:Math.round(d.mag*m),res:Math.round(d.res*m),spd:d.spd,crit:.05,statuses:[],next:0,cds:{},boss:!!d.boss,elite:!!d.elite||kind==='elite',tags:d.tags||[],xp:Math.round(d.xp*(1+.2*(lvl-1))),gold:Math.round(d.g*.6*(1+.15*(lvl-1)))}; }
-
-function startBattle(group, lvl, kind){
-  UID=0;
-  B={kind,lvl,heroes:S.party.map(heroUnit),enemies:group.map(k=>enemyUnit(k,lvl,kind)),log:[],over:false,turn:0};
-  // Gefallene Helden bleiben gefallen (0 LP) bis sie belebt werden
-  [...B.heroes,...B.enemies].forEach(u=>u.next=(100/u.spd)*rnd(.25,1));
-  renderBattle();
-  const names=group.map(k=>ENEMIES[k].n).filter((v,i,a)=>a.indexOf(v)===i).join(', ');
-  log(kind==='boss'?`Der Kampf gegen ${names} beginnt!`:`Feinde voraus: ${names}.`);
-  battleLoop();
-}
-function renderBattle(){
-  const c=CH[S.ch];
-  screen(`<div class="battle ${c.bg}">
-    <header class="bhead"><div class="chap">${c.n}${B.kind==='boss'?' · Boss':B.kind==='elite'?' · Elite':''}</div><div class="tl" id="tl"></div></header>
-    <section class="side enemies" id="enemies"></section>
-    <div class="mid"><div id="banner"></div><div id="blog"></div></div>
-    <section class="side heroes" id="heroes"></section>
-    <nav class="cmd" id="cmd"><div class="inner"><div class="who"><span>Die Schlacht beginnt …</span></div></div></nav>
-  </div>`);
-  B.enemies.forEach(addCard); B.heroes.forEach(addCard);
-  updateAll();
-}
-function addCard(u){
-  const el=document.createElement('div');
-  el.className=`unit ${u.side}${u.boss?' boss':''}${u.elite&&!u.boss?' elite':''}`; el.id='u'+u.uid; el.dataset.uid=u.uid;
-  if(u.tint) el.style.setProperty('--tint',u.tint);
-  el.innerHTML='<div class="uin"></div>';
-  $(u.side==='hero'?'#heroes':'#enemies').appendChild(el);
-}
-function card(u){ return document.getElementById('u'+u.uid); }
-function updateUnit(u){
-  const el=card(u); if(!el) return;
-  el.classList.toggle('dead',!alive(u)); el.classList.toggle('invis',!!hasS(u,'invis'));
-  const chips=u.statuses.map(s=>{ const d=STATUS[s.id]; return `<span class="chip" style="color:${d.c}" title="${d.n}: ${d.d}">${d.l}${s.id==='shield'?' '+s.val:(s.dur<90?' '+s.dur:'')}</span>`; }).join('');
-  let extra='';
-  if(u.side==='hero'){
-    extra = bar('mp',u.mp,u.maxMp) + `<div class="bar lim ${u.limit>=100?'full':''}"><i style="width:${u.limit}%"></i></div>`;
-    if(u.key==='frodo' && u.ref.corruption) extra+=`<div class="num"><span>Ringlast</span><span>${u.ref.corruption}</span></div>`;
-  }
-  el.querySelector('.uin').innerHTML=`<div class="face">${u.icon}</div><div class="un">${esc(u.name)}</div><div class="ul">STUFE ${u.lvl}</div>
-    ${bar('hp',u.hp,u.maxHp)}<div class="num"><span>${u.hp}</span><span>${u.side==='hero'?`${u.mp} MP`:'LP'}</span></div>${extra}<div class="sts">${chips}</div>`;
-}
-function updateAll(){ [...B.heroes,...B.enemies].forEach(updateUnit); updateTimeline(); }
-function updateTimeline(){
-  const el=$('#tl'); if(!el) return;
-  const sim=[...B.heroes,...B.enemies].filter(alive).map(u=>({u,t:u.next}));
-  const out=[];
-  for(let i=0;i<9&&sim.length;i++){ sim.sort((a,b)=>a.t-b.t); out.push(sim[0].u); sim[0].t+=100/eff(sim[0].u,'spd'); }
-  el.innerHTML=`<span class="lbl">Zugfolge</span>`+out.map((u,i)=>`<span class="tlc ${u.side==='hero'?'h':'e'} ${i===0&&B.active===u?'now':''}" title="${esc(u.name)}" style="${u.tint?`filter:${u.tint}`:''}">${u.icon}</span>`).join('');
-}
-function log(msg){ B.log.push(msg); if(B.log.length>3) B.log.shift(); const el=$('#blog'); if(el) el.innerHTML=B.log.map(l=>`<div>${l}</div>`).join(''); }
-function banner(text,foe){ const b=$('#banner'); if(!b) return; b.textContent=text; b.className=foe?'foe':''; }
-function floatText(u,text,cls='dmg'){
-  const el=card(u); if(!el) return; const r=el.getBoundingClientRect();
-  const f=document.createElement('div'); f.className='float '+cls; f.textContent=text;
-  f.style.left=(r.left+r.width/2+rnd(-14,14))+'px'; f.style.top=(r.top+r.height*.18)+'px';
-  $('#fx').appendChild(f); setTimeout(()=>f.remove(),1050);
-}
-function anim(u,cls,ms=300){ const el=card(u); if(!el) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); setTimeout(()=>el.classList.remove(cls),ms); }
-
-/* Status */
-function hasS(u,id){ return u.statuses.find(s=>s.id===id); }
-function addS(u,id,dur,val){
-  if(!alive(u)) return;
-  if(id==='stun' && u.boss){ if(Math.random()<.5){ floatText(u,'widersteht','miss'); return; } }
-  const ex=hasS(u,id);
-  if(ex){ ex.dur=Math.max(ex.dur,dur); if(val) ex.val=Math.max(ex.val||0,val); }
-  else u.statuses.push({id,dur,val});
-  floatText(u,STATUS[id].n, STATUS[id].bad?'debuff':'buff');
-}
-function rmS(u,id){ u.statuses=u.statuses.filter(s=>s.id!==id); }
-function cleanse(u){ u.statuses=u.statuses.filter(s=>!STATUS[s.id].bad); }
-function eff(u,stat){
-  let v=u[stat];
-  if(stat==='atk'||stat==='mag'){ if(hasS(u,'atkUp')) v*=1.3; if(hasS(u,'atkDown')) v*=.75; if(hasS(u,'enrage')) v*=1.25; }
-  if(stat==='def'||stat==='res'){ if(hasS(u,'defUp')) v*=1.5; if(hasS(u,'defDown')) v*=.65; }
-  if(stat==='spd'){ if(hasS(u,'haste')) v*=1.35; if(hasS(u,'slow')) v*=.7; }
-  return v;
-}
-function gainLimit(u,n){ if(u.side!=='hero'||!alive(u)) return; u.limit=clamp(Math.round(u.limit+n),0,100); }
-
-/* Schaden & Heilung */
-function skKind(a,sk){ return sk.kind==='auto' ? (a.atkStat==='mag'?'mag':'phys') : sk.kind; }
-function calcDmg(a,t,sk,mult){
-  const kind=skKind(a,sk), A=eff(a, kind==='mag'?'mag':'atk'), D=eff(t, kind==='mag'?'res':'def');
-  let d=(sk.pow||1)*A*60/(60+D);
-  if(sk.bonusTag && t.tags.includes(sk.bonusTag)) d*=1.35;
-  if(sk.bossBonus && t.boss) d*=sk.bossBonus;
-  if(sk.lowHpBonus) d*=1+(1-a.hp/a.maxHp);
-  if(hasS(t,'mark')) d*=1.3;
-  if(a.side==='enemy') d*=DIFF[S.diff].dmg;
-  d*=mult*rnd(.92,1.08);
-  const crit = !!sk.alwaysCrit || Math.random() < (a.crit+(sk.critB||0)+(mult>=1.5?.1:0));
-  if(crit) d*=1.6;
-  return {dmg:Math.max(1,Math.round(d)),crit};
-}
-function applyDamage(t,dmg,crit){
-  const sh=hasS(t,'shield');
-  if(sh){ const ab=Math.min(sh.val,dmg); sh.val-=ab; dmg-=ab; if(sh.val<=0) rmS(t,'shield'); if(ab>0 && dmg===0){ floatText(t,'Schild','parry'); updateUnit(t); return 0; } }
-  t.hp=Math.max(0,t.hp-dmg);
-  floatText(t,(crit?'KRIT! ':'')+dmg, crit?'crit':'dmg');
-  anim(t,'shake',360); anim(t,'flash',300); sfx(crit?'crit':'hit');
-  if(t.side==='hero') gainLimit(t, dmg/t.maxHp*60);
-  if(t.hp<=0) die(t);
-  updateUnit(t);
-  return dmg;
-}
-function die(u){
-  u.statuses=[]; sfx('die');
-  log(u.side==='hero'?`<b>${u.name}</b> ist gefallen!`:`${u.name} wurde besiegt.`);
-}
-function heal(u,amt){
-  if(!alive(u)) return 0;
-  amt=Math.round(amt); const before=u.hp; u.hp=Math.min(u.maxHp,u.hp+amt);
-  const got=u.hp-before; floatText(u,'+'+got,'heal'); updateUnit(u); return got;
-}
-function revive(u,pct){ if(alive(u)) return; u.hp=Math.max(1,Math.round(u.maxHp*pct)); u.statuses=[]; floatText(u,'Belebt!','heal'); u.next=Math.max(u.next, B.now||0)+(100/u.spd)*.5; updateUnit(u); }
-
-/* ---------------- Timing (QTE) ---------------- */
-let qteHit=null;
-const ATK_MULT={perfect:1.5,good:1.15,miss:.85};
-const HEAL_MULT={perfect:1.4,good:1.15,miss:.9};
-function qte(mode,label,dur){
-  if(SET.auto){ return Promise.resolve(mode==='def' ? (Math.random()<.5?'good':'miss') : 'good'); }
-  return new Promise(res=>{
-    const ov=$('#qte'), ring=$('#qring'), out=$('#qres');
-    ov.className = mode; ov.hidden=false; $('#qlabel').textContent=label;
-    $('#qhint').textContent = mode==='def' ? 'Tippen oder Leertaste zum Parieren' : 'Tippen oder Leertaste, wenn sich die Ringe decken';
-    out.className='qres'; out.textContent='';
-    const W=DIFF[S.diff].win; const start=performance.now(); let done=false, raf;
-    const D=dur;
-    function finish(r){
-      if(done) return; done=true; qteHit=null; cancelAnimationFrame(raf);
-      const txt={perfect: mode==='def'?'PARADE!':'PERFEKT!', good: mode==='def'?'BLOCK':'GUT', miss: mode==='def'?'GETROFFEN':'DANEBEN'}[r];
-      const col={perfect:'#ffe08a',good:'#bfe6e1',miss:'#e88'}[r];
-      out.textContent=txt; out.style.color=col; out.className='qres show';
-      if(r==='perfect'){ sfx(mode==='def'?'parry':'perfect'); S.stats[mode==='def'?'parry':'perfect']++; } else if(r==='good') sfx('good'); else sfx('miss');
-      setTimeout(()=>{ ov.hidden=true; res(r); }, 360);
-    }
-    qteHit=()=>{ const t=performance.now()-start, d=Math.abs(t-D); finish(d<=W.p?'perfect':d<=W.g?'good':'miss'); };
-    function frame(now){
-      const t=now-start, p=t/D, sc=2.9-1.9*p;
-      ring.style.transform=`scale(${Math.max(.15,sc)})`;
-      ring.style.borderColor = Math.abs(t-D)<=W.g ? '#fff6d0' : '#ffffff';
-      ring.style.opacity = sc<.6 ? Math.max(0,sc/.6) : 1;
-      if(t>D+W.g+90) finish('miss'); else raf=requestAnimationFrame(frame);
-    }
-    raf=requestAnimationFrame(frame);
-  });
-}
-document.addEventListener('keydown',e=>{
-  if(qteHit && (e.code==='Space'||e.code==='Enter'||e.code==='KeyF')){ e.preventDefault(); qteHit(); return; }
-  if(!$('#modal').hidden && e.key==='Escape'){ closeModal(); return; }
-  // Kampfbefehle per Zifferntaste
-  if(/^[1-9]$/.test(e.key)){ const btns=[...document.querySelectorAll('#cmd .cbtn:not(:disabled)')]; const b=btns[+e.key-1]; if(b){ e.preventDefault(); b.click(); } }
-  if(e.key==='Escape'){ const c=document.querySelector('#cmd [data-cancel]'); if(c) c.click(); }
-});
-$('#qte').addEventListener('pointerdown',e=>{ e.preventDefault(); if(qteHit) qteHit(); });
-
-/* ---------------- Kampfablauf ---------------- */
-function checkEnd(){
-  if(B.enemies.every(u=>!alive(u))) return 'win';
-  if(B.heroes.every(u=>!alive(u))) return 'lose';
-  return null;
-}
-async function battleLoop(){
-  while(true){
-    const end=checkEnd(); if(end){ await sleep(500); return endBattle(end); }
-    const all=[...B.heroes,...B.enemies].filter(alive);
-    all.sort((a,b)=>a.next-b.next);
-    const u=all[0]; B.now=u.next; B.active=u;
-    document.querySelectorAll('.unit.active').forEach(e=>e.classList.remove('active'));
-    card(u)?.classList.add('active'); updateTimeline();
-    const stunned=await startTurn(u);
-    if(!alive(u)){ updateAll(); continue; }
-    if(checkEnd()) continue;
-    if(stunned){ log(`${u.name} ist betäubt und setzt aus.`); floatText(u,'betäubt','miss'); await sleep(650); u.next+=100/eff(u,'spd'); updateAll(); continue; }
-    if(u.side==='hero') await heroTurn(u); else await enemyTurn(u);
-    card(u)?.classList.remove('active');
-    updateAll();
-    await sleep(260);
-  }
-}
-async function startTurn(u){
-  let ticked=false;
-  for(const s of [...u.statuses]){
-    const pct={bleed:.05,burn:.06,poison:.07}[s.id];
-    if(pct){ const dmg=Math.max(1,Math.round(u.maxHp*pct*(u.boss?.5:1))); u.hp=Math.max(0,u.hp-dmg); floatText(u,dmg,'debuff'); ticked=true; if(u.hp<=0){ die(u); updateUnit(u); return false; } }
-    if(s.id==='regen'){ heal(u,u.maxHp*.08); ticked=true; }
-  }
-  const stunned=!!hasS(u,'stun');
-  u.statuses.forEach(s=>{ if(s.dur<90) s.dur--; });
-  u.statuses=u.statuses.filter(s=>s.dur>0);
-  for(const k in u.cds) if(u.cds[k]>0) u.cds[k]--;
-  updateUnit(u);
-  if(ticked) await sleep(450);
-  return stunned;
-}
-
-/* Befehle der Helden */
-function heroTurn(h){
-  return new Promise(resolve=>{
-    const showMain=()=>{
-      banner(`${h.name} ist am Zug`);
-      const b=HEROES[h.key]; const skills=heroSkills(h.ref); const ult=SKILLS[b.ult];
-      const cmd=$('#cmd');
-      cmd.innerHTML=`<div class="inner"><div class="who"><span><b>${h.name}</b> · ${h.mp}/${h.maxMp} MP · Ultimate ${h.limit}%</span><span class="muted">Tasten 1–9 · Esc zurück</span></div><div class="cmdgrid">
-        <button class="cbtn" data-a="attack"><span class="cn">${b.atkName}<small>+4 MP</small></span><span class="cd">Grundangriff (100 %)</span></button>
-        ${skills.map(s=>`<button class="cbtn" data-a="${s.id}" ${h.mp<s.cost?'disabled':''}><span class="cn">${s.n}<small>${s.cost} MP</small></span><span class="cd">${s.d}</span></button>`).join('')}
-        <button class="cbtn ult" data-a="${ult.id}" ${h.limit>=100?'':'disabled'}><span class="cn">${ult.n}<small>${h.limit}%</small></span><span class="cd">Ultimate: ${ult.d}</span></button>
-        <button class="cbtn alt" data-a="items"><span class="cn">Vorräte</span><span class="cd">Gegenstand benutzen</span></button>
-        <button class="cbtn alt" data-a="defend"><span class="cn">Verteidigen</span><span class="cd">Wacht (1), +12 % MP, +10 Ultimate, schneller dran</span></button>
-      </div></div>`;
-      cmd.querySelectorAll('.cbtn').forEach(btn=>btn.onclick=()=>{ sfx('click'); const a=btn.dataset.a;
-        if(a==='defend') return act({type:'defend'});
-        if(a==='items') return showItems();
-        act({type:'skill',sk:SKILLS[a]});
-      });
-    };
-    const showItems=()=>{
-      const cmd=$('#cmd');
-      cmd.innerHTML=`<div class="inner"><div class="who"><span><b>${h.name}</b> · Vorräte</span></div><div class="cmdgrid">
-        ${Object.entries(ITEMS).map(([k,it])=>`<button class="cbtn" data-i="${k}" ${(S.items[k]||0)>0?'':'disabled'}><span class="cn">${it.n}<small>×${S.items[k]||0}</small></span><span class="cd">${it.d}</span></button>`).join('')}
-        <button class="cbtn alt" data-cancel="1"><span class="cn">Zurück</span></button></div></div>`;
-      cmd.querySelectorAll('[data-i]').forEach(btn=>btn.onclick=()=>{ sfx('click'); act({type:'item',id:btn.dataset.i}); });
-      cmd.querySelector('[data-cancel]').onclick=showMain;
-    };
-    const act=async c=>{
-      if(c.type==='defend'){
-        $('#cmd').innerHTML='';
-        addS(h,'defUp',1); h.mp=Math.min(h.maxMp,h.mp+Math.round(h.maxMp*.12)); gainLimit(h,10);
-        log(`${h.name} geht in Verteidigung.`); sfx('buff'); h.next+=100/eff(h,'spd')*.6; updateUnit(h); await sleep(400); return resolve();
-      }
-      if(c.type==='skill'){
-        const sk=c.sk; let target=null;
-        if(sk.tgt==='enemy'){ target=await chooseTarget(B.enemies.filter(alive),sk.n,'enemy'); if(!target) return showMain(); }
-        if(sk.tgt==='ally'){ target=await chooseTarget(B.heroes.filter(alive),sk.n,'ally'); if(!target) return showMain(); }
-        $('#cmd').innerHTML='';
-        await execSkill(h,sk,target); return resolve();
-      }
-      if(c.type==='item'){
-        const it=ITEMS[c.id]; let target=null;
-        if(it.tgt==='ally'){ target=await chooseTarget(B.heroes.filter(alive),it.n,'ally'); if(!target) return showItems(); }
-        if(it.tgt==='anyAlly'){ target=await chooseTarget(B.heroes,it.n,'ally'); if(!target) return showItems(); }
-        $('#cmd').innerHTML='';
-        await useItem(h,c.id,target); return resolve();
-      }
-    };
-    showMain();
-  });
-}
-function chooseTarget(list,label,kind){
-  return new Promise(res=>{
-    if(kind==='enemy' && list.length===1) return res(list[0]);
-    const cmd=$('#cmd');
-    cmd.innerHTML=`<div class="inner"><div class="who"><span><b>${esc(label)}</b> · Ziel wählen</span></div><div class="cmdgrid">
-      ${list.map((u,i)=>`<button class="cbtn" data-t="${u.uid}"><span class="cn">${u.icon} ${esc(u.name)}<small>${u.hp}/${u.maxHp}</small></span></button>`).join('')}
-      <button class="cbtn alt" data-cancel="1"><span class="cn">Zurück</span></button></div></div>`;
-    const cleanup=()=>{ list.forEach(u=>{ const el=card(u); if(el){ el.classList.remove('targetable','ally'); el.onclick=null; } }); };
-    const choose=u=>{ cleanup(); sfx('click'); res(u); };
-    list.forEach(u=>{ const el=card(u); if(!el) return; el.classList.add('targetable'); if(kind==='ally') el.classList.add('ally'); el.onclick=()=>choose(u); });
-    cmd.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>choose(list.find(u=>u.uid===+b.dataset.t)));
-    cmd.querySelector('[data-cancel]').onclick=()=>{ cleanup(); res(null); };
-  });
-}
-async function useItem(h,id,target){
-  S.items[id]--; const it=ITEMS[id];
-  banner(`${h.name}: ${it.n}`); log(`${h.name} benutzt ${it.n}.`);
-  await sleep(250);
-  if(id==='lembas'){ heal(target,target.maxHp*.5); sfx('heal'); }
-  if(id==='miruvor'){ target.mp=Math.min(target.maxMp,target.mp+Math.round(target.maxMp*.5)); gainLimit(target,25); floatText(target,'+MP','buff'); sfx('heal'); }
-  if(id==='athelas'){ if(!alive(target)) revive(target,.4); else { heal(target,target.maxHp*.3); cleanse(target); } sfx('heal'); }
-  if(id==='entwasser'){ B.heroes.filter(alive).forEach(u=>{ addS(u,'atkUp',3); addS(u,'defUp',3); }); sfx('buff'); }
-  if(id==='sternenglas'){
-    sfx('ult'); const lv=Math.round(S.party.reduce((a,h)=>a+h.lvl,0)/S.party.length);
-    for(const e of B.enemies.filter(alive)){ const d=Math.round((34+lv*11)*(e.boss?.7:1)*rnd(.9,1.1)); applyDamage(e,d,false); if(alive(e)) addS(e,'atkDown',2); }
-  }
-  h.next+=100/eff(h,'spd')*.8;
-  updateAll(); await sleep(450);
-}
-
-/* Fähigkeit ausführen (Helden & Gegner) */
-async function execSkill(a,sk,target){
-  const foes=a.side==='hero'?B.enemies:B.heroes, friends=a.side==='hero'?B.heroes:B.enemies;
-  if(sk.ult) a.limit=0; else a.mp-=sk.cost||0;
-  if(sk.cd) a.cds[sk.id]=sk.cd;
-  const name = sk.id==='attack' ? a.atkName : sk.n;
-  banner(`${a.name}: ${name}`, a.side==='enemy');
-  if(sk.ult){ sfx('ult'); const f=document.createElement('div'); f.className='ultflash'; f.innerHTML=`<span>${esc(sk.n)}</span>`; document.body.appendChild(f); await sleep(950); f.remove(); }
-  const kind=skKind(a,sk); const hit=new Set(); const counters=[];
-  updateUnit(a);
-
-  if(kind==='phys'||kind==='mag'){
-    anim(a, a.side==='hero'?'lunge-up':'lunge-down', 320);
-    const hits=sk.hits||1;
-    await sleep(a.side==='hero'?120:380);
-    for(let i=0;i<hits;i++){
-      let tg;
-      if(sk.tgt==='enemies') tg=foes.filter(alive);
-      else if(sk.tgt==='randomEnemies'){ const l=foes.filter(alive); tg=l.length?[pick(l)]:[]; }
-      else { if(!alive(target)){ const l=foes.filter(x=>alive(x)&&!(a.side==='enemy'&&hasS(x,'invis'))); if(!l.length) break; target=pick(l); } tg=[target]; }
-      if(!tg.length) break;
-      let mult=1, defR=null;
-      if(a.side==='hero'){
-        const r=await qte('atk', hits>1?`${name} · ${i+1}/${hits}`:name, i===0?780:560);
-        mult=ATK_MULT[r]; if(r==='perfect') gainLimit(a,5);
-      } else {
-        const vis=tg.filter(t=>!hasS(t,'invis'));
-        tg.filter(t=>hasS(t,'invis')).forEach(t=>floatText(t,'verfehlt','miss'));
-        if(!vis.length){ await sleep(300); continue; }
-        tg=vis;
-        defR=await qte('def', tg.length>1?`${a.name}: ${name} – Ausweichen!`:`${a.name} greift ${tg[0].name} an – Parieren!`, rnd(650,1100));
-      }
-      for(const t of tg){
-        if(!alive(t)) continue;
-        let m=mult;
-        if(defR==='perfect'){ floatText(t,'Parade!','parry'); gainLimit(t,8); if(tg.length===1) counters.push(t); continue; }
-        if(defR==='good') m*=.5;
-        const {dmg,crit}=calcDmg(a,t,sk,m);
-        applyDamage(t,dmg,crit); hit.add(t);
-        if(a.side==='hero') gainLimit(a,4);
-        if(a.side==='enemy' && tg.length===1 && hasS(t,'counter') && alive(t) && !counters.includes(t)) counters.push(t);
-      }
-      updateAll();
-      await sleep(hits>1?200:300);
-    }
-    if(sk.mpGain){ a.mp=Math.min(a.maxMp,a.mp+sk.mpGain); }
-  }
-  else if(kind==='heal'){
-    const tg = sk.tgt==='ally'?[target]:friends.filter(alive);
-    let mult=1;
-    if(a.side==='hero'){ const r=await qte('atk',name,760); mult=HEAL_MULT[r]; }
-    sfx('heal');
-    for(const t of tg){ const amt = sk.healPct ? t.maxHp*sk.healPct : sk.pow*eff(a,'mag')*1.25; heal(t,amt*mult); if(sk.cleanse) cleanse(t); hit.add(t); }
-  }
-  else if(kind==='buff'){ sfx('buff'); await sleep(200); }
-  else if(kind==='revive'){
-    sfx('heal'); friends.forEach(t=>{ if(!alive(t)) revive(t,.5); else heal(t,t.maxHp*.4); });
-  }
-  else if(kind==='summon'){
-    const n=ENEMIES[sk.summon].n;
-    const u=enemyUnit(sk.summon, Math.max(1,a.lvl-1), 'normal'); u.next=(B.now||0)+100/u.spd;
-    B.enemies.push(u); addCard(u); updateUnit(u);
-    log(`${a.name} ruft Verstärkung: ${n}!`); sfx('buff'); await sleep(400);
-  }
-
-  // Effekte
-  if(sk.eff) for(const e of sk.eff){
-    let on = e.on || 'target';
-    let list = on==='self'?[a] : on==='allies'?friends.filter(alive) : (kind==='buff'? (target?[target]:[a]) : [...hit]);
-    if(on==='target' && kind==='heal') list=[...hit];
-    for(const t of list){
-      if(!alive(t)) continue;
-      if(Math.random() > (e.ch??1)) continue;
-      if(e.s==='healPct'){ heal(t,t.maxHp*e.v); continue; }
-      if(e.s==='mp'){ t.mp=Math.min(t.maxMp,t.mp+e.v); continue; }
-      if(e.s==='randomDebuff'){ addS(t,pick(['atkDown','defDown','slow','bleed','poison']),e.dur); continue; }
-      let val; if(e.s==='shield') val=Math.round(eff(a,e.valStat||'mag')*(e.val||1.5));
-      addS(t,e.s,e.dur,val);
-    }
-  }
-  if(sk.corrupt && a.ref){
-    a.ref.corruption=(a.ref.corruption||0)+sk.corrupt;
-    if(a.ref.corruption>=100){ a.ref.corruption=0; await sleep(300); log(`Die Last des Rings überwältigt ${a.name}!`); addS(a,'stun',1); }
-    else log(`Die Last des Rings wächst (${a.ref.corruption}/100).`);
-  }
-  // Konter
-  for(const c of counters){
-    if(!alive(c)||!alive(a)) continue;
-    await sleep(250); anim(c, c.side==='hero'?'lunge-up':'lunge-down', 300);
-    banner(`${c.name}: Konter!`); const {dmg,crit}=calcDmg(c,a,{pow:.8,kind:'auto'},1); applyDamage(a,dmg,crit);
-  }
-  if(a.side==='hero') { a.ref.limit=a.limit; }
-  a.next += 100/eff(a,'spd')*(sk.delay||1);
-  updateAll();
-  await sleep(250);
-}
-
-/* KI der Gegner */
-function wpick(list,wf){ let tot=0; list.forEach(x=>tot+=wf(x)); let r=Math.random()*tot; for(const x of list){ r-=wf(x); if(r<=0) return x; } return list[list.length-1]; }
-async function enemyTurn(e){
-  const d=ENEMIES[e.key];
-  if(e.boss && !e.enraged && e.hp<e.maxHp*.5){ e.enraged=true; addS(e,'enrage',99); banner(`${e.name} gerät in Raserei!`,true); log(`${e.name} gerät in Raserei!`); sfx('crit'); await sleep(700); }
-  const living=B.enemies.filter(alive);
-  let opts=d.sk.map(id=>ESKILLS[id]).filter(sk=>!(e.cds[sk.id]>0)).filter(sk=>{
-    if(sk.kind==='summon') return living.length<4;
-    if(sk.kind==='buff'){ const s0=sk.eff[0].s; return sk.tgt==='self' ? !hasS(e,s0) : !living.every(x=>hasS(x,s0)); }
-    return true;
-  });
-  if(!opts.length) opts=[ESKILLS.e_slash];
-  const sk=wpick(opts,s=>s.w||1);
-  let target=null;
-  if(sk.tgt==='enemy'){
-    const cand=B.heroes.filter(h=>alive(h)&&!hasS(h,'invis'));
-    if(!cand.length){ banner(`${e.name} sucht vergeblich …`,true); log(`${e.name} findet kein Ziel.`); await sleep(600); e.next+=100/eff(e,'spd'); return; }
-    const taunt=cand.filter(h=>hasS(h,'taunt'));
-    target = taunt.length ? pick(taunt) : wpick(cand,h=>1+(1-h.hp/h.maxHp)*1.5);
-  }
-  banner(`${e.name}: ${sk.n}`,true);
-  await sleep(420);
-  await execSkill(e,sk,target);
-}
-
-/* Kampfende */
-function syncHeroes(){
-  B.heroes.forEach(u=>{ const h=u.ref; h.hp=u.hp; h.mp=u.mp; h.limit=u.limit; });
-}
-function endBattle(res){
-  $('#cmd') && ($('#cmd').innerHTML='');
-  syncHeroes(); S.stats.battles++;
-  if(res==='lose'){ sfx('lose'); return gameOver(); }
-  sfx('win');
-  const xp=B.enemies.reduce((a,e)=>a+e.xp,0) * (B.kind==='elite'?1.25:1);
-  const gold=Math.round(B.enemies.reduce((a,e)=>a+e.gold,0)*rnd(.85,1.2)*(B.kind==='elite'?1.3:1));
-  S.gold+=gold;
-  // Beute
-  const loot=[]; const commons=Object.keys(ITEMS).filter(k=>ITEMS[k].common), rares=['entwasser','sternenglas'];
-  if(B.kind==='normal'){ if(Math.random()<.4) loot.push(pick(commons)); }
-  else if(B.kind==='elite'){ loot.push(pick(commons)); if(Math.random()<.5) loot.push(pick(rares)); }
-  else { loot.push(pick(commons),pick(commons),pick(rares)); }
-  loot.forEach(k=>S.items[k]=(S.items[k]||0)+1);
-  // Gefallene stehen nach dem Kampf mit 1 LP wieder auf
-  S.party.forEach(h=>{ if(h.hp<=0) h.hp=1; });
-  const lines=S.party.map(h=>{ const r=grantXp(h,Math.round(xp)); return {h,...r}; });
-  save();
-  const last = B.kind==='boss' && S.ch===CH.length-1;
-  screen(`<div class="center-screen ${CH[S.ch].bg}"><div class="wrap"><div class="panel" style="max-width:620px;margin:0 auto">
-    <div class="eyebrow">${B.kind==='boss'?'Boss bezwungen':'Sieg'}</div>
-    <h2 style="font-size:32px;color:var(--gold-2)">${last?'Der Dunkle Herrscher fällt!':B.kind==='boss'?'Der Weg ist frei':'Die Feinde weichen'}</h2>
-    <div class="reward-list">
-      <div class="rl"><span class="em">◈</span><span>+${gold} Gold · +${Math.round(xp)} EP für jeden Gefährten</span></div>
-      ${loot.length?`<div class="rl"><span class="em">✚</span><span>Beute: ${loot.map(k=>ITEMS[k].n).join(', ')}</span></div>`:''}
-      ${lines.map(l=>{ const b=HEROES[l.h.key]; return `<div class="rl"><span class="em">${b.i}</span><span style="min-width:96px">${b.n} · St. ${l.h.lvl}</span><div class="xpb">${bar('mp',l.h.xp,xpNeed(l.h.lvl))}</div>${l.ups?`<span class="lvlup">Stufe ${l.h.lvl}!${l.learned.length?' Neu: '+l.learned.join(', '):''}</span>`:''}</div>`; }).join('')}
-    </div>
-    <button class="btn primary" id="b-on">Weiter</button></div></div></div>`);
-  if(lines.some(l=>l.ups)) setTimeout(()=>sfx('level'),400);
-  $('#b-on').onclick=()=>{ sfx('click'); nodeDone(); };
-}
-function grantXp(h,xp){
-  h.xp+=xp; let ups=0; const learned=[];
-  while(h.xp>=xpNeed(h.lvl)){
-    h.xp-=xpNeed(h.lvl); const before=heroStats(h); h.lvl++; ups++; const after=heroStats(h);
-    h.hp=Math.min(after.maxHp, h.hp+(after.maxHp-before.maxHp)+Math.round(after.maxHp*.2));
-    h.mp=Math.min(after.maxMp, h.mp+(after.maxMp-before.maxMp)+Math.round(after.maxMp*.2));
-    HEROES[h.key].sk.forEach(id=>{ if(SKILLS[id].lvl===h.lvl) learned.push(SKILLS[id].n); });
-  }
-  return {ups,learned};
-}
-function gameOver(){
-  screen(`<div class="center-screen bg-doom"><div class="wrap" style="text-align:center;display:flex;flex-direction:column;gap:14px;align-items:center">
-    <div class="eyebrow">Niederlage</div>
-    <h2 style="font-size:clamp(30px,7vw,52px)">Die Gemeinschaft ist zerbrochen</h2>
-    <p class="story muted">Doch solange der Ring nicht in Saurons Hand ist, bleibt Hoffnung. Versuche das Kapitel erneut, vielleicht auf einem anderen Weg.</p>
-    <div class="row-gap" style="justify-content:center"><button class="btn primary" id="b-retry">Kapitel neu beginnen</button><button class="btn ghost" id="b-title">Zum Titel</button></div>
-  </div></div>`);
-  $('#b-retry').onclick=()=>{ const snap=S.snap; S=JSON.parse(JSON.stringify(snap)); S.snap=snap; save(); mapScreen(); };
-  $('#b-title').onclick=()=>{ if(S.snap){ const snap=S.snap; S=JSON.parse(JSON.stringify(snap)); S.snap=snap; save(); } titleScreen(); };
-}
-function victoryScreen(){
-  store.del(SAVE_KEY);
-  screen(`<div class="title-screen"><div class="wrap">
-    <div class="ring-glow"><div class="ring" style="animation-duration:4s"></div></div>
-    <div class="eyebrow">Ende der Reise</div>
-    <h1 class="logo" style="font-size:clamp(34px,8vw,64px)">Der Ring ist vernichtet</h1>
-    <p class="story" style="text-align:center">Der Schicksalsberg bricht in Feuer zusammen, der Turm Barad-dûr stürzt, und über Mordor reißt der Himmel auf. Die Gefährten haben vollbracht, was niemand für möglich hielt.</p>
-    <div class="reward-list" style="font-family:var(--font-ui)">
-      ${S.party.map(h=>`<div class="rl" style="justify-content:center"><span class="em">${HEROES[h.key].i}</span>${HEROES[h.key].n} · Stufe ${h.lvl}</div>`).join('')}
-      <div class="muted">${S.stats.battles} Kämpfe · ${S.stats.perfect} perfekte Treffer · ${S.stats.parry} Paraden · Schwierigkeit ${DIFF[S.diff].n}</div>
-    </div>
-    <button class="btn primary" id="b-t">Neue Reise</button>
-  </div></div>`);
-  $('#b-t').onclick=()=>{ S=null; titleScreen(); };
-}
-
-/* ---------------- Lager, Händler, Ereignisse ---------------- */
-function simpleScreen(eyebrow,title,body,buttons){
-  screen(`<div class="center-screen ${CH[S.ch].bg}"><div class="wrap"><div class="panel" style="max-width:680px;margin:0 auto">
-    <div class="eyebrow">${eyebrow}</div><h2 style="font-size:clamp(26px,5vw,34px);margin-bottom:10px">${title}</h2>
-    <div class="story" style="font-size:17px">${body}</div>
-    <div class="row-gap" style="margin-top:16px">${buttons.map((b,i)=>`<button class="btn ${i===0?'primary':''}" data-b="${i}" ${b.dis?'disabled':''}>${b.l}</button>`).join('')}</div>
-  </div></div></div>`);
-  app.querySelectorAll('[data-b]').forEach(el=>el.onclick=()=>{ sfx('click'); buttons[+el.dataset.b].fn(); });
-}
-function result(title,text){ save(); simpleScreen('Ergebnis',title,`<p>${text}</p>`,[{l:'Weiter',fn:nodeDone}]); }
-function restScreen(){
-  simpleScreen('Lagerfeuer','Rast unter den Sternen',
-    `<p>Das Feuer knistert, Sam kocht etwas Warmes. Ihr könnt euch ausruhen oder die Nacht nutzen, um zu üben.</p>`,
-    [{l:'Rasten (50 % LP & MP, Gefallene erwachen)',fn:()=>{ S.party.forEach(h=>{ const st=heroStats(h); h.hp=Math.min(st.maxHp,Math.max(h.hp,0)+Math.round(st.maxHp*.5)); h.mp=Math.min(st.maxMp,h.mp+Math.round(st.maxMp*.5)); }); sfx('heal'); result('Erholt','Die Gefährten schlafen tief und brechen gestärkt auf.'); }},
-     {l:'Üben (halbe Stufe EP für alle)',fn:()=>{ const ups=[]; S.party.forEach(h=>{ const r=grantXp(h,Math.round(xpNeed(h.lvl)*.5)); if(r.ups) ups.push(HEROES[h.key].n); }); sfx('level'); result('Training',`Bis tief in die Nacht klirren Klingen.${ups.length?' Stufenaufstieg: '+ups.join(', ')+'.':''}`); }}]);
-}
-function shopScreen(){
-  const smithP=50+30*S.smith;
-  const draw=()=>{
-    screen(`<div class="center-screen ${CH[S.ch].bg}"><div class="wrap"><div class="panel">
-      <div class="map-head"><div><div class="eyebrow">Händler</div><h2 style="font-size:30px">Ein Wanderhändler aus Bree</h2></div><div class="purse"><span>Gold <b>${S.gold}</b></span></div></div>
-      <div class="shop-grid">
-        ${Object.entries(ITEMS).map(([k,it])=>`<div class="shop-item"><h3>${it.n}</h3><p>${it.d}</p><div class="row-gap" style="justify-content:space-between;align-items:center"><span class="price">${it.price} Gold · Besitz ${S.items[k]||0}</span><button class="btn small" data-buy="${k}" ${S.gold<it.price?'disabled':''}>Kaufen</button></div></div>`).join('')}
-      </div>
-      <h3 style="margin-top:20px;font-size:18px">Schmied · ${50+30*S.smith} Gold</h3>
-      <p class="muted" style="margin:4px 0 8px">Waffe schärfen: +8 % Angriff & Magie. Rüstung verstärken: +8 % LP, Verteidigung & Widerstand. Jede Arbeit verteuert die nächste.</p>
-      <div class="shop-grid">${S.party.map((h,i)=>`<div class="shop-item"><h3>${HEROES[h.key].i} ${HEROES[h.key].n}</h3><p>Waffe +${h.wpn} · Rüstung +${h.arm}</p><div class="row-gap"><button class="btn small" data-w="${i}" ${S.gold<50+30*S.smith?'disabled':''}>Waffe</button><button class="btn small" data-r="${i}" ${S.gold<50+30*S.smith?'disabled':''}>Rüstung</button></div></div>`).join('')}</div>
-      <div class="row-gap" style="margin-top:18px"><button class="btn primary" id="b-leave">Weiterziehen</button></div>
-    </div></div></div>`);
-    app.querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>{ const k=b.dataset.buy; if(S.gold<ITEMS[k].price) return; S.gold-=ITEMS[k].price; S.items[k]=(S.items[k]||0)+1; sfx('click'); save(); draw(); });
-    const smith=(i,f)=>{ const p=50+30*S.smith; if(S.gold<p) return; const h=S.party[i]; const before=heroStats(h); S.gold-=p; S.smith++; h[f]++; const after=heroStats(h); h.hp+=after.maxHp-before.maxHp; sfx('buff'); save(); draw(); };
-    app.querySelectorAll('[data-w]').forEach(b=>b.onclick=()=>smith(+b.dataset.w,'wpn'));
-    app.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>smith(+b.dataset.r,'arm'));
-    $('#b-leave').onclick=()=>{ sfx('click'); nodeDone(); };
-  };
-  draw();
-}
-const healAll=pct=>S.party.forEach(h=>{ const st=heroStats(h); h.hp=Math.min(st.maxHp,Math.max(0,h.hp)+Math.round(st.maxHp*pct)); });
-const EVENTS=[
-  ()=>simpleScreen('Begegnung','Ein Sänger im Alten Wald',
-    `<p>Ein Mann mit blauer Jacke und gelben Stiefeln hüpft singend über den Pfad. Er lädt euch in sein Haus am Fluss ein, wo eine Tafel voller Brot und Honig wartet.</p>`,
-    [{l:'Mit ihm essen und singen (alle LP voll)',fn:()=>{ healAll(1); sfx('heal'); result('Ein fröhlicher Abend','Alle Wunden sind geheilt, und die Lieder klingen noch lange nach.'); }},
-     {l:'Proviant erbitten (+2 Lembas)',fn:()=>{ S.items.lembas+=2; result('Gut versorgt','Er packt euch Brot für die Reise ein.'); }}]),
-  ()=>simpleScreen('Begegnung','Augen im Dunkeln',
-    `<p>Ein hageres Wesen mit großen, hellen Augen kauert hinter einem Felsen und murmelt vor sich hin. Es starrt auf Frodos Hand, oder dorthin, wo der Ring hängen könnte.</p>`,
-    [{l:'Ein Lembas anbieten',dis:!(S.items.lembas>0),fn:()=>{ S.items.lembas--; if(Math.random()<.7){ const k=pick(['entwasser','sternenglas','athelas']); S.items[k]++; result('Ein seltsames Geschenk',`Es schnüffelt, verzieht das Gesicht und lässt dann etwas zurück: <b>${ITEMS[k].n}</b>.`);} else result('Verschwunden','Es reißt das Brot an sich und huscht davon.'); }},
-     {l:'Verjagen (+Gold aus seinem Versteck)',fn:()=>{ const g=ri(20,45); S.gold+=g; result('Ein kleiner Fund',`In der Felsspalte liegen ${g} alte Münzen.`); }}]),
-  ()=>simpleScreen('Begegnung','Elben auf Wanderschaft',
-    `<p>Lichter ziehen durch den Wald, und eine Schar Elben auf dem Weg zu den Grauen Anfurten hält bei euch an. Ihr Anführer bietet Rat und Rast an.</p>`,
-    [{l:'Gemeinsam rasten (30 % LP, +1 Miruvor)',fn:()=>{ healAll(.3); S.items.miruvor++; sfx('heal'); result('Elbenlieder','Ihr schlaft so tief wie lange nicht.'); }},
-     {l:'Um Rat bitten (EP für alle)',fn:()=>{ S.party.forEach(h=>grantXp(h,Math.round(xpNeed(h.lvl)*.35))); sfx('level'); result('Alte Weisheit','Ihre Worte schärfen euren Blick für den Kampf.'); }}]),
-  ()=>simpleScreen('Begegnung','Eine verlassene Schmiede',
-    `<p>Zwischen Felsen liegt eine alte Zwergenschmiede. Die Esse ist kalt, doch Amboss und Hämmer sind noch brauchbar. Es reicht für eine Waffe.</p>`,
-    S.party.map(h=>({l:`${HEROES[h.key].n}s Waffe schmieden`,fn:()=>{ h.wpn++; sfx('buff'); result('Frisch geschärft',`${HEROES[h.key].n} trägt nun eine bessere Waffe (+8 % Angriff & Magie).`); }}))),
-  ()=>simpleScreen('Begegnung','Eine moosbewachsene Truhe',
-    `<p>In einem alten Hügelgrab steht eine eisenbeschlagene Truhe. Die Luft ist kalt, und irgendwo scharrt etwas.</p>`,
-    [{l:'Öffnen',fn:()=>{ if(Math.random()<.6){ const g=ri(45,90); S.gold+=g; S.items.athelas++; result('Schatz!',`${g} Gold und ein Bündel Athelas.`);} else { simpleScreen('Hinterhalt!','Die Wächter erwachen',`<p>Aus den Schatten treten Feinde hervor!</p>`,[{l:'Kämpfen',fn:()=>{ S.gold+=30; const c=CH[S.ch]; startBattle(pick(c.normal),c.lvl,'normal'); }}]); } }},
-     {l:'Liegen lassen',fn:()=>result('Vorsicht','Manche Schätze bleiben besser, wo sie sind.')}]),
-  ()=>simpleScreen('Begegnung','Der Spiegel der Herrin',
-    `<p>In einem stillen Garten steht eine silberne Schale voll Wasser. Wer hineinblickt, sieht, was war, was ist und was vielleicht sein wird.</p>`,
-    [{l:'Hineinblicken (viele EP, Ringlast sinkt)',fn:()=>{ S.party.forEach(h=>{ grantXp(h,Math.round(xpNeed(h.lvl)*.6)); if(h.key==='frodo') h.corruption=Math.max(0,(h.corruption||0)-50); }); sfx('level'); result('Visionen','Ihr seht Feuer und Hoffnung, und kehrt entschlossener zurück.'); }},
-     {l:'Sich abwenden (+1 Athelas, +1 Sternenglas)',fn:()=>{ S.items.athelas++; S.items.sternenglas++; result('Ein Geschenk','Die Herrin lächelt und reicht euch Gaben.'); }}]),
-  ()=>simpleScreen('Begegnung','Ein verwundeter Waldläufer',
-    `<p>Am Wegrand liegt ein Dúnadan mit einer vergifteten Wunde. Er bittet um Hilfe.</p>`,
-    [{l:'Athelas geben (Belohnung)',dis:!(S.items.athelas>0),fn:()=>{ S.items.athelas--; S.gold+=80; S.party.forEach(h=>h.limit=Math.min(100,(h.limit||0)+50)); result('Dankbarkeit','Er gibt euch 80 Gold und erzählt Geschichten, die euren Mut entfachen (+50 Ultimate für alle).'); }},
-     {l:'Verbinden und weiterziehen',fn:()=>result('Weiter','Ihr tut, was ihr könnt, und zieht weiter.')}]),
-  ()=>{ const opts=[['Der Wind',0],['Ein Fluss',1],['Die Zeit',0]].sort(()=>Math.random()-.5);
-    simpleScreen('Begegnung','Rätsel am Brückenpfeiler',
-    `<p>Ein alter Brückenwächter versperrt den Weg: „Ich wandere ohne Füße, singe ohne Mund und trage Steine bis ins Meer. Was bin ich?“</p>`,
-    opts.map(([l,ok])=>({l,fn:()=>{ if(ok){ S.gold+=70; S.items.miruvor++; sfx('level'); result('Richtig!','Der Wächter lacht und gibt euch 70 Gold und Miruvor.'); } else { S.gold=Math.max(0,S.gold-20); sfx('miss'); result('Falsch','Ihr müsst 20 Gold Brückenzoll zahlen.'); } }}))); },
-  ()=>simpleScreen('Begegnung','Ein Hirte der Bäume',
-    `<p>Ein Baum dreht langsam den Kopf zu euch. „Hm, hum, nicht so hastig“, brummt er und reicht euch eine Schale mit funkelndem Wasser.</p>`,
-    [{l:'Trinken (+2 Ent-Trunk, 20 % LP)',fn:()=>{ S.items.entwasser+=2; healAll(.2); sfx('heal'); result('Erfrischt','Ihr fühlt euch, als würdet ihr wachsen.'); }}])
-];
-function eventScreen(){ pick(EVENTS)(); }
-
-/* ---------------- Start ---------------- */
-document.addEventListener('pointerdown',()=>{ if(SET.sound) ac(); },{once:true});
-titleScreen();
-</script>
+<script src="js/data.js"></script>
+<script src="js/render.js"></script>
+<script src="js/core.js"></script>
+<script src="js/battle.js"></script>
+<script src="js/ui.js"></script>
