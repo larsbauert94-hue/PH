@@ -12,6 +12,13 @@ Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden 
 
 Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten). Unter **Optionen → Grafik** lässt sich zwischen *Auto*, *Hoch* (Figuren mit Szenenlicht, Kantenlicht und Bodenverdeckung) und *Normal* wählen; *Auto* schaltet bei zu niedriger Bildrate selbst herunter.
 
+## Neu in Version 6
+- **Menschliche Figuren:** realistische Proportionen, Gesichter im Profil, modellierte Gliedmaßen mit Licht und Schatten
+- **Filmischer Look:** Kinobalken und Zeitlupe bei Ultimates, Schwertspuren, Filmkörnung, Laufstaub
+- **Ultimate per Fingertipp** (+20 % Heldenmut) und **Truhenwahl** nach jedem Kapitel
+- **Spezialmodi:** Endloser Ansturm, Bossrausch, Chaos-Prüfung (alle beliebig oft spielbar)
+- **Neue Menüs:** alles auf einem Bildschirm, Tabs und Blättern statt Scrollen, ▶ startet sofort
+
 ## Inhalt
 - **Vollbild im Querformat:** Die Welt läuft ununterbrochen, Menüs liegen als Glas-Panels darüber
 - **21 Story-Kapitel** in drei Teilen (Der Hobbit, Der Ringkrieg mit Epilog, Die Ringe der Macht), je 8 Wellen + Boss

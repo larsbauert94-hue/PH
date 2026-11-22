@@ -79,6 +79,12 @@ class World {
     if (boss) { boss.x = cx + 66 * sp; boss.y = 113; S = [[24, 96], [26, 120], [12, 108], [92, 122], [96, 96]]; }
     this.enemies.filter(e => e !== boss).sort((a, b) => (a.ranged ? 1 : 0) - (b.ranged ? 1 : 0)).forEach((u, i) => { if (keep && u.x !== undefined && !u.summoned) { const s = S[i % S.length]; u.x = cx + s[0] * sp; u.y = s[1]; } else if (u.x === undefined) { const s = S[i % S.length]; u.x = cx + s[0] * sp; u.y = s[1]; } });
   }
+  /* Ultimate per Fingertipp: Held handelt als Nächstes, +20 % Heldenmut */
+  manualUlt(k) {
+    const u = this.heroes.find(h => h.key === k);
+    if (!u || !alive(u) || !this.fighting || u.energy < 100 || u.forceUlt) return false;
+    u.forceUlt = 1; u.atb = 1e6; this.num(u, 'Heldenmut!', '#ffe39a'); this.burst(u.x, u.y - u.h * .6, 'holy', 12, 1, .5); return true;
+  }
   addEnemy(key, lvl, kind) {
     const E = ENEMIES[key], m = 1 + .15 * (lvl - 1) + .002 * (lvl - 1) * (lvl - 1), D = DIFF_E;
     const ps = clamp(.55 + .09 * this.heroes.length, .72, 1), hpMul = (E.boss ? 4.6 * modVal('bossHp') * (this.raid ? 34 : 1) : E.elite ? 3 : 2.6) * D.hp * ps * modVal('hp');
@@ -99,7 +105,7 @@ class World {
   loop(now) {
     if (this.dead) return;
     let dt = Math.min(60, now - this.last); this.last = now; this.perf(now - this._lastRaw || 0); this._lastRaw = now;
-    if (this.hitstop > 0) { this.hitstop -= dt; dt *= .1; }
+    if (this.hitstop > 0) { this.hitstop -= dt; dt *= .1; } else if (this.slowUntil && this.time < this.slowUntil) dt *= .35;
     this.update(dt * this.speed); this.render();
     this.raf = requestAnimationFrame(t => this.loop(t));
   }
@@ -158,10 +164,17 @@ class World {
     this.walking = false; this.heroes.filter(alive).forEach(h => this.setAnim(h, 'idle'));
   }
   restoreHeroes() { for (const h of this.heroes) { if (!alive(h)) { h.fade = 1; } h.hp = h.maxHp; h.statuses = []; h.cd = {}; h.threat = 0; h.atb = 0; h.usedRevive = 0; h.usedReviveAlly = 0; h.holdAnim = null; h.anim = { n: 'idle', el: 0 }; } }
+  /* Laufenden Kampf ohne Folgen beenden (für „Sofort spielen“) */
+  abort() {
+    if (!this.fighting) { this.abortNext = true; return; }
+    this.fighting = false; this.busy = false; this.enemies.forEach(e => { e.fade = 0; e.hp = 0; });
+    const cb = this.onFightEnd; this.onFightEnd = null; cb && cb({ win: false, aborted: true, enemies: [], dmgPct: 0 });
+  }
   async fight(group, lvl, kind, opts = {}) {
+    if (this.abortNext) { this.abortNext = false; return { win: false, aborted: true, enemies: [], dmgPct: 0 }; }
     this.raid = !!opts.raid; this.raidEnd = 0;
     this.enemies = []; this.parts = this.parts.filter(p => p.amb);
-    this.restoreHeroes();
+    if (opts.keepHp) { for (const h of this.heroes) { h.statuses = []; h.cd = {}; h.threat = 0; h.atb = 0; h.holdAnim = null; if (alive(h)) h.anim = { n: 'idle', el: 0 }; } } else this.restoreHeroes();
     if (hasMod('noEnergy')) this.heroes.forEach(h => h.energy = 0);
     group.forEach(k => this.addEnemy(k, lvl, kind)); this.layoutEnemies();
     // Gegner marschieren heran, während die Gruppe weiterzieht
@@ -170,7 +183,14 @@ class World {
     await Promise.all(this.enemies.map((e, i) => { e.ox = dist + i * 8; this.setAnim(e, 'walk'); return this.moveTo(e, e.x, e.y, 1300 + i * 120); }));
     this.walking = false; this.all().forEach(u => this.setAnim(u, 'idle'));
     if (kind === 'boss') { this.focus(this.enemies[0], 1.28, 900); this.shake(3); sfx('crit'); }
+    if (this.abortNext) { this.abortNext = false; this.enemies.forEach(e => { e.fade = 0; e.hp = 0; }); return { win: false, aborted: true, enemies: [], dmgPct: 0 }; }
     this.applyStartPassives();
+    const ch = opts.chaos;
+    if (ch === 'schnell') this.all().forEach(u => u.spd = Math.round(u.spd * 1.7));
+    if (ch === 'glas') this.all().forEach(u => { u.atk *= 2; u.mag *= 2; u.maxHp = Math.round(u.maxHp * .6); u.hp = Math.min(u.hp, u.maxHp); });
+    if (ch === 'energie') this.heroes.forEach(h => { if (alive(h)) h.energy = 100; });
+    if (ch === 'krit') this.all().forEach(u => { u.crit += 45; u.critDmg += 50; });
+    if (ch === 'riesen') this.enemies.forEach(e => { e.maxHp = Math.round(e.maxHp * 1.8); e.hp = e.maxHp; e.atk = Math.round(e.atk * 1.15); });
     [...this.heroes, ...this.enemies].forEach(u => { u.atb = rnd(0, 40) + u.spd; });
     this.fighting = true; this.busy = false; this.turn = 0;
     if (this.raid) this.raidEnd = this.time + (opts.time || 45000);
@@ -203,6 +223,7 @@ class World {
     try {
       const skip = await this.turnStart(u);
       if (alive(u) && !skip && !this.checkEnd()) { const plan = this.ai(u); if (plan) await this.perform(u, plan.sk, plan.t, plan.ult); }
+      u.manualUlt = 0;
     } catch (e) { console.error(e); }
     this.active = null;
     const end = this.checkEnd(); if (end) return this.finish(end);
@@ -291,7 +312,8 @@ class World {
       return { sk, t: this.pickTarget(u, sk, foes, friends) };
     }
     const K = u.kit;
-    if (u.energy >= 100 && this.useful(u, K.ult, friends, foes)) return { sk: K.ult, t: this.pickTarget(u, K.ult, foes, friends), ult: 1 };
+    if (u.forceUlt && u.energy >= 100) { u.forceUlt = 0; u.manualUlt = 1; return { sk: K.ult, t: this.pickTarget(u, K.ult, foes, friends), ult: 1 }; }
+    if (u.energy >= 100 && G.settings.autoUlt !== false && this.useful(u, K.ult, friends, foes)) return { sk: K.ult, t: this.pickTarget(u, K.ult, foes, friends), ult: 1 };
     for (const s of [K.act2, K.act]) if (s && !((u.cd[s.n] || 0) > 0) && this.useful(u, s, friends, foes)) return { sk: s, t: this.pickTarget(u, s, foes, friends) };
     return { sk: basic, t: this.pickTarget(u, basic, foes, friends) };
   }
@@ -325,7 +347,7 @@ class World {
       this.h.ultUsed?.(u);
     }
     this.h.log?.(u, sk);
-    if (isUlt) { this.hitstop = 140; this.speedFx = { x: u.x, y: u.y - u.h * .5, t: this.time, c: u.side === 'hero' ? '255,236,180' : '255,90,60' }; this.focus(u, 1.26, 1100); sfx('ult'); this.flash(u.side === 'hero' ? '#ffe9a8' : '#ff3a1a', 500); this.fxs.push({ k: 'pillar', x: u.x, y: u.y, c: '#ffe080', t: 0, dur: 800 }); this.shake(2); this.h.ult?.(u, sk); await this.wait(500); }
+    if (isUlt) { this.hitstop = 140; this.cine = { t: this.time }; this.slowUntil = this.time + 420; this.speedFx = { x: u.x, y: u.y - u.h * .5, t: this.time, c: u.side === 'hero' ? '255,236,180' : '255,90,60' }; this.focus(u, 1.26, 1100); sfx('ult'); this.flash(u.side === 'hero' ? '#ffe9a8' : '#ff3a1a', 500); this.fxs.push({ k: 'pillar', x: u.x, y: u.y, c: '#ffe080', t: 0, dur: 800 }); this.shake(2); this.h.ult?.(u, sk); await this.wait(500); }
     const hits = sk.hits || 1, hitSet = new Set(), counters = [];
     const doHit = (t, mult = 1) => { const r = this.hit(u, t, sk, mult); if (r > 0) hitSet.add(t); if (r === -2) counters.push(t); };
     if (sk.dmg) {
@@ -430,6 +452,7 @@ class World {
     if (tp.dmgRed) d *= 1 - tp.dmgRed / 100;
     const crit = !!sk.alwaysCrit || Math.random() < (a.crit + (sk.critB || 0)) / 100;
     if (crit) d *= 1 + a.critDmg / 100;
+    if (a.manualUlt) d *= 1.2;
     d *= rnd(.92, 1.08);
     let dmg = Math.max(1, Math.round(d));
     const sh = hasS(t, 'shield');
@@ -516,9 +539,11 @@ class World {
     const units = this.all().filter(u => u.fade > 0).sort((a, b) => (a.y + a.oy) - (b.y + b.oy));
     for (const u of units) { const x = u.x + u.ox + u.kb, y = u.y + u.oy; ctx.globalAlpha = .45 * u.fade; const gr = ctx.createRadialGradient(x, y, 0, x, y, u.w + 2); gr.addColorStop(0, 'rgba(0,0,0,.7)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(x, y, u.w + 2, (u.w + 2) * .28, 0, 0, Math.PI * 2); ctx.fill(); }
     ctx.globalAlpha = 1;
+    if (this.walking && this.time - (this._dust || 0) > 220) { this._dust = this.time; for (const h of this.heroes) if (alive(h) && Math.random() < .6) this.burst(h.x + h.ox - 3, h.y + h.oy - 1, 'stone', 2, .35, .15); }
     for (const f of this.fxs) if (f.under) this.drawFx(f);
     this.drawCompanion(ctx, gt);
     for (const u of units) this.drawUnit(u, gt);
+    for (const u of units) this.drawTrail(u);
     for (const f of this.fxs) if (!f.under) this.drawFx(f);
     for (const p of this.projs) this.drawProj(p);
     this.drawParts(ctx);
@@ -543,6 +568,8 @@ class World {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     const LG = LIGHT[this.bgKey] || LIGHT._;
     if (LG.grade) { ctx.save(); ctx.globalCompositeOperation = 'soft-light'; ctx.globalAlpha = .35; const gr = ctx.createLinearGradient(0, 0, 0, this.cv.height); gr.addColorStop(0, LG.grade[0]); gr.addColorStop(1, LG.grade[1]); ctx.fillStyle = gr; ctx.fillRect(0, 0, this.cv.width, this.cv.height); ctx.restore(); }
+    if (this.hq()) this.drawGrain(ctx);
+    if (this.cine) { const k = (this.time - this.cine.t) / 1500; if (k >= 1) this.cine = null; else { const e = k < .2 ? RIG.easeOut(k / .2) : k > .75 ? 1 - (k - .75) / .25 : 1, bh = this.cv.height * .085 * e; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, this.cv.width, bh); ctx.fillRect(0, this.cv.height - bh, this.cv.width, bh); } }
     // Vignette
     const vg = ctx.createRadialGradient(this.cv.width / 2, this.cv.height * .55, this.cv.height * .4, this.cv.width / 2, this.cv.height * .55, this.cv.width * .75);
     vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.5)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, this.cv.width, this.cv.height);
@@ -567,6 +594,19 @@ class World {
     for (let i = 0; i < 5; i++) { const x = ((gt * .004 * (i + 1) - this.scroll * .5 + i * 90) % (this.LW + 120) + this.LW + 120) % (this.LW + 120) - 60, y = 72 + i * 6; const g = ctx.createRadialGradient(x, y, 0, x, y, 50); g.addColorStop(0, T.sky ? T.sky[T.sky.length - 1] : '#fff'); g.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y, 60, 9, 0, 0, Math.PI * 2); ctx.fill(); }
     ctx.restore();
     if (T.lava) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .12 + Math.sin(gt / 500) * .05; const g = ctx.createLinearGradient(0, 144, 0, 76); g.addColorStop(0, '#ff4a10'); g.addColorStop(1, 'rgba(255,80,20,0)'); ctx.fillStyle = g; ctx.fillRect(-20, 76, this.LW + 40, 70); ctx.restore(); }
+  }
+  drawTrail(u) {
+    const a = u.anim; if (!alive(u) || a.n !== 'attack' || ['bow', 'staff'].includes(u.look.wpn) || u.type !== 'hum') return;
+    const k = (a.el - 150) / 260; if (k < 0 || k > 1) return;
+    const ctx = this.ctx, dir = u.side === 'hero' ? 1 : -1, cx = u.x + u.ox + u.kb + dir * u.w * .3, cy = u.y + u.oy - u.h * .55, r = u.h * (u.big ? .5 : .62);
+    const a0 = -2.1 + k * 1.2, a1 = a0 + 1.6 * Math.min(1, k * 2.2);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = (1 - k) * .75; if (dir < 0) { ctx.translate(cx, cy); ctx.scale(-1, 1); ctx.translate(-cx, -cy); }
+    for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(cx, cy, r - i * 1.2, a0 + i * .08, a1); ctx.strokeStyle = i ? 'rgba(255,230,190,.35)' : 'rgba(255,255,255,.75)'; ctx.lineWidth = (2.2 - i * .6) * (u.big ? 1.6 : 1); ctx.lineCap = 'round'; ctx.stroke(); }
+    ctx.restore();
+  }
+  drawGrain(ctx) {
+    if (!this._grain) { const g = document.createElement('canvas'); g.width = g.height = 160; const c = g.getContext('2d'), im = c.createImageData(160, 160); for (let i = 0; i < im.data.length; i += 4) { const v = Math.random() * 255; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; } c.putImageData(im, 0, 0); this._grain = ctx.createPattern(g, 'repeat'); }
+    ctx.save(); ctx.globalCompositeOperation = 'overlay'; ctx.globalAlpha = .06; ctx.translate(Math.random() * 160 | 0, Math.random() * 160 | 0); ctx.fillStyle = this._grain; ctx.fillRect(-160, -160, this.cv.width + 320, this.cv.height + 320); ctx.restore();
   }
   drawUnit(u, gt) {
     const ctx = this.ctx, x = u.x + u.ox + u.kb, y = u.y + u.oy;

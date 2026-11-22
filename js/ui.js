@@ -79,7 +79,7 @@ const icHtml = it => `<canvas class="ic" data-ic="${it.icon}" data-c="${RARITY[i
 /* ---------- HUD ---------- */
 function buildHud() {
   $('#party').innerHTML = G.party.map(k => `<div class="pc" data-k="${k}" style="--rc:${heroCol(k)}"><canvas data-card="${k}" data-bust="1"></canvas><div class="hpv"></div><span class="pl">${G.heroes[k].lvl}</span><div class="ultbar"><i></i></div></div>`).join('');
-  $$('#party .pc').forEach(el => el.onclick = () => { sfx('click'); openHero(el.dataset.k); });
+  $$('#party .pc').forEach(el => el.onclick = () => { if (W.manualUlt(el.dataset.k)) { sfx('ult'); return; } sfx('click'); openHero(el.dataset.k); });
   paintCards($('#party'));
 }
 function updateHud() {
@@ -150,6 +150,28 @@ function splash(html, ms = 0, cls = '') {
     if (ms) setTimeout(close, ms); else { s.onclick = () => { s.onclick = null; sfx('click'); close(); }; }
   });
 }
+/* Drei verdeckte Truhen: eine wählen, danach werden alle aufgedeckt */
+function pickChest(title, mith) {
+  const lv = chapterLvl() + 2, opts = [
+    { k: 'item', it: genItem(lv, Math.random() < .35 ? 4 : 3) },
+    { k: 'mith', v: Math.round(mith * 2.5) },
+    { k: 'gold', v: Math.round(300 + lv * 90), it: genItem(lv, 2) }
+  ].sort(() => Math.random() - .5);
+  const show = o => o.k === 'item' ? `${icHtml(o.it)}<b style="color:${RARITY[o.it.r].c}">${esc(o.it.name)}</b>` : o.k === 'mith' ? `<span class="pk-big">✧ ${o.v}</span><b>Mithril</b>` : `<span class="pk-big">◆ ${fmt(o.v)}</span><b>Gold + ${esc(o.it.name)}</b>`;
+  return new Promise(res => {
+    const s = $('#splash'); s.className = 'splash doneS'; s.hidden = false; W.hold = true; s.onclick = null;
+    s.innerHTML = `<div class="cdone pick"><div class="kicker">Kapitel abgeschlossen · ✧ ${mith} Mithril</div><h1>${esc(title)}</h1><p>Wähle eine der drei Truhen!</p><div class="pk">${opts.map((o, i) => `<button class="pkc" data-i="${i}"><span class="pk-lid">?</span><div class="pk-in">${show(o)}</div></button>`).join('')}</div><div class="dhint" hidden>Tippen zum Fortfahren</div></div>`;
+    paintCards(s);
+    s.querySelectorAll('.pkc').forEach(b => b.onclick = e => {
+      e.stopPropagation(); if (s.querySelector('.pkc.open')) return;
+      const o = opts[+b.dataset.i]; sfx('join');
+      if (o.k === 'mith') G.mithril += o.v; if (o.k === 'gold') { G.gold += o.v; addItem(o.it); } if (o.k === 'item') addItem(o.it);
+      if (G.settings.autoEquip) autoEquip(); save(); updateHud();
+      b.classList.add('open', 'mine'); setTimeout(() => s.querySelectorAll('.pkc').forEach(x => x.classList.add('open')), 650);
+      setTimeout(() => { s.querySelector('.dhint').hidden = false; s.onclick = () => { s.onclick = null; s.classList.add('out'); setTimeout(() => { s.hidden = true; s.classList.remove('out'); W.hold = false; res(); }, 300); }; }, 900);
+    });
+  });
+}
 function chapterTitle(ch) { return splash(`<div class="ctitle"><div class="kicker">${esc(ch.part)}</div><h1>Kapitel ${G.story.ch + 1}</h1><h2>${esc(ch.n)}</h2></div>`, 2300, 'chap'); }
 function kitLines(k) { const H = HEROES[k]; return `<li><b class="k-ult">Ultimate</b> ${esc(H.ult.n)}</li><li><b class="k-act">Aktiv</b> ${esc(H.act.n)}</li><li><b class="k-act2">Aktiv II</b> ${esc(H.act2.n)}</li>`; }
 function joinSplash(k, back) {
@@ -168,6 +190,7 @@ function applyParty() {
   W.setParty(G.party); buildHud();
 }
 function onResult(r, kind) {
+  if (r.aborted) return;
   const party = G.party.slice();
   if (r.win) {
     G.stats.wins++; addChest(kind === 'boss' ? 3 : 1);
@@ -225,6 +248,57 @@ async function sideRun(id) {
   } else toast(`${esc(sd.n)}: Der Boss war zu stark.`, 'unlock');
   W.setBg(prevBg);
 }
+/* ---------- Spezialmodi (beliebig oft, ohne Zeitsperren) ---------- */
+const MODES = [
+  { id: 'horde', n: 'Endloser Ansturm', ic: '∞', d: 'Welle um Welle, ohne Heilung dazwischen. Wie weit kommt deine Gruppe?' },
+  { id: 'rush', n: 'Bossrausch', ic: '♛', d: 'Fünf bereits besiegte Bosse hintereinander. Zwischen den Kämpfen nur 30 % Heilung.' },
+  { id: 'chaos', n: 'Chaos-Prüfung', ic: '✷', d: 'Fünf Kämpfe, jeder mit einer verrückten Regel: Blitztempo, Glaskanonen, Kritsturm …' }
+];
+const CHAOS = [['schnell', 'Blitztempo: alle sind 70 % schneller'], ['glas', 'Glaskanonen: doppelter Schaden, 40 % weniger Leben'], ['energie', 'Volle Kraft: alle Ultimates sofort bereit'], ['krit', 'Kritsturm: +45 % Krit-Chance für alle'], ['riesen', 'Riesenwuchs: Gegner mit 80 % mehr Leben']];
+function modeUnlocked() { return G.story.ch >= 3 || G.story.loop > 0; }
+function modePool() { const last = G.story.loop ? STORY.length : Math.max(1, G.story.ch); const waves = [], bosses = []; for (let i = 0; i < last; i++) { (STORY[i].waves || []).forEach(w => waves.push(w)); bosses.push(i); } return { waves, bosses }; }
+function healParty(pct) { for (const h of W.heroes) { if (h.hp > 0) h.hp = Math.min(h.maxHp, Math.round(h.hp + h.maxHp * pct)); } }
+async function modeRun(id) {
+  const M = MODES.find(m => m.id === id), prevBg = W.bgKey, pool = modePool(); G.queue = null; G.modes = G.modes || {}; save();
+  await splash(`<div class="ctitle"><div class="kicker">Spezialmodus</div><h1>${M.ic} ${esc(M.n)}</h1><h2>${esc(M.d)}</h2></div>`, 2200, 'chap');
+  applyParty(); W.restoreHeroes();
+  let n = 0, gold = 0, mith = 0; const items = [], base = Math.max(1, chapterLvl() - 2);
+  if (id === 'horde') {
+    for (;;) {
+      const grp = pool.waves[Math.floor(Math.random() * pool.waves.length)], lvl = base + Math.floor(n / 2);
+      if (n % 5 === 0) W.setBg(STORY[pool.bosses[Math.floor(Math.random() * pool.bosses.length)]].bg);
+      banner(`Welle ${n + 1}`, 'ult'); await W.walk(700);
+      const r = await W.fight(n % 5 === 4 ? [...grp, ...grp].slice(0, 5) : grp, lvl, n % 5 === 4 ? 'elite' : 'normal', { keepHp: 1 }); onResult(r, 'normal');
+      if (!r.win) break; n++; healParty(.08);
+      if (n % 5 === 0) { mith += 10 + n; items.push(genItem(lvl + 1, rollRarity('elite'))); toast(`Welle ${n} geschafft! Bonus gesichert.`, 'lvl'); }
+    }
+    gold = n * (60 + base * 12);
+  } else if (id === 'rush') {
+    const order = pool.bosses.slice().sort(() => Math.random() - .5).slice(0, 5);
+    for (const ci of order) {
+      const C = STORY[ci]; W.setBg(C.bg); await W.walk(700); const bk = C.boss.find(k => ENEMIES[k].boss) || C.boss[0]; await bossSplash(bk);
+      const r = await W.fight(C.boss, base + 2 + n, 'boss', { keepHp: 1 }); r.setCh = ci; onResult(r, 'boss');
+      if (!r.win) break; n++; healParty(.3); mith += 12;
+    }
+    if (n >= 5) { items.push(genItem(base + 6, Math.random() < .5 ? 4 : 3)); mith += 40; }
+    gold = n * (180 + base * 25);
+  } else {
+    const rules = CHAOS.slice().sort(() => Math.random() - .5);
+    for (let i = 0; i < 5; i++) {
+      const [rid, rd] = rules[i % rules.length], grp = pool.waves[Math.floor(Math.random() * pool.waves.length)];
+      await splash(`<div class="ctitle"><div class="kicker">Chaos-Regel ${i + 1}/5</div><h1>✷</h1><h2>${esc(rd)}</h2></div>`, 1700, 'chap');
+      applyParty(); await W.walk(600); const r = await W.fight(grp, base + 1 + i, i === 4 ? 'elite' : 'normal', { chaos: rid }); onResult(r, 'normal');
+      if (!r.win) break; n++; mith += 6;
+    }
+    if (n >= 5) { items.push(genItem(base + 4, rollRarity('boss'))); mith += 25; }
+    gold = n * (90 + base * 15);
+  }
+  const best = G.modes[id] || 0, rec = n > best; G.modes[id] = Math.max(best, n);
+  G.gold += gold; G.mithril += mith; items.forEach(addItem); if (G.settings.autoEquip) autoEquip(); save(); applyParty(); W.restoreHeroes();
+  const unit = id === 'horde' ? 'Wellen' : id === 'rush' ? 'Bosse' : 'Kämpfe';
+  await splash(`<div class="cdone"><div class="kicker">${esc(M.n)} beendet</div><h1>${n} ${unit}</h1><p>${rec ? '<b>Neuer Rekord!</b> ' : `Rekord: ${G.modes[id]} · `}◆ ${fmt(gold)} · ✧ ${mith}${items.length ? ' · ' + items.length + ' Gegenstände' : ''}</p>${items.length ? `<div class="loot1">${items.map(it => `${icHtml(it)}<b style="color:${RARITY[it.r].c}">${esc(it.name)}</b>`).join('')}</div>` : ''}<div class="dhint">Tippen zum Fortfahren</div></div>`, 0, 'doneS');
+  W.setBg(prevBg); updateHud();
+}
 async function raidRun(key) {
   const R = RAIDS.find(x => x.key === key), prevBg = W.bgKey; G.queue = null; save();
   W.setBg(R.bg); await splash(`<div class="ctitle"><div class="kicker">Prüfung der Macht</div><h1>45 Sekunden</h1><h2>${esc(R.n)}</h2></div>`, 1800, 'chap');
@@ -267,8 +341,8 @@ async function director() {
       applyParty(); G.story.intro = true; save();
     }
     const w = G.story.wave, mk = G.story.ch + '-' + w;
-    if (G.tower.queued) { await towerRun(); continue; }
-    if (G.queue) { const q = G.queue; if (q.type === 'boss') await bossRematch(q.ch); else if (q.type === 'side') await sideRun(q.id); else if (q.type === 'raid') await raidRun(q.key); else G.queue = null; continue; }
+    if (G.tower.queued) { running = 'Orthanc-Turm'; try { await towerRun(); } finally { running = null; } continue; }
+    if (G.queue) { const q = G.queue; running = { boss: 'Bosskampf', side: 'Nebenquest', raid: 'Prüfung der Macht', mode: 'Spezialmodus' }[q.type] || 'Herausforderung'; try { if (q.type === 'boss') await bossRematch(q.ch); else if (q.type === 'side') await sideRun(q.id); else if (q.type === 'raid') await raidRun(q.key); else if (q.type === 'mode') await modeRun(q.id); else G.queue = null; } finally { running = null; } continue; }
     if (w < WAVES) {
       if ((ch.mid?.[w] || ch.midLine?.[w]) && !G.story.mids[mk]) {
         await dialog(ch.midLine?.[w]); for (const k of ch.mid?.[w] || []) { joinHero(k); applyParty(); await joinSplash(k); }
@@ -277,18 +351,20 @@ async function director() {
       applyParty(); await W.walk(1500);
       const kind = isEliteWave(w) ? 'elite' : 'normal';
       const r = await W.fight(chapterWaves()[w], waveLvl(w), kind);
+      if (r.aborted) continue;
       onResult(r, kind);
       if (r.win) { G.story.wave++; track('wins', 1); } else { G.story.wave = Math.max(0, w - 1); banner('Rückzug! Die Gruppe sammelt sich.', 'foe'); }
       save(); continue;
     }
     if (G.story.farm) {
       applyParty(); await W.walk(1500);
-      const r = await W.fight(chapterWaves()[WAVES - 1], waveLvl(WAVES - 1), 'normal'); onResult(r, 'normal'); continue;
+      const r = await W.fight(chapterWaves()[WAVES - 1], waveLvl(WAVES - 1), 'normal'); if (!r.aborted) onResult(r, 'normal'); continue;
     }
     if (!G.story.bossSeen) { await dialog(ch.bossLine); G.story.bossSeen = true; save(); }
     applyParty(); await W.walk(1200);
     const bk = ch.boss.find(k => ENEMIES[k].boss) || ch.boss[0]; await bossSplash(bk);
     const r = await W.fight(ch.boss, waveLvl(WAVES) + 1, 'boss'); r.setCh = G.story.ch;
+    if (r.aborted) continue;
     onResult(r, 'boss');
     if (r.win) {
       G.stats.bosses++; track('bosses', 1); await W.wait(400);
@@ -299,9 +375,8 @@ async function director() {
       if (relic) { W.pendingParty = 1; await splash(`<div class="cdone relic"><div class="kicker">Relikt gefunden</div><canvas class="ric" data-ic="${relic.ic}" data-c="${relic.c}"></canvas><h1>${esc(relic.n)}</h1><p>Dauerhafter Gruppenbonus: <b>${esc(relic.d)}</b></p><div class="dhint">Tippen zum Fortfahren</div></div>`, 0, 'doneS'); }
       const cp = chapterCompanion(G.story.ch); if (cp && !G.comps[cp.id]) { grantCompanion(cp.id); W.pendingParty = 1; await companionSplash(cp); }
       G.stats.chapters = Math.max(G.stats.chapters, G.story.ch + 1 + G.story.loop * STORY.length);
-      const chest = genItem(chapterLvl() + 2, Math.random() < .25 ? 4 : 3); addItem(chest); const mith = 20 + G.story.ch * 4; G.mithril += mith;
-      if (G.settings.autoEquip) autoEquip();
-      await splash(`<div class="cdone"><div class="kicker">Kapitel abgeschlossen</div><h1>${esc(ch.n)}</h1><p>Kapitel-Truhe: ✧ ${mith} Mithril und</p><div class="loot1">${icHtml(chest)}<b style="color:${RARITY[chest.r].c}">${esc(chest.name)}</b></div><div class="dhint">Tippen zum Fortfahren</div></div>`, 0, 'doneS');
+      const mith = 20 + G.story.ch * 4; G.mithril += mith;
+      await pickChest(ch.n, mith);
       G.story.ch++; if (G.story.ch >= STORY.length) { G.story.ch = 0; G.story.loop++; G.stats.loops++; const m = activeMods(); await splash(`<div class="cdone"><div class="kicker">Heldenreise ${G.story.loop + 1}</div><h1>Die Reise beginnt von Neuem</h1><p>Stärkere Gegner, bessere Beute (+${G.story.loop * 25} % Gold & EP, seltenere Gegenstände).</p><p><b>Erschwernisse:</b> ${m.map(x => esc(x.d)).join(' · ')}</p><div class="dhint">Tippen zum Fortfahren</div></div>`, 0, 'doneS'); }
       Object.assign(G.story, { wave: 0, intro: false, bossSeen: false, farm: false }); applyParty(); save();
     } else { G.story.farm = true; save(); banner('Der Boss ist zu stark. Die Gruppe trainiert.', 'foe'); toast('Werdet stärker und fordert den Boss dann erneut heraus.', 'unlock'); }
@@ -309,33 +384,52 @@ async function director() {
 }
 
 /* ---------- Menüs (Glas-Panel) ---------- */
-function openSheet(title, html, after) {
+/* ================= Menüs: ein Bildschirm, Tabs statt Scrollen, Blättern statt Listen ================= */
+let running = null;
+/* Sofort spielen: laufenden Kampf abbrechen (ohne Strafe) und direkt starten */
+function playNow(q, label) {
+  if (running) { toast(`Gerade läuft: ${esc(running)}`, 'mini'); return; }
+  if (q.type === 'tower') G.tower.queued = true; else G.queue = q;
+  save(); closeSheet(); sfx('join'); toast(`▶ ${esc(label)}`, 'lvl'); W.abort();
+}
+function openSheet(title, html, after, o = {}) {
   cancelAnimationFrame(artRaf);
   const s = $('#sheet');
-  s.innerHTML = `<div class="sh-head"><h2>${title}</h2><button class="x" aria-label="Schließen">✕</button></div><div class="sh-body">${html}</div>`;
+  const tabs = o.tabs ? `<div class="m-tabs">${o.tabs.map(([id, n, badge]) => `<button class="m-tab ${o.tab === id ? 'on' : ''}" data-tab="${id}">${n}${badge ? `<i>${badge}</i>` : ''}</button>`).join('')}</div>` : '';
+  const pg = o.pages > 1 ? `<div class="m-pg"><button class="m-pb" data-pg="-1" ${o.page <= 0 ? 'disabled' : ''}>‹</button><span>${o.page + 1}/${o.pages}</span><button class="m-pb" data-pg="1" ${o.page >= o.pages - 1 ? 'disabled' : ''}>›</button></div>` : '';
+  s.innerHTML = `<div class="sh-head"><h2>${title}</h2>${tabs}<div class="m-hr">${o.extra || ''}${pg}<button class="x" aria-label="Schließen">✕</button></div></div><div class="sh-body fit">${html}</div>`;
   s.hidden = false; requestAnimationFrame(() => s.classList.add('open'));
   s.querySelector('.x').onclick = closeSheet;
+  if (o.onTab) s.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { sfx('click'); o.onTab(b.dataset.tab); });
+  if (o.onPage) s.querySelectorAll('[data-pg]').forEach(b => b.onclick = () => { sfx('click'); o.onPage(o.page + +b.dataset.pg); });
   paintCards(s); after && after(s);
 }
 function closeSheet() { cancelAnimationFrame(artRaf); const s = $('#sheet'); s.classList.remove('open'); setTimeout(() => { if (!s.classList.contains('open')) s.hidden = true; }, 260); }
+const pages = (n, per) => Math.max(1, Math.ceil(n / per));
+const clampPg = (p, n) => Math.max(0, Math.min(n - 1, p || 0));
+
+/* ---------- Helden ---------- */
 function heroCard(k, locked) {
   const H = HEROES[k], C = CLASSES[H.cls], hs = G.heroes[k];
-  if (locked) { const ci = STORY.findIndex(c => [...(c.join || []), ...(c.end || []), ...Object.values(c.mid || {}).flat()].includes(k)), sd = SIDE.find(x => x.hero === k); return `<div class="hcard locked" style="--rc:${ROLE_COL[C.role]}"><canvas data-card="${k}" data-bust="1" data-stage="0"></canvas><div class="hc-info"><b>???</b><small>${ci >= 0 ? 'Kapitel ' + (ci + 1) : sd ? 'Nebenquest: ' + esc(sd.n) : ''}</small></div></div>`; }
-  return `<button class="hcard ${G.party.includes(k) ? 'in' : ''} ${G.away[k] ? 'away' : ''}" data-k="${k}" style="--rc:${ROLE_COL[C.role]}"><canvas data-card="${k}" data-bust="1"></canvas><span class="role-dot r-${C.role}"></span><div class="hc-info"><b>${esc(H.n)}</b>${stars(hs.stage)}<span class="pw">⚡ ${fmt(heroStats(k).power)}</span><small>Stufe ${hs.lvl}</small></div>${G.away[k] ? '<span class="tag">Fort</span>' : G.party.includes(k) ? '<span class="tag in">Gruppe</span>' : ''}</button>`;
+  if (locked) { const ci = STORY.findIndex(c => [...(c.join || []), ...(c.end || []), ...Object.values(c.mid || {}).flat()].includes(k)), sd = SIDE.find(x => x.hero === k); return `<div class="hcard locked" style="--rc:${ROLE_COL[C.role]}"><canvas data-card="${k}" data-bust="1" data-stage="0"></canvas><div class="hc-info"><b>???</b><small>${ci >= 0 ? 'Kapitel ' + (ci + 1) : sd ? 'Nebenquest' : ''}</small></div></div>`; }
+  return `<button class="hcard ${G.party.includes(k) ? 'in' : ''} ${G.away[k] ? 'away' : ''}" data-k="${k}" style="--rc:${ROLE_COL[C.role]}"><canvas data-card="${k}" data-bust="1"></canvas><span class="role-dot r-${C.role}"></span>${G.away[k] ? '<span class="tag">Fort</span>' : G.party.includes(k) ? '<span class="tag in">Gruppe</span>' : ''}<div class="hc-info"><b>${esc(H.n)}</b><span class="pw">⚡ ${fmt(heroStats(k).power)}</span><small>St. ${hs.lvl} ${stars(hs.stage)}</small></div></button>`;
 }
-function openHeroes() {
+function openHeroes(tab = openHeroes.tab || 'helden', page = openHeroes.page) {
+  openHeroes.tab = tab;
   const own = owned().sort((a, b) => (G.party.includes(b) - G.party.includes(a)) || heroStats(b).power - heroStats(a).power);
-  const locked = Object.keys(HEROES).filter(k => !G.heroes[k]);
-  openSheet('Helden', `
-    <div class="party-row"><div class="pr-title">${own.length} von ${Object.keys(HEROES).length} Helden <small>${G.settings.autoParty ? 'Gruppe wird automatisch aufgestellt' : 'Eigene Aufstellung'}</small></div><button class="btn small ${G.settings.autoParty ? 'on' : ''}" id="autoP">Auto-Aufstellung</button></div>
-    ${companionPanel()}
-    ${factionPanel()}
-    <div class="grid">${own.map(k => heroCard(k)).join('')}${locked.map(k => heroCard(k, 1)).join('')}</div>`, s => {
+  const all = [...own.map(k => [k, 0]), ...Object.keys(HEROES).filter(k => !G.heroes[k]).map(k => [k, 1])];
+  const per = 12, np = tab === 'helden' ? pages(all.length, per) : 1; page = openHeroes.page = clampPg(page, np);
+  let body = '';
+  if (tab === 'helden') body = `<div class="m-heroes">${all.slice(page * per, page * per + per).map(([k, l]) => heroCard(k, l)).join('')}</div>`;
+  else if (tab === 'begleiter') body = `<div class="m-comps">${COMPANIONS.map(cp => { const own2 = G.comps[cp.id], src = cp.from.ch !== undefined ? 'Kapitel ' + (cp.from.ch + 1) : 'Nebenquest'; return `<button class="comp ${own2 ? '' : 'lk'} ${G.companion === cp.id ? 'on' : ''}" data-cp="${cp.id}"><canvas data-comp="${cp.id}"></canvas><b>${own2 ? esc(cp.n) : '???'}</b><small>${own2 ? esc(cp.d) : src}</small>${G.companion === cp.id ? '<span class="tag in">Aktiv</span>' : ''}</button>`; }).join('')}</div>`;
+  else body = `<div class="m-facs">${activeFactions().map(f => `<div class="fac ${f.tier >= 0 ? 'on' : ''}" style="--fc:${f.F.c}"><span class="fi">${f.F.ic}</span><div><b>${esc(f.F.n)} <em>${f.n}</em></b><small>${f.F.t.map((t, i) => `<i class="${f.tier >= i ? 'act' : ''}">${t[0]}: ${esc(t[2])}</i>`).join('<br>')}</small></div></div>`).join('')}</div>`;
+  openSheet('Helden', body, s => {
     s.querySelectorAll('.hcard[data-k]').forEach(b => b.onclick = () => { sfx('click'); openHero(b.dataset.k); });
     s.querySelectorAll('[data-cp]').forEach(b => b.onclick = () => { const id = b.dataset.cp; if (!G.comps[id]) return; G.companion = id; sfx('click'); W.pendingParty = 1; save(); openHeroes(); });
     paintComps(s);
-    s.querySelector('#autoP').onclick = () => { G.settings.autoParty = !G.settings.autoParty; if (G.settings.autoParty) { autoParty(); W.pendingParty = 1; buildHud(); } save(); openHeroes(); };
-  });
+    const ap = s.querySelector('#autoP'); if (ap) ap.onclick = () => { G.settings.autoParty = !G.settings.autoParty; if (G.settings.autoParty) { autoParty(); W.pendingParty = 1; buildHud(); } save(); openHeroes(); };
+  }, { tabs: [['helden', `Helden ${own.length}/${Object.keys(HEROES).length}`], ['begleiter', 'Begleiter'], ['buende', 'Bündnisse']], tab, onTab: t => openHeroes(t, 0), pages: np, page, onPage: p => openHeroes(tab, p),
+    extra: tab === 'helden' ? `<button class="btn small ${G.settings.autoParty ? 'on' : ''}" id="autoP">Auto-Gruppe</button>` : '' });
 }
 function paintComps(root) { root.querySelectorAll('canvas[data-comp]').forEach(c => { const cp = COMPANIONS.find(x => x.id === c.dataset.comp); requestAnimationFrame(() => compArt(c, cp)); }); }
 function compArt(cv, cp) {
@@ -343,15 +437,9 @@ function compArt(cv, cp) {
   const g = c.createRadialGradient(cv.width / 2, cv.height / 2, 2, cv.width / 2, cv.height / 2, cv.width * .7); g.addColorStop(0, 'rgba(232,189,92,.35)'); g.addColorStop(1, 'rgba(10,13,18,1)'); c.fillStyle = g; c.fillRect(0, 0, cv.width, cv.height);
   const sc = cv.height / 34; c.setTransform(sc, 0, 0, sc, cv.width / 2, cv.height * .86);
   if (cp.kind === 'eagle') { c.translate(0, -14); RIG.drawEagle(c, cp.look, 400); }
-  else if (cp.kind === 'ghosts') { c.globalAlpha = .7; RIG.draw(c, 'hum', Object.assign({ wpn: 'sword' }, ENEMIES.dead_soldier.look), 'idle', 0, 400); }
+  else if (cp.kind === 'ghosts') { c.globalAlpha = .7; c.scale(.8, .8); RIG.draw(c, 'hum', Object.assign({ wpn: 'sword' }, ENEMIES.dead_soldier.look), 'idle', 0, 400); }
   else if (cp.kind === 'sled') { c.scale(.8, .8); RIG.draw(c, 'quad', Object.assign({ eye: '#2a1a1a' }, cp.look), 'idle', 0, 400); }
   else RIG.draw(c, 'quad', Object.assign({ horse: 1, pony: cp.kind === 'pony', eye: '#2a1a12' }, cp.look), 'idle', 0, 400);
-}
-function companionPanel() {
-  return `<div class="pr-title" style="margin-bottom:6px">Begleiter <small>Ein Begleiter reist mit und stärkt die ganze Gruppe.</small></div><div class="comps">${COMPANIONS.map(cp => { const own = G.comps[cp.id], src = cp.from.ch !== undefined ? 'Kapitel ' + (cp.from.ch + 1) : 'Nebenquest: ' + esc(SIDE.find(x => x.id === cp.from.side)?.n || ''); return `<button class="comp ${own ? '' : 'lk'} ${G.companion === cp.id ? 'on' : ''}" data-cp="${cp.id}"><canvas data-comp="${cp.id}"></canvas><b>${own ? esc(cp.n) : '???'}</b><small>${own ? esc(cp.d) : src}</small>${G.companion === cp.id ? '<span class="tag in">Aktiv</span>' : ''}</button>`; }).join('')}</div>`;
-}
-function factionPanel() {
-  return `<div class="facs">${activeFactions().map(f => `<div class="fac ${f.tier >= 0 ? 'on' : ''}" style="--fc:${f.F.c}"><span class="fi">${f.F.ic}</span><div><b>${esc(f.F.n)}</b><small>${f.F.t.map((t, i) => `<i class="${f.tier >= i ? 'act' : ''}">${t[0]}: ${esc(t[2])}</i>`).join(' · ')}</small></div><span class="fn">${f.n}</span></div>`).join('')}</div>`;
 }
 function setLines(k) {
   const n = {}; for (const sl of Object.keys(SLOTS)) { const it = G.heroes[k].eq[sl] && itemById(G.heroes[k].eq[sl]); if (it?.set) n[it.set] = (n[it.set] || 0) + 1; }
@@ -359,62 +447,66 @@ function setLines(k) {
 }
 function heroFactions(k) { return Object.values(FACTIONS).filter(F => F.m.includes(k)).map(F => `<span class="fchip" style="--fc:${F.c}">${F.ic} ${esc(F.n)}</span>`).join(''); }
 function skillRow(type, s, locked, note) {
-  return `<div class="sk ${type} ${locked ? 'locked' : ''}"><div class="sk-h"><span class="sk-t">${{ ult: 'Ultimate', act: 'Aktiv', act2: 'Aktiv II', pas: 'Passiv' }[type]}</span><b>${esc(s.n)}</b>${note ? `<small>${note}</small>` : ''}</div><p>${esc(s.d)}</p></div>`;
+  return `<div class="sk ${type} ${locked ? 'locked' : ''}"><div class="sk-h"><span class="sk-t">${{ ult: 'Ultimate', act: 'Aktiv', act2: 'Aktiv II', pas: 'Passiv' }[type]}</span>${note ? `<small>${note}</small>` : ''}</div><b>${esc(s.n)}</b><p>${esc(s.d)}</p></div>`;
 }
-function openHero(k) {
+function openHero(k, tab = openHero.tab || 'werte') {
+  openHero.tab = tab;
   const H = HEROES[k], C = CLASSES[H.cls], hs = G.heroes[k], st = heroStats(k, G.party.includes(k) ? partyAura() : undefined), kit = heroKit(k), ev = canEvolve(k);
   const inP = G.party.includes(k), cap = STAGE_CAP[hs.stage], magic = C.base.mag > C.base.atk;
-  const gear = Object.entries(SLOTS).map(([slot, n]) => { const it = hs.eq[slot] && itemById(hs.eq[slot]); return `<div class="gs" style="--rc:${it ? RARITY[it.r].c : '#3a444e'}">${it ? icHtml(it) : '<div class="ic empty"></div>'}<div><small>${n}</small><b style="${it ? 'color:' + RARITY[it.r].c : ''}">${it ? esc(it.name) + (it.enh ? ' +' + it.enh : '') : 'Leer'}</b>${it ? `<span>${itemLines(it).slice(0, 2).join(' · ')}</span>` : ''}</div></div>`; }).join('');
-  openSheet(esc(H.n), `
-    <div class="hero">
-      <div class="hero-art" style="--rc:${ROLE_COL[C.role]}"><canvas id="bigArt"></canvas><div class="ha-foot">${stars(hs.stage)}<span>${esc(heroTitle(k))}</span></div></div>
-      <div class="hero-info">
-        <div class="hi-top"><span class="role r-${C.role}">${ROLES[C.role].n}</span><span class="muted">${esc(C.n)} · ${esc(C.sub)}</span></div>
-        <div class="hi-fac">${heroFactions(k)}${BONDS.filter(b => b.a === k || b.b === k).map(b => { const o = b.a === k ? b.b : b.a, on = G.party.includes(k) && G.party.includes(o); return `<span class="fchip bond ${on ? 'on' : ''}" title="${esc(b.d)}">♥ ${esc(b.n)} · ${G.heroes[o] ? esc(HEROES[o].n) : '???'}${on ? ' · aktiv' : ''}</span>`; }).join('')}</div>
-        <div class="power">⚡ ${fmt(st.power)}<small>Kampfkraft</small></div>
-        <div class="lvl"><span>Stufe ${hs.lvl}<small>/${cap}</small></span><div class="bar"><i style="width:${hs.lvl >= cap ? 100 : hs.xp / xpNeed(hs.lvl) * 100}%"></i></div></div>
-        <div class="stats">${[['Leben', st.hp], [magic ? 'Magie' : 'Angriff', magic ? st.mag : st.atk], ['Verteidigung', st.def], ['Tempo', st.spd], ['Krit', st.crit + ' %']].map(([n, v]) => `<div><small>${n}</small><b>${typeof v === 'number' ? fmt(v) : v}</b></div>`).join('')}</div>
-        <h3>Fähigkeiten</h3>
-        ${skillRow('ult', kit.ult, false, 'wenn die Leiste voll ist')}
-        ${skillRow('act', H.act, false, `alle ${H.act.cd + 1} Züge`)}
-        ${skillRow('act2', H.act2, hs.lvl < ACT2_LVL, hs.lvl < ACT2_LVL ? `ab Stufe ${ACT2_LVL}` : `alle ${H.act2.cd + 1} Züge`)}
-        ${H.pas.map(p => skillRow('pas', p, hs.lvl < p.lvl, hs.lvl < p.lvl ? `ab Stufe ${p.lvl}` : '')).join('')}
-        <h3>Ausrüstung</h3><div class="gear">${gear}</div>${setLines(k)}
-        <div class="acts">
-          <button class="btn" id="train" ${hs.lvl >= cap || G.gold < trainCost(k) ? 'disabled' : ''}>Training +1 Stufe <small>◆${fmt(trainCost(k))}</small></button>
-          <button class="btn" id="bestEq">Beste Ausrüstung</button>
-          <button class="btn ${inP ? '' : 'primary'}" id="toggleP" ${G.away[k] ? 'disabled' : ''}>${inP ? 'Aus der Gruppe' : 'In die Gruppe'}</button>
-          ${ev ? `<button class="btn ${ev.ok ? 'gold' : ''}" id="evo" ${ev.ok ? '' : 'disabled'}>Entwickeln <small>${ev.lvlOk ? '' : 'ab Stufe ' + cap + ' · '}◆${fmt(ev.cost.gold)} ✧${ev.cost.mithril}</small></button>` : '<span class="muted">Höchste Entwicklung erreicht</span>'}
-        </div>
-      </div>
-    </div>`, s => {
+  const list = owned().sort((a, b) => (G.party.includes(b) - G.party.includes(a)) || heroStats(b).power - heroStats(a).power), idx = list.indexOf(k);
+  let right = '';
+  if (tab === 'werte') right = `
+    <div class="hi-top"><span class="role r-${C.role}">${ROLES[C.role].n}</span><span class="muted">${esc(C.n)} · ${esc(C.sub)}</span></div>
+    <div class="m-pow"><div class="power">⚡ ${fmt(st.power)}<small>Kampfkraft</small></div><div class="lvl"><span>Stufe ${hs.lvl}<small>/${cap}</small></span><div class="bar"><i style="width:${hs.lvl >= cap ? 100 : hs.xp / xpNeed(hs.lvl) * 100}%"></i></div></div></div>
+    <div class="stats">${[['Leben', st.hp], [magic ? 'Magie' : 'Angriff', magic ? st.mag : st.atk], ['Verteid.', st.def], ['Tempo', st.spd], ['Krit', st.crit + ' %']].map(([n, v]) => `<div><small>${n}</small><b>${typeof v === 'number' ? fmt(v) : v}</b></div>`).join('')}</div>
+    <div class="hi-fac">${heroFactions(k)}${BONDS.filter(b => b.a === k || b.b === k).map(b => { const o = b.a === k ? b.b : b.a, on = G.party.includes(k) && G.party.includes(o); return `<span class="fchip bond ${on ? 'on' : ''}">♥ ${G.heroes[o] ? esc(HEROES[o].n) : '???'}${on ? ' · aktiv' : ''}</span>`; }).join('')}</div>
+    <div class="acts">
+      <button class="btn ${inP ? '' : 'primary'}" id="toggleP" ${G.away[k] ? 'disabled' : ''}>${inP ? 'Aus der Gruppe' : 'In die Gruppe'}</button>
+      <button class="btn" id="train" ${hs.lvl >= cap || G.gold < trainCost(k) ? 'disabled' : ''}>Training +1 <small>◆${fmt(trainCost(k))}</small></button>
+      ${ev ? `<button class="btn ${ev.ok ? 'gold' : ''}" id="evo" ${ev.ok ? '' : 'disabled'}>Entwickeln <small>${ev.lvlOk ? '' : 'ab St. ' + cap + ' · '}✧${ev.cost.mithril}</small></button>` : '<span class="muted small">Höchste Stufe</span>'}
+    </div>`;
+  else if (tab === 'faehig') right = `<div class="m-skills">${skillRow('ult', kit.ult, false, 'Leiste voll')}${skillRow('act', H.act, false, `alle ${H.act.cd + 1} Züge`)}${skillRow('act2', H.act2, hs.lvl < ACT2_LVL, hs.lvl < ACT2_LVL ? `ab Stufe ${ACT2_LVL}` : `alle ${H.act2.cd + 1} Züge`)}${H.pas.map(p => skillRow('pas', p, hs.lvl < p.lvl, hs.lvl < p.lvl ? `ab Stufe ${p.lvl}` : '')).join('')}</div>`;
+  else right = `<div class="gear">${Object.entries(SLOTS).map(([slot, n]) => { const it = hs.eq[slot] && itemById(hs.eq[slot]); return `<div class="gs" style="--rc:${it ? RARITY[it.r].c : '#3a444e'}">${it ? icHtml(it) : '<div class="ic empty"></div>'}<div><small>${n}</small><b style="${it ? 'color:' + RARITY[it.r].c : ''}">${it ? esc(it.name) + (it.enh ? ' +' + it.enh : '') : 'Leer'}</b>${it ? `<span>${itemLines(it).slice(0, 3).join(' · ')}</span>` : ''}</div></div>`; }).join('')}</div>${setLines(k)}<div class="acts"><button class="btn gold" id="bestEq">Beste Ausrüstung anlegen</button><button class="btn" id="toBag">Zum Beutel</button></div>`;
+  openSheet(esc(H.n), `<div class="m-hero"><div class="hero-art" style="--rc:${ROLE_COL[C.role]}"><canvas id="bigArt"></canvas><div class="ha-foot">${stars(hs.stage)}<span>${esc(heroTitle(k))}</span></div></div><div class="m-hr-r">${right}</div></div>`, s => {
     const cv = s.querySelector('#bigArt'); const seq = ['idle', { melee: 'attack', spin: 'attack', cast: 'cast', shoot: 'shoot', throw: 'throw', shout: 'shout' }[H.act.anim] || 'attack', 'idle', 'victory'];
     let si = 0, t0 = performance.now();
     const loop = now => { const a = seq[si]; const dur = a === 'idle' ? 2600 : a === 'victory' ? 1800 : RIG.animTime(a) + 300; if (now - t0 > dur) { si = (si + 1) % seq.length; t0 = now; } RIG.card(cv, 'hum', heroLook(k), { col: ROLE_COL[C.role], seed: k, anim: seq[si], el: now - t0, gt: now, zoom: 1.02 }); artRaf = requestAnimationFrame(loop); };
     artRaf = requestAnimationFrame(loop);
-    s.querySelector('#train').onclick = () => { if (train(k)) { sfx('level'); toast(`${esc(H.n)} erreicht Stufe ${G.heroes[k].lvl}`, 'lvl'); W.pendingParty = 1; openHero(k); } };
-    s.querySelector('#bestEq').onclick = () => { const n = autoEquip([k]); toast(n ? 'Ausrüstung verbessert' : 'Bereits optimal ausgerüstet', 'mini'); W.pendingParty = 1; openHero(k); };
-    s.querySelector('#toggleP').onclick = () => {
+    const on = (id, f) => { const e = s.querySelector(id); if (e) e.onclick = f; };
+    on('#train', () => { if (train(k)) { sfx('level'); toast(`${esc(H.n)} erreicht Stufe ${G.heroes[k].lvl}`, 'lvl'); W.pendingParty = 1; openHero(k); } });
+    on('#bestEq', () => { const n = autoEquip([k]); toast(n ? 'Ausrüstung verbessert' : 'Bereits optimal ausgerüstet', 'mini'); W.pendingParty = 1; openHero(k); });
+    on('#toBag', () => openBag());
+    on('#toggleP', () => {
       G.settings.autoParty = false;
       if (inP) { if (G.party.length > 1) G.party = G.party.filter(x => x !== k); }
       else if (G.party.length < 5) G.party.push(k);
       else { const same = G.party.filter(x => roleOf(x) === roleOf(k)); const out = (same.length ? same : G.party).reduce((a, b) => heroStats(b).power < heroStats(a).power ? b : a); G.party = G.party.map(x => x === out ? k : x); toast(`${esc(HEROES[out].n)} wurde ersetzt`, 'mini'); }
       save(); W.pendingParty = 1; buildHud(); openHero(k);
-    };
-    const e = s.querySelector('#evo'); if (e) e.onclick = () => { if (evolve(k)) { W.pendingParty = 1; closeSheet(); joinSplash(k, 0).then(() => toast(`${esc(HEROES[k].n)} ist jetzt <b>${esc(heroTitle(k))}</b>!`, 'lvl')); } };
-  });
+    });
+    on('#evo', () => { if (evolve(k)) { W.pendingParty = 1; closeSheet(); joinSplash(k, 0).then(() => toast(`${esc(HEROES[k].n)} ist jetzt <b>${esc(heroTitle(k))}</b>!`, 'lvl')); } });
+    on('#hBack', () => openHeroes());
+  }, { tabs: [['werte', 'Werte'], ['faehig', 'Fähigkeiten'], ['ausr', 'Ausrüstung']], tab, onTab: t => openHero(k, t), pages: list.length, page: idx, onPage: p => openHero(list[clampPg(p, list.length)], tab), extra: '<button class="btn small" id="hBack">‹ Alle</button>' });
 }
-function openBag() {
-  const f = openBag.f || 'all';
+
+/* ---------- Beutel: Raster links, Details rechts ---------- */
+function openBag(f = openBag.f || 'all', page = openBag.page, sel = openBag.sel) {
+  openBag.f = f;
   const list = G.inv.filter(it => f === 'all' || it.slot === f).sort((a, b) => b.r - a.r || b.lvl - a.lvl);
-  openSheet('Beutel', `<div class="filters">${[['all', 'Alle'], ['weapon', 'Waffen'], ['armor', 'Rüstung'], ['trinket', 'Schmuck']].map(([x, n]) => `<button class="btn small ${f === x ? 'on' : ''}" data-f="${x}">${n}</button>`).join('')}<button class="btn small" id="salv">Gewöhnliche zerlegen</button></div>
-    <div class="items">${list.map(it => { const by = equippedBy(it.id); return `<div class="item" style="--rc:${RARITY[it.r].c}">${icHtml(it)}<div class="it-i"><b style="color:${RARITY[it.r].c}">${esc(it.name)}${it.enh ? ' +' + it.enh : ''}</b><small>${RARITY[it.r].n} · ${SLOTS[it.slot]}${it.slot === 'weapon' ? ' · ' + WCLS[it.base] : ''} · St. ${it.lvl}</small><small class="muted">${itemLines(it).join(' · ')}</small>${it.passive ? `<small class="leg">${esc(it.passive)}</small>` : ''}</div><div class="it-a">${by ? `<span class="tag in">${esc(HEROES[by].n)}</span>` : ''}<button class="btn small" data-enh="${it.id}" ${G.gold < enhCost(it) || it.enh >= 10 ? 'disabled' : ''}>Verstärken ◆${fmt(enhCost(it))}</button><button class="btn small ghost" data-sv="${it.id}" ${by ? 'disabled' : ''}>Zerlegen ◆${fmt(itemValue(it))}</button></div></div>`; }).join('') || '<p class="muted">Noch keine Gegenstände.</p>'}</div>`, s => {
-    s.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { openBag.f = b.dataset.f; openBag(); });
-    s.querySelectorAll('[data-sv]').forEach(b => b.onclick = () => { const v = salvage(itemById(+b.dataset.sv)); save(); toast(`+${fmt(v)} ◆`, 'mini'); openBag(); });
-    s.querySelectorAll('[data-enh]').forEach(b => b.onclick = () => { if (enhance(itemById(+b.dataset.enh))) { sfx('buff'); W.pendingParty = 1; } openBag(); });
-    s.querySelector('#salv').onclick = () => { let g = 0; G.inv.filter(it => it.r <= 1 && !equippedBy(it.id)).forEach(it => g += salvage(it)); save(); toast(`Zerlegt: +${fmt(g)} ◆`, 'mini'); openBag(); };
-  });
+  const per = 15, np = pages(list.length, per); page = openBag.page = clampPg(page, np);
+  const it = itemById(sel) || list[page * per]; openBag.sel = it?.id;
+  const by = it && equippedBy(it.id);
+  const det = it ? `<div class="m-idet" style="--rc:${RARITY[it.r].c}"><div class="m-ih">${icHtml(it)}<div><b style="color:${RARITY[it.r].c}">${esc(it.name)}${it.enh ? ' +' + it.enh : ''}</b><small>${RARITY[it.r].n} · ${SLOTS[it.slot]}${it.slot === 'weapon' ? ' · ' + WCLS[it.base] : ''} · St. ${it.lvl}</small></div></div>
+    <ul>${itemLines(it).map(l => `<li>${esc(l)}</li>`).join('')}</ul>${it.passive ? `<p class="leg">${esc(it.passive)}</p>` : ''}
+    <div class="m-ia">${by ? `<span class="tag in">Getragen von ${esc(HEROES[by].n)}</span>` : ''}<button class="btn small gold" data-enh="${it.id}" ${G.gold < enhCost(it) || it.enh >= 10 ? 'disabled' : ''}>Verstärken ◆${fmt(enhCost(it))}</button><button class="btn small ghost" data-sv="${it.id}" ${by ? 'disabled' : ''}>Zerlegen ◆${fmt(itemValue(it))}</button><button class="btn small" id="salv">Gewöhnliche zerlegen</button></div></div>` : '<div class="m-idet"><p class="muted">Noch keine Gegenstände. Sie fallen in Kämpfen.</p></div>';
+  openSheet('Beutel', `<div class="m-bag"><div class="m-items">${list.slice(page * per, page * per + per).map(x => `<button class="m-it ${x.id === it?.id ? 'sel' : ''}" data-it="${x.id}" style="--rc:${RARITY[x.r].c}">${icHtml(x)}<b>${esc(x.name)}</b>${equippedBy(x.id) ? '<i>●</i>' : ''}</button>`).join('')}</div>${det}</div>`, s => {
+    s.querySelectorAll('[data-it]').forEach(b => b.onclick = () => { sfx('click'); openBag(f, page, +b.dataset.it); });
+    s.querySelectorAll('[data-sv]').forEach(b => b.onclick = () => { const v = salvage(itemById(+b.dataset.sv)); save(); toast(`+${fmt(v)} ◆`, 'mini'); openBag(f, page, null); });
+    s.querySelectorAll('[data-enh]').forEach(b => b.onclick = () => { if (enhance(itemById(+b.dataset.enh))) { sfx('buff'); W.pendingParty = 1; } openBag(f, page, it.id); });
+    const sv = s.querySelector('#salv'); if (sv) sv.onclick = () => { let g = 0; G.inv.filter(x => x.r <= 1 && !equippedBy(x.id)).forEach(x => g += salvage(x)); save(); toast(`Zerlegt: +${fmt(g)} ◆`, 'mini'); openBag(f, 0, null); };
+  }, { tabs: [['all', 'Alle'], ['weapon', 'Waffen'], ['armor', 'Rüstung'], ['trinket', 'Schmuck']], tab: f, onTab: t => openBag(t, 0, null), pages: np, page, onPage: p => openBag(f, p, null) });
 }
+
+/* ---------- Reise: Karte + Kapitel, Modi als Kacheln ---------- */
 const PARTS = ['Teil I · Der Hobbit', 'Teil II · Der Ringkrieg', 'Teil III · Die Ringe der Macht'];
 const PART_COL = ['#2e8a4a', '#b8402a', '#3a5ab8'];
 function chapterStatus(i) { if (i < G.story.ch || G.story.loop > 0) return 'done'; if (i === G.story.ch) return 'cur'; return 'locked'; }
@@ -437,7 +529,7 @@ function drawMap(cv, part, sel) {
     c.save(); c.translate(x, y); c.rotate(Math.PI / 4); c.fillStyle = done ? '#8a6ac8' : un ? '#a888ff' : '#8a8070'; c.fillRect(-R * .8, -R * .8, R * 1.6, R * 1.6); c.lineWidth = r * .4; c.strokeStyle = '#2a1a0a'; c.strokeRect(-R * .8, -R * .8, R * 1.6, R * 1.6); c.restore();
     if (sel === 'side:' + sd.id) { c.strokeStyle = '#fff6d0'; c.lineWidth = r * .6; c.beginPath(); c.arc(x, y, R + r * 1.4, 0, Math.PI * 2); c.stroke(); }
     c.fillStyle = '#fff'; c.font = `800 ${r * 2.4}px Cinzel, serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(done ? '✓' : un ? '!' : '🔒', x, y + r * .2);
-    cv._hits.push({ i: 'side:' + sd.id, x: x / (Math.min(2, devicePixelRatio || 1)), y: y / (Math.min(2, devicePixelRatio || 1)), r: Math.max(22, R / Math.min(2, devicePixelRatio || 1) + 8) });
+    cv._hits.push({ i: 'side:' + sd.id, x: x / dpr, y: y / dpr, r: Math.max(22, R / dpr + 8) });
   });
   idx.forEach(i => {
     const p = STORY[i].map, st = chapterStatus(i), R = r * (st === 'cur' ? 3.1 : 2.6), x = X(p[0]), y = Y(p[1]);
@@ -453,79 +545,86 @@ function drawMap(cv, part, sel) {
 function chapterCard(i) {
   const C = STORY[i], st = chapterStatus(i), joins = [...(C.join || []), ...Object.values(C.mid || {}).flat(), ...(C.end || [])].filter((k, j, a) => a.indexOf(k) === j);
   const boss = C.boss.find(k => ENEMIES[k].boss) || C.boss[0], seen = st !== 'locked';
-  return `<div class="chcard ${st}"><div class="cc-art"><canvas data-card="${boss}" data-enemy="1" data-bust="1" class="${seen ? '' : 'sil'}"></canvas></div><div class="cc-info">
-    <small>${esc(C.part)} · Kapitel ${i + 1}</small><h3>${esc(C.n)}</h3>
-    <div class="cc-st">${st === 'done' ? '✓ Abgeschlossen' : st === 'cur' ? (G.story.wave >= WAVES ? '▶ Jetzt: Bosskampf' : `▶ Jetzt: Welle ${G.story.wave + 1} von ${WAVES}`) : '🔒 Noch nicht erreicht'}</div>
-    <div class="cc-row"><b>Boss</b><span>${seen ? esc(ENEMIES[boss].n) : '???'}</span></div>
-    ${joins.length ? `<div class="cc-row"><b>Gefährten</b><span>${joins.map(k => G.heroes[k] ? esc(HEROES[k].n) : '???').join(', ')}</span></div>` : ''}
-    <div class="cc-row"><b>Relikt</b><span>${G.relics[i] ? esc(RELICS[i].n) + ' · ' + esc(RELICS[i].d) : '???'}</span></div>
-    <div class="cc-row"><b>Gegnerstufe</b><span>${C.lvl + G.story.loop * LOOP_LVL}–${C.lvl + G.story.loop * LOOP_LVL + 4}</span></div>
-    ${chapterSet(i) ? `<div class="cc-row"><b>Set-Beute</b><span style="color:${chapterSet(i).c}">${esc(chapterSet(i).n)}</span></div>` : ''}
-    ${chapterCompanion(i) ? `<div class="cc-row"><b>Begleiter</b><span>${G.comps[chapterCompanion(i).id] ? esc(chapterCompanion(i).n) : '???'}</span></div>` : ''}
-    ${st === 'done' ? `<button class="btn gold small" data-rematch="${i}" ${G.queue ? 'disabled' : ''}>Boss erneut bekämpfen${chapterSet(i) ? ' · Set-Teile' : ''}</button>` : ''}</div></div>`;
+  const btn = st === 'cur' ? `<button class="btn gold big m-play" id="goOn">▶ ${G.story.wave >= WAVES ? 'Zum Bosskampf' : 'Weiterspielen'}</button>` : st === 'done' ? `<button class="btn gold big m-play" data-rematch="${i}">▶ Boss erneut${chapterSet(i) ? ' · Set' : ''}</button>` : '<button class="btn big m-play" disabled>🔒 Noch gesperrt</button>';
+  return `<div class="m-ch ${st}"><div class="cc-art"><canvas data-card="${boss}" data-enemy="1" data-bust="1" class="${seen ? '' : 'sil'}"></canvas><span class="cc-st">${st === 'done' ? '✓ Geschafft' : st === 'cur' ? (G.story.wave >= WAVES ? 'Boss wartet' : `Welle ${G.story.wave + 1}/${WAVES}`) : 'Gesperrt'}</span></div>
+    <small>Kapitel ${i + 1}</small><h3>${esc(C.n)}</h3>
+    <div class="cc-rows"><div><b>Boss</b><span>${seen ? esc(ENEMIES[boss].n) : '???'}</span></div>${joins.length ? `<div><b>Helden</b><span>${joins.map(k => G.heroes[k] ? esc(HEROES[k].n) : '???').join(', ')}</span></div>` : ''}<div><b>Relikt</b><span>${G.relics[i] ? esc(RELICS[i].n) : '???'}</span></div><div><b>Stufe</b><span>${C.lvl + G.story.loop * LOOP_LVL}+</span></div></div>${btn}</div>`;
 }
 function sideCard(sd) {
-  const un = sideUnlocked(sd), done = G.side[sd.id];
+  const un = sideUnlocked(sd), done = G.side[sd.id], boss = sd.boss.find(k => ENEMIES[k].boss);
   const rew = [sd.hero ? (done ? esc(HEROES[sd.hero].n) : 'Neuer Held') : '', sd.comp ? (done ? esc(COMPANIONS.find(c => c.id === sd.comp).n) : 'Begleiter') : '', sd.legend ? (done ? esc(sd.legend) : 'Legendäre Waffe') : ''].filter(Boolean).join(', ');
-  const boss = sd.boss.find(k => ENEMIES[k].boss);
-  return `<div class="chcard side ${un ? (done ? 'done' : 'cur') : 'locked'}"><div class="cc-art"><canvas data-card="${boss}" data-enemy="1" data-bust="1" class="${un ? '' : 'sil'}"></canvas></div><div class="cc-info">
-    <small>Nebenquest · ab Kapitel ${sd.after + 2}</small><h3>${esc(sd.n)}</h3>
-    <div class="cc-st">${!un ? '🔒 Noch nicht erreicht' : done ? `✓ Abgeschlossen (${done}×)` : '◆ Verfügbar'}</div>
-    <div class="cc-row"><b>Boss</b><span>${un ? esc(ENEMIES[boss].n) : '???'}</span></div>
-    <div class="cc-row"><b>Belohnung</b><span>${rew}${done ? ' · wiederholbar für Beute' : ''}</span></div>
-    <div class="cc-row"><b>Gegnerstufe</b><span>${sideLvl(sd)}–${sideLvl(sd) + 3}</span></div>
-    ${un ? `<button class="btn gold small" data-side="${sd.id}" ${G.queue ? 'disabled' : ''}>${done ? 'Erneut spielen' : 'Nebenquest starten'}</button>` : ''}</div></div>`;
+  return `<div class="m-ch side ${un ? (done ? 'done' : 'cur') : 'locked'}"><div class="cc-art"><canvas data-card="${boss}" data-enemy="1" data-bust="1" class="${un ? '' : 'sil'}"></canvas><span class="cc-st">${!un ? 'Gesperrt' : done ? `✓ ${done}×` : 'Neu!'}</span></div>
+    <small>Nebenquest</small><h3>${esc(sd.n)}</h3>
+    <div class="cc-rows"><div><b>Boss</b><span>${un ? esc(ENEMIES[boss].n) : '???'}</span></div><div><b>Beute</b><span>${rew}</span></div><div><b>Stufe</b><span>${sideLvl(sd)}+</span></div></div>
+    ${un ? `<button class="btn gold big m-play" data-side="${sd.id}">▶ ${done ? 'Erneut spielen' : 'Starten'}</button>` : `<button class="btn big m-play" disabled>🔒 ab Kapitel ${sd.after + 2}</button>`}</div>`;
 }
-function openStory(part, sel) {
+function openStory(tab = openStory.tab || 'story', part, sel) {
+  openStory.tab = tab;
+  if (tab === 'modi') return openModes();
   if (part === undefined) part = Math.max(0, PARTS.indexOf(STORY[G.story.ch].part));
   if (typeof sel === 'string') { } else if (sel === undefined || STORY[sel]?.part !== PARTS[part]) sel = STORY[G.story.ch].part === PARTS[part] ? G.story.ch : STORY.findIndex(c => c.part === PARTS[part]);
-  const f = towerFloor(), tg = towerGroup(f);
-  openSheet('Die Reise', `<div class="ptabs">${PARTS.map((p, i) => `<button class="ptab ${i === part ? 'on' : ''}" data-part="${i}" style="--c:${PART_COL[i]}">${esc(p.split(' · ')[1])}</button>`).join('')}</div>
-    <div class="mapwrap"><canvas id="map" class="map"></canvas><div class="maphint">Tippe auf eine Station für Details</div></div>
-    <div id="chDetail">${typeof sel === 'string' ? sideCard(SIDE.find(x => 'side:' + x.id === sel)) : chapterCard(sel)}</div>
-    ${activeMods().length ? `<div class="mods"><b>Heldenreise ${G.story.loop + 1}</b> ${activeMods().map(m => `<span>☠ ${esc(m.d)}</span>`).join('')}<span class="good">+${G.story.loop * 25} % Gold & EP, seltenere Beute</span></div>` : ''}
-    <h3 class="sect">Prüfungen der Macht <small>45 Sekunden gegen einen übermächtigen Boss. Je mehr Schaden, desto größer die Belohnung. Beliebig oft spielbar.</small></h3>
-    <div class="raids">${RAIDS.map(R => { const st = G.raid[R.key] || { best: 0, tiers: 0 }; return `<div class="raid"><canvas data-card="${R.key}" data-enemy="1" data-bust="1"></canvas><div><b>${esc(R.n)}</b><small>Bestwert ${Math.round(st.best * 100)} % · Stufe ${st.tiers}/${RAID_TIERS.length}</small><div class="bar"><i style="width:${st.best * 100}%"></i></div></div><button class="btn small gold" data-raid="${R.key}" ${G.queue || G.story.ch < 3 && !G.story.loop ? 'disabled' : ''}>Starten</button></div>`; }).join('')}</div>
-    <div class="tower"><div><div class="kicker">Herausforderung</div><b>Orthanc-Turm · Etage ${f}</b><small>Gegnerstufe ${towerLvl(f)} · Belohnung ◆${fmt(towerReward(f).gold)} ✧${towerReward(f).mithril} · Bestwert: Etage ${G.tower.best}</small></div><button class="btn gold" id="tw" ${G.tower.queued ? 'disabled' : ''}>${G.tower.queued ? 'Nach diesem Kampf' : 'Herausfordern'}</button></div>`, s => {
+  const mods = activeMods();
+  openSheet('Reise', `<div class="m-story"><div class="mapwrap"><canvas id="map" class="map"></canvas><div class="m-parts">${PARTS.map((p, i) => `<button class="ptab ${i === part ? 'on' : ''}" data-part="${i}" style="--c:${PART_COL[i]}">${esc(p.split(' · ')[1])}</button>`).join('')}</div>${mods.length ? `<div class="m-loop">Heldenreise ${G.story.loop + 1} · ☠ ${mods.length} Erschwernisse · +${G.story.loop * 25} % Beute</div>` : ''}</div><div id="chDetail">${typeof sel === 'string' ? sideCard(SIDE.find(x => 'side:' + x.id === sel)) : chapterCard(sel)}</div></div>`, s => {
     const cv = s.querySelector('#map');
     requestAnimationFrame(() => drawMap(cv, part, sel));
-    const wireQ = root => {
-      root.querySelectorAll('[data-rematch]').forEach(b => b.onclick = () => { G.queue = { type: 'boss', ch: +b.dataset.rematch }; save(); toast('Nach diesem Kampf geht es zum Boss.', 'lvl'); openStory(part, sel); });
-      root.querySelectorAll('[data-side]').forEach(b => b.onclick = () => { G.queue = { type: 'side', id: b.dataset.side }; save(); toast('Nach diesem Kampf beginnt die Nebenquest.', 'lvl'); openStory(part, sel); });
-      root.querySelectorAll('[data-raid]').forEach(b => b.onclick = () => { G.queue = { type: 'raid', key: b.dataset.raid }; save(); toast('Nach diesem Kampf beginnt die Prüfung.', 'lvl'); openStory(part, sel); });
+    const wire = root => {
+      const go = root.querySelector('#goOn'); if (go) go.onclick = () => { closeSheet(); sfx('click'); };
+      root.querySelectorAll('[data-rematch]').forEach(b => b.onclick = () => playNow({ type: 'boss', ch: +b.dataset.rematch }, 'Bosskampf: ' + STORY[+b.dataset.rematch].n));
+      root.querySelectorAll('[data-side]').forEach(b => b.onclick = () => playNow({ type: 'side', id: b.dataset.side }, SIDE.find(x => x.id === b.dataset.side).n));
     };
-    wireQ(s);
-    cv.onclick = e => { const rc = cv.getBoundingClientRect(), x = e.clientX - rc.left, y = e.clientY - rc.top; const h = (cv._hits || []).map(h => ({ ...h, d: Math.hypot(h.x - x, h.y - y) })).filter(h => h.d < h.r).sort((a, b) => a.d - b.d)[0]; if (h) { sfx('click'); sel = h.i; drawMap(cv, part, sel); const d = s.querySelector('#chDetail'); d.innerHTML = typeof sel === 'string' ? sideCard(SIDE.find(x => 'side:' + x.id === sel)) : chapterCard(sel); paintCards(d); wireQ(d); } };
-    s.querySelectorAll('[data-part]').forEach(b => b.onclick = () => { sfx('click'); openStory(+b.dataset.part); });
-    s.querySelector('#tw').onclick = () => { G.tower.queued = true; save(); toast('Die Gruppe zieht nach diesem Kampf zum Orthanc-Turm.', 'lvl'); openStory(part, sel); };
-  });
+    wire(s);
+    cv.onclick = e => { const rc = cv.getBoundingClientRect(), x = e.clientX - rc.left, y = e.clientY - rc.top; const h = (cv._hits || []).map(h => ({ ...h, d: Math.hypot(h.x - x, h.y - y) })).filter(h => h.d < h.r).sort((a, b) => a.d - b.d)[0]; if (h) { sfx('click'); sel = h.i; drawMap(cv, part, sel); const d = s.querySelector('#chDetail'); d.innerHTML = typeof sel === 'string' ? sideCard(SIDE.find(x => 'side:' + x.id === sel)) : chapterCard(sel); paintCards(d); wire(d); } };
+    s.querySelectorAll('[data-part]').forEach(b => b.onclick = () => { sfx('click'); openStory('story', +b.dataset.part); });
+  }, { tabs: [['story', 'Geschichte'], ['modi', 'Modi & Prüfungen']], tab, onTab: t => openStory(t) });
+}
+function openModes() {
+  const ok = modeUnlocked(), f = towerFloor(), tr = towerReward(f);
+  const tile = (cls, art, n, sub, data, label, dis) => `<div class="m-tile ${cls}">${art}<b>${n}</b><small>${sub}</small><button class="btn small gold" ${data} ${dis ? 'disabled' : ''}>${label}</button></div>`;
+  const tiles = [
+    ...MODES.map(M => tile('mode', `<span class="m-ic">${M.ic}</span>`, esc(M.n), `${esc(M.d.split('.')[0])}.<br><em>Rekord: ${(G.modes || {})[M.id] || 0}</em>`, `data-mode="${M.id}"`, ok ? '▶ Spielen' : 'ab Kapitel 4', !ok)),
+    tile('tower', '<span class="m-ic">♜</span>', 'Orthanc-Turm', `Etage ${f} · Stufe ${towerLvl(f)}<br><em>◆${fmt(tr.gold)} ✧${tr.mithril}</em>`, 'id="tw"', '▶ Etage ' + f, false),
+    ...RAIDS.map(R => { const st = G.raid[R.key] || { best: 0, tiers: 0 }; return tile('raid', `<canvas data-card="${R.key}" data-enemy="1" data-bust="1"></canvas>`, esc(R.n), `45 Sek. · Bestwert ${Math.round(st.best * 100)} %<br><em>Stufe ${st.tiers}/${RAID_TIERS.length}</em>`, `data-raid="${R.key}"`, ok ? '▶ Spielen' : 'ab Kapitel 4', !ok); })
+  ];
+  openSheet('Reise', `<div class="m-tiles">${tiles.join('')}</div>`, s => {
+    s.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => playNow({ type: 'mode', id: b.dataset.mode }, MODES.find(m => m.id === b.dataset.mode).n));
+    s.querySelectorAll('[data-raid]').forEach(b => b.onclick = () => playNow({ type: 'raid', key: b.dataset.raid }, 'Prüfung: ' + RAIDS.find(r => r.key === b.dataset.raid).n));
+    s.querySelector('#tw').onclick = () => playNow({ type: 'tower' }, 'Orthanc-Turm Etage ' + f);
+  }, { tabs: [['story', 'Geschichte'], ['modi', 'Modi & Prüfungen']], tab: 'modi', onTab: t => openStory(t) });
 }
 function introHelp() {
   return splash(`<div class="help"><div class="kicker">So funktioniert Ringfahrt</div><h1>Willkommen, Gefährte</h1><ul>
     <li><b>Kämpfe laufen von selbst.</b> Die Helden setzen ihre Fähigkeiten automatisch ein.</li>
-    <li><b>Goldene Leiste</b> unter jedem Helden: Ist sie voll, folgt die Ultimate.</li>
-    <li><b>Oben links</b> siehst du Kapitel, Wellen und aktive Bündnisse.</li>
-    <li><b>Oben rechts</b> öffnest du Helden, Beutel, die Reise-Karte, Aufträge und Relikte.</li>
-    <li><b>Unten links</b> füllt sich die Siegestruhe mit jedem gewonnenen Kampf.</li>
-    <li><b>Reise</b> zeigt die Karte mit Nebenquests, erneuten Bosskämpfen und den Prüfungen der Macht.</li></ul><div class="dhint">Tippen zum Starten</div></div>`, 0, 'helpS');
+    <li><b>Goldene Leiste</b> unter jedem Helden: Ist sie voll, tippe die Karte für eine Ultimate mit Bonus.</li>
+    <li><b>Oben rechts</b> öffnest du Helden, Beutel, Reise, Aufträge und mehr.</li>
+    <li><b>Reise</b> zeigt die Karte und alle Modi. Ein Tipp auf ▶ startet sofort.</li></ul><div class="dhint">Tippen zum Starten</div></div>`, 0, 'helpS');
 }
+
+/* ---------- Aufträge, Relikte, Erfolge, Truhe, Optionen ---------- */
 function openQuests() {
   const b = ensureBoard();
-  openSheet('Auftragstafel', `<p class="muted">Erledigte Aufträge holst du ab, und sofort erscheint ein neuer. Nach je vier abgeholten Aufträgen öffnet sich die Bonustruhe.</p><div class="achs">${b.active.map((a, i) => { const st = questState(i); return `<div class="ach ${st.done ? 'ready' : ''}"><div><b>${esc(st.q.n.replace(/\d+/, st.goal))}</b><div class="bar"><i style="width:${Math.min(100, st.v / st.goal * 100)}%"></i></div><small>${Math.min(st.v, st.goal)} / ${st.goal}</small></div><div class="ar"><span>◆ ${fmt(st.r.gold)} ✧ ${st.r.mithril}</span><button class="btn small ${st.done ? 'gold' : ''}" data-q="${i}" ${st.done ? '' : 'disabled'}>Abholen</button></div></div>`; }).join('')}
-    <div class="ach bonus ${boardBonusReady() ? 'ready' : ''}"><div><b>Bonustruhe</b><small>${Math.min(4, b.bonus)} / 4 Aufträge · ✧ 30 und ein epischer oder legendärer Gegenstand</small><div class="bar"><i style="width:${Math.min(100, b.bonus / 4 * 100)}%"></i></div></div><div class="ar"><button class="btn small ${boardBonusReady() ? 'gold' : ''}" id="qb" ${boardBonusReady() ? '' : 'disabled'}>Öffnen</button></div></div></div>
-    <p class="muted small">Bisher erledigt: ${b.done} Aufträge.</p>`, s => {
+  openSheet('Aufträge', `<div class="m-quests">${b.active.map((a, i) => { const st = questState(i); return `<div class="ach ${st.done ? 'ready' : ''}"><b>${esc(st.q.n.replace(/\d+/, st.goal))}</b><div class="bar"><i style="width:${Math.min(100, st.v / st.goal * 100)}%"></i></div><div class="ar"><small>${Math.min(st.v, st.goal)} / ${st.goal}</small><span>◆ ${fmt(st.r.gold)} ✧ ${st.r.mithril}</span><button class="btn small ${st.done ? 'gold' : ''}" data-q="${i}" ${st.done ? '' : 'disabled'}>Abholen</button></div></div>`; }).join('')}
+    <div class="ach bonus ${boardBonusReady() ? 'ready' : ''}"><b>Bonustruhe</b><small>Nach je 4 Aufträgen: ✧ 30 und ein epischer oder legendärer Gegenstand</small><div class="bar"><i style="width:${Math.min(100, b.bonus / 4 * 100)}%"></i></div><div class="ar"><small>${Math.min(4, b.bonus)} / 4 · bisher ${b.done} erledigt</small><button class="btn small ${boardBonusReady() ? 'gold' : ''}" id="qb" ${boardBonusReady() ? '' : 'disabled'}>Öffnen</button></div></div></div>`, s => {
     s.querySelectorAll('[data-q]').forEach(x => x.onclick = () => { if (claimQuest(+x.dataset.q)) { sfx('loot'); updateHud(); openQuests(); } });
     const qb = s.querySelector('#qb'); if (qb) qb.onclick = () => { const it = claimBoardBonus(); if (it) { sfx('join'); lootPop([it], 0); W.pendingParty = 1; updateHud(); openQuests(); } };
   });
 }
-function openRelics() {
-  const n = Object.keys(G.relics).length;
-  openSheet('Schatzkammer', `<p class="muted">Jeder Kapitel-Boss hinterlässt beim ersten Sieg ein Relikt. Ihre Boni gelten dauerhaft für alle Helden. ${n} von ${RELICS.length} gefunden.</p>
-    <div class="relics">${RELICS.map((r, i) => G.relics[i] ? `<div class="rel" style="--rc:${r.c}"><canvas class="ic" data-ic="${r.ic}" data-c="${r.c}"></canvas><b>${esc(r.n)}</b><small>${esc(r.d)}</small></div>` : `<div class="rel lk"><div class="ic empty"></div><b>???</b><small>Kapitel ${i + 1}: ${esc(STORY[i].n)}</small></div>`).join('')}</div>`);
+function openRelics(sel = openRelics.sel ?? Object.keys(G.relics).map(Number)[0] ?? 0) {
+  openRelics.sel = sel; const n = Object.keys(G.relics).length, R = RELICS[sel], own = G.relics[sel];
+  openSheet('Relikte', `<div class="m-reldet" style="--rc:${own ? R.c : '#555'}">${own ? `<canvas class="ic" data-ic="${R.ic}" data-c="${R.c}"></canvas><div><b>${esc(R.n)}</b><small>${esc(R.d)} · gilt dauerhaft für alle Helden</small></div>` : `<div class="ic empty"></div><div><b>???</b><small>Boss von Kapitel ${sel + 1}: ${esc(STORY[sel].n)}</small></div>`}<span class="m-cnt">${n}/${RELICS.length}</span></div>
+    <div class="m-relics">${RELICS.map((r, i) => `<button class="m-rel ${G.relics[i] ? '' : 'lk'} ${i === sel ? 'sel' : ''}" data-r="${i}" style="--rc:${r.c}">${G.relics[i] ? `<canvas class="ic" data-ic="${r.ic}" data-c="${r.c}"></canvas>` : '<div class="ic empty"></div>'}<small>${G.relics[i] ? esc(r.n) : 'Kap. ' + (i + 1)}</small></button>`).join('')}</div>`, s => {
+    s.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { sfx('click'); openRelics(+b.dataset.r); });
+  });
+}
+function openAch(page = openAch.page) {
+  const list = ACHIEVEMENTS.map(a => [a, achState(a)]).sort((x, y) => (y[1].done && !y[1].claimed) - (x[1].done && !x[1].claimed) || x[1].claimed - y[1].claimed);
+  const per = 9, np = pages(list.length, per); page = openAch.page = clampPg(page, np);
+  openSheet('Erfolge', `<div class="m-achs">${list.slice(page * per, page * per + per).map(([a, s]) => `<div class="ach ${s.claimed ? 'claimed' : s.done ? 'ready' : ''}"><b>${esc(a.n)}</b><small>${esc(a.d)}</small><div class="bar"><i style="width:${Math.min(100, s.v / a.goal * 100)}%"></i></div><div class="ar"><span>${a.r.gold ? '◆ ' + fmt(a.r.gold) : ''}${a.r.mithril ? ' ✧ ' + a.r.mithril : ''}</span>${s.claimed ? '<span class="tag in">✓</span>' : `<button class="btn small ${s.done ? 'gold' : ''}" data-a="${a.id}" ${s.done ? '' : 'disabled'}>Abholen</button>`}</div></div>`).join('')}</div>`, s => {
+    s.querySelectorAll('[data-a]').forEach(b => b.onclick = () => { if (claimAch(ACHIEVEMENTS.find(x => x.id === b.dataset.a))) { sfx('loot'); updateHud(); openAch(); } });
+  }, { pages: np, page, onPage: p => openAch(p) });
 }
 function openChest() {
   const st = chestState();
-  openSheet('Siegestruhe', `<div class="chestbox"><div class="kicker">Kriegsbeute</div><p>Jeder Sieg legt Beute in die Truhe, ein Bosssieg dreifach. Ab 5 Siegen kannst du sie öffnen, voll ist sie bei ${CHEST_MAX}.</p>
+  openSheet('Siegestruhe', `<div class="chestbox"><p>Jeder Sieg legt Beute in die Truhe, ein Bosssieg dreifach. Ab 5 Siegen kannst du sie öffnen, voll ist sie bei ${CHEST_MAX}.</p>
     <div class="bar big"><i style="width:${st.n / CHEST_MAX * 100}%"></i></div><p><b>${st.n} / ${CHEST_MAX}</b> Siege gesammelt</p>
     <div class="chest-r"><span>◆ ${fmt(st.gold)} Gold</span><span>★ ${fmt(st.xp)} EP</span><span>✧ ${st.mithril} Mithril</span><span>▣ ${st.items} Gegenstände</span></div>
     <button class="btn gold big" id="claimIdle" ${st.ready ? '' : 'disabled'}>${st.ready ? 'Öffnen' : 'Noch ' + (5 - st.n) + ' Siege'}</button></div>`, s => {
@@ -535,21 +634,22 @@ function openChest() {
 function openSettings() {
   const S = G.settings;
   const tg = (id, on, label) => `<div class="opt"><span>${label}</span><button class="btn small ${on ? 'on' : ''}" id="${id}">${on ? 'An' : 'Aus'}</button></div>`;
-  openSheet('Optionen', `${tg('o-mus', S.music !== false, 'Musik')}${tg('o-snd', S.sound, 'Soundeffekte')}${tg('o-eq', S.autoEquip, 'Beste Ausrüstung automatisch anlegen')}${tg('o-party', S.autoParty, 'Gruppe automatisch aufstellen')}
-    <div class="opt"><span>Grafik <small class="muted">${(S.gfx || 'auto') === 'auto' ? (W.lowFps ? '(Auto: gerade Normal für flüssiges Spiel)' : '(Auto: gerade Hoch)') : ''}</small></span><span class="seg">${[['auto', 'Auto'], ['hoch', 'Hoch'], ['normal', 'Normal']].map(([v, l]) => `<button class="btn small ${(S.gfx || 'auto') === v ? 'on' : ''}" data-gfx="${v}">${l}</button>`).join('')}</span></div>
-    <h3 class="sect">Spielstand sichern</h3>
-    <p class="muted small">Kopiere den Code und bewahre ihn auf. Mit ihm stellst du deinen Fortschritt jederzeit wieder her, auch auf einem anderen Gerät.</p>
-    <div class="opt"><button class="btn small" id="o-exp">Code anzeigen & kopieren</button><button class="btn small" id="o-imp">Code einfügen</button></div>
-    <textarea id="o-code" hidden rows="3" spellcheck="false"></textarea><div id="o-impbox" hidden class="opt"><button class="btn small gold" id="o-imp2">Spielstand laden</button><span id="o-msg" class="muted small"></span></div>
-    <div class="opt"><span>Spielstand</span><button class="btn small danger" id="o-del">Neu beginnen</button></div><div id="o-conf" hidden class="opt warn"><span>Der gesamte Fortschritt wird gelöscht.</span><button class="btn small danger" id="o-del2">Ja, löschen</button></div>
-    <p class="muted small">Inoffizielles Fan-Spiel nach J.R.R. Tolkien und „Die Ringe der Macht“. Alle Grafiken, Texte und Mechaniken sind eigene Umsetzungen.</p>`, s => {
+  openSheet('Optionen', `<div class="m-opts"><div>
+    ${tg('o-mus', S.music !== false, 'Musik')}${tg('o-snd', S.sound, 'Soundeffekte')}${tg('o-eq', S.autoEquip, 'Beste Ausrüstung automatisch')}${tg('o-party', S.autoParty, 'Gruppe automatisch')}${tg('o-ult', S.autoUlt !== false, 'Ultimates automatisch')}
+    <div class="opt"><span>Grafik</span><span class="seg">${[['auto', 'Auto'], ['hoch', 'Hoch'], ['normal', 'Normal']].map(([v, l]) => `<button class="btn small ${(S.gfx || 'auto') === v ? 'on' : ''}" data-gfx="${v}">${l}</button>`).join('')}</span></div></div>
+    <div><h3 class="sect">Spielstand</h3><p class="muted small">Mit dem Code stellst du deinen Fortschritt wieder her, auch auf einem anderen Gerät.</p>
+    <div class="opt"><button class="btn small" id="o-exp">Code kopieren</button><button class="btn small" id="o-imp">Code einfügen</button><button class="btn small danger" id="o-del">Neu beginnen</button></div>
+    <textarea id="o-code" hidden rows="2" spellcheck="false"></textarea><div id="o-impbox" hidden class="opt"><button class="btn small gold" id="o-imp2">Spielstand laden</button><span id="o-msg" class="muted small"></span></div>
+    <div id="o-conf" hidden class="opt warn"><span>Alles wird gelöscht.</span><button class="btn small danger" id="o-del2">Ja, löschen</button></div>
+    <p class="muted small">Inoffizielles Fan-Spiel nach J.R.R. Tolkien und „Die Ringe der Macht“. Grafiken, Texte und Mechaniken sind eigene Umsetzungen.</p></div></div>`, s => {
     s.querySelectorAll('[data-gfx]').forEach(b => b.onclick = () => { S.gfx = b.dataset.gfx; W.lowFps = false; W._pf = null; save(); openSettings(); });
+    s.querySelector('#o-ult').onclick = () => { S.autoUlt = S.autoUlt === false; save(); openSettings(); };
     s.querySelector('#o-snd').onclick = () => { S.sound = !S.sound; save(); openSettings(); };
     s.querySelector('#o-mus').onclick = () => { S.music = S.music === false; save(); MUSIC.sync(); openSettings(); };
     const ta = s.querySelector('#o-code');
     s.querySelector('#o-exp').onclick = () => { ta.hidden = false; ta.readOnly = true; ta.value = exportSave(); ta.select(); try { navigator.clipboard.writeText(ta.value).then(() => toast('Code kopiert', 'mini'), () => toast('Code markiert. Bitte kopieren.', 'mini')); } catch (e) { toast('Code markiert. Bitte kopieren.', 'mini'); } };
     s.querySelector('#o-imp').onclick = () => { ta.hidden = false; ta.readOnly = false; ta.value = ''; ta.placeholder = 'Code hier einfügen'; s.querySelector('#o-impbox').hidden = false; ta.focus(); };
-    s.querySelector('#o-imp2').onclick = () => { if (importSave(ta.value)) { s.querySelector('#o-msg').textContent = 'Geladen. Das Spiel startet neu …'; setTimeout(() => location.reload(), 700); } else s.querySelector('#o-msg').textContent = 'Der Code ist ungültig. Bitte vollständig einfügen.'; };
+    s.querySelector('#o-imp2').onclick = () => { if (importSave(ta.value)) { s.querySelector('#o-msg').textContent = 'Geladen. Das Spiel startet neu …'; setTimeout(() => location.reload(), 700); } else s.querySelector('#o-msg').textContent = 'Der Code ist ungültig.'; };
     s.querySelector('#o-eq').onclick = () => { S.autoEquip = !S.autoEquip; if (S.autoEquip) { autoEquip(); W.pendingParty = 1; } save(); openSettings(); };
     s.querySelector('#o-party').onclick = () => { S.autoParty = !S.autoParty; if (S.autoParty) { autoParty(); W.pendingParty = 1; buildHud(); } save(); openSettings(); };
     s.querySelector('#o-del').onclick = () => { s.querySelector('#o-conf').hidden = false; };
@@ -574,7 +674,7 @@ function boot() {
   applyParty();
   W.walking = true; W.heroes.forEach(h => W.setAnim(h, 'walk'));
   const origWalk = W.walk.bind(W); W.walk = async ms => { if (W.pendingParty) { W.pendingParty = 0; applyParty(); } return origWalk(ms); };
-  const origFight = W.fight.bind(W); W.fight = (g, l, k) => { W.pendingParty = 0; W.setParty(G.party); buildHud(); return origFight(g, l, k); };
+  const origFight = W.fight.bind(W); W.fight = (g, l, k, o) => { W.pendingParty = 0; W.setParty(G.party); buildHud(); return origFight(g, l, k, o); };
   setInterval(updateHud, 100); updateHud();
   $('#title').hidden = false; document.body.classList.add('titled');
   $('#tContinue').textContent = has ? `Weiterspielen · Kapitel ${G.story.ch + 1}` : 'Reise beginnen';
