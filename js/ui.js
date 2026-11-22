@@ -71,10 +71,10 @@ function paintCards(root = document) {
       const LK = c.dataset.stage !== undefined ? lookAtStage(k, +c.dataset.stage) : G.heroes[k] ? heroLook(k) : lookAtStage(k, 0);
       RIG.card(c, 'hum', LK, { col: ROLE_COL[CLASSES[HEROES[k].cls].role], bust: !!c.dataset.bust, seed: k, zoom: +(c.dataset.zoom || 1) });
     });
-    root.querySelectorAll('canvas[data-ic]').forEach(c => RIG.icon(c, c.dataset.ic, c.dataset.c));
+    root.querySelectorAll('canvas[data-ic]').forEach(c => RIG.icon(c, c.dataset.ic, c.dataset.c, c.dataset.r !== undefined ? +c.dataset.r : 2));
   });
 }
-const icHtml = it => `<canvas class="ic" data-ic="${it.icon}" data-c="${RARITY[it.r].c}" style="--rc:${RARITY[it.r].c}"></canvas>`;
+const icHtml = it => `<canvas class="ic r${it.r}" data-ic="${it.icon}" data-c="${RARITY[it.r].c}" data-r="${it.r}" style="--rc:${RARITY[it.r].c}"></canvas>`;
 
 /* ---------- HUD ---------- */
 function buildHud() {
@@ -113,6 +113,24 @@ function updateHud() {
 let bannerT = 0;
 function comboFx(n) { const c = $('#combo'); c.innerHTML = `<small>Gemeinschafts-Kombo</small>×${n}`; c.className = 'show'; clearTimeout(comboFx.t); comboFx.t = setTimeout(() => c.className = '', 1600); G.stats.maxCombo = Math.max(G.stats.maxCombo, n); if (n === 2) track('combos', 1); sfx('ult'); }
 function banner(txt, cls) { const b = $('#banner'); b.textContent = txt; b.className = 'show ' + (cls || ''); clearTimeout(bannerT); bannerT = setTimeout(() => b.className = '', cls === 'ult' ? 1400 : 900); }
+/* Ausrüstungs-Vorschläge: neue bessere Teile direkt anlegen (oder Bestätigung, wenn automatisch angelegt) */
+function gearCard(k, it, d, done) {
+  const box = $('#gsug'); if (!box || !G.heroes[k]) return; while (box.children.length >= 2) box.firstChild.remove();
+  const H = HEROES[k], e = document.createElement('div'); e.className = 'gsg' + (done ? ' done' : '') + (it.r >= 4 ? ' leg' : ''); e.style.setProperty('--rc', RARITY[it.r].c);
+  e.innerHTML = `<canvas class="gsg-h" data-card="${k}" data-bust="1"></canvas><div class="gsg-t"><small>${done ? '✓ Angelegt' : 'Besser für'} · ${esc(H.n)}</small><div class="gsg-i">${icHtml(it)}<b>${esc(it.name)}</b></div><span class="pos">+${fmt(d)} ⚡ Kampfkraft</span></div>${done ? '<button class="btn small gsg-v">Team</button>' : '<button class="btn small gold gsg-a">Anlegen</button>'}<button class="gsg-x" aria-label="Schließen">✕</button>`;
+  box.appendChild(e); paintCards(e); sfx(it.r >= 3 ? 'loot' : 'click');
+  const kill = () => { e.classList.add('out'); setTimeout(() => e.remove(), 300); };
+  const t = setTimeout(kill, done ? 5000 : 9000);
+  e.querySelector('.gsg-x').onclick = ev => { ev.stopPropagation(); clearTimeout(t); kill(); };
+  const a = e.querySelector('.gsg-a'); if (a) a.onclick = () => { clearTimeout(t); if (G.inv.includes(it)) { equip(k, it); W.pendingParty = 1; refreshLooks(); sfx('level'); toast(`${esc(H.n)}: <b style="color:${RARITY[it.r].c}">${esc(it.name)}</b> angelegt`, 'lvl'); } kill(); };
+  const v = e.querySelector('.gsg-v'); if (v) v.onclick = () => { clearTimeout(t); kill(); openHeroes('team'); };
+}
+function suggestGear(items) {
+  const auto = autoEquip.last || []; autoEquip.last = [];
+  if (G.settings.autoEquip) { auto.filter(x => x.d > 0).sort((a, b) => b.d - a.d).slice(0, 2).forEach((x, i) => setTimeout(() => gearCard(x.k, x.it, x.d, true), 700 + i * 500)); return; }
+  const sug = []; for (const it of items || []) { const b = bestHeroFor(it); if (b) sug.push([b.k, it, b.d]); }
+  sug.sort((a, b) => b[2] - a[2]).slice(0, 2).forEach(([k, it, d], i) => setTimeout(() => gearCard(k, it, d, false), 700 + i * 500));
+}
 function lootPop(items, gold) {
   const box = $('#loot');
   if (gold) { const e = document.createElement('div'); e.className = 'lp gold'; e.textContent = `+${fmt(gold)} ◆`; box.appendChild(e); setTimeout(() => e.remove(), 2200); }
@@ -198,7 +216,7 @@ function onResult(r, kind) {
     const rw = battleReward(kind, r.enemies.filter(e => e.xp));
     if (kind === 'boss' && r.setCh !== undefined) { const S2 = chapterSet(r.setCh); if (S2 && Math.random() < .6) rw.items.push(genSetItem(S2, r.enemies.reduce((a, e) => Math.max(a, e.lvl), 1))); }
     const lvBefore = Object.fromEntries(owned().map(k => [k, G.heroes[k].lvl]));
-    const res = applyReward(rw, party);
+    autoEquip.last = []; const res = applyReward(rw, party); suggestGear(rw.items);
     lootPop(rw.items, rw.gold); if (rw.mithril) toast(`+${rw.mithril} ✧ Mithril`, 'mini');
     const r0 = Object.values(res)[0];
     if (r0 && r0.ups) {
@@ -398,13 +416,17 @@ function openSheet(title, html, after, o = {}) {
   const tabs = o.tabs ? `<div class="m-tabs">${o.tabs.map(([id, n, badge]) => `<button class="m-tab ${o.tab === id ? 'on' : ''}" data-tab="${id}">${n}${badge ? `<i>${badge}</i>` : ''}</button>`).join('')}</div>` : '';
   const pg = o.pages > 1 ? `<div class="m-pg"><button class="m-pb" data-pg="-1" ${o.page <= 0 ? 'disabled' : ''}>‹</button><span>${o.page + 1}/${o.pages}</span><button class="m-pb" data-pg="1" ${o.page >= o.pages - 1 ? 'disabled' : ''}>›</button></div>` : '';
   s.innerHTML = `<div class="sh-head"><h2>${title}</h2>${tabs}<div class="m-hr">${o.extra || ''}${pg}<button class="x" aria-label="Schließen">✕</button></div></div><div class="sh-body fit">${html}</div>`;
-  s.hidden = false; requestAnimationFrame(() => s.classList.add('open'));
+  s.hidden = false; requestAnimationFrame(() => s.classList.add('open')); document.body.classList.add('sheet-open');
   s.querySelector('.x').onclick = closeSheet;
   if (o.onTab) s.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { sfx('click'); o.onTab(b.dataset.tab); });
   if (o.onPage) s.querySelectorAll('[data-pg]').forEach(b => b.onclick = () => { sfx('click'); o.onPage(o.page + +b.dataset.pg); });
   paintCards(s); after && after(s);
+  if (!s._swipe) { s._swipe = 1; let x0 = 0, y0 = 0, t0 = 0;
+    s.addEventListener('pointerdown', e => { x0 = e.clientX; y0 = e.clientY; t0 = Date.now(); });
+    s.addEventListener('pointerup', e => { const dx = e.clientX - x0, dy = e.clientY - y0; if (Date.now() - t0 < 600 && Math.abs(dx) > 70 && Math.abs(dy) < 45 && !e.target.closest('canvas#map')) { const b = s.querySelector(`.m-pb[data-pg="${dx < 0 ? 1 : -1}"]:not(:disabled)`); if (b) b.click(); } });
+  }
 }
-function closeSheet() { cancelAnimationFrame(artRaf); const s = $('#sheet'); s.classList.remove('open'); setTimeout(() => { if (!s.classList.contains('open')) s.hidden = true; }, 260); }
+function closeSheet() { cancelAnimationFrame(artRaf); const s = $('#sheet'); s.classList.remove('open'); document.body.classList.remove('sheet-open'); setTimeout(() => { if (!s.classList.contains('open')) s.hidden = true; }, 260); }
 const pages = (n, per) => Math.max(1, Math.ceil(n / per));
 const clampPg = (p, n) => Math.max(0, Math.min(n - 1, p || 0));
 
@@ -533,13 +555,14 @@ function openBag(f = openBag.f || 'all', page = openBag.page, sel = openBag.sel)
   const by = it && equippedBy(it.id);
   const det = it ? `<div class="m-idet" style="--rc:${RARITY[it.r].c}"><div class="m-ih">${icHtml(it)}<div><b style="color:${RARITY[it.r].c}">${esc(it.name)}${it.enh ? ' +' + it.enh : ''}</b><small>${RARITY[it.r].n} · ${SLOTS[it.slot]}${it.slot === 'weapon' ? ' · ' + WCLS[it.base] : ''} · St. ${it.lvl}</small></div></div>
     <ul>${itemLines(it).map(l => `<li>${esc(l)}</li>`).join('')}</ul>${it.passive ? `<p class="leg">${esc(it.passive)}</p>` : ''}
-    <div class="m-ia">${by ? `<span class="tag in">Getragen von ${esc(HEROES[by].n)}</span>` : ''}<button class="btn small gold" data-enh="${it.id}" ${G.gold < enhCost(it) || it.enh >= 10 ? 'disabled' : ''}>Verstärken ◆${fmt(enhCost(it))}</button><button class="btn small ghost" data-sv="${it.id}" ${by ? 'disabled' : ''}>Zerlegen ◆${fmt(itemValue(it))}</button><button class="btn small" id="salv">Gewöhnliche zerlegen</button></div></div>` : '<div class="m-idet"><p class="muted">Noch keine Gegenstände. Sie fallen in Kämpfen.</p></div>';
-  openSheet('Beutel', `<div class="m-bag"><div class="m-items">${list.slice(page * per, page * per + per).map(x => `<button class="m-it ${x.id === it?.id ? 'sel' : ''}" data-it="${x.id}" style="--rc:${RARITY[x.r].c}">${icHtml(x)}<b>${esc(x.name)}</b>${equippedBy(x.id) ? '<i>●</i>' : ''}</button>`).join('')}</div>${det}</div>`, s => {
+    <div class="m-ia">${(() => { const b = bestHeroFor(it); return b ? `<button class="btn small gold" data-eqb="${b.k}">Anlegen: ${esc(HEROES[b.k].n)} <span class="pos">+${fmt(b.d)} ⚡</span></button>` : ''; })()}${by ? `<span class="m-worn">Getragen von ${esc(HEROES[by].n)}</span>` : ''}<div class="m-ia2"><button class="btn small" data-enh="${it.id}" ${G.gold < enhCost(it) || it.enh >= 10 ? 'disabled' : ''}>Verstärken<small>◆${fmt(enhCost(it))}</small></button><button class="btn small ghost" data-sv="${it.id}" ${by ? 'disabled' : ''}>Zerlegen<small>◆${fmt(itemValue(it))}</small></button></div></div></div>` : '<div class="m-idet"><p class="muted">Noch keine Gegenstände. Sie fallen in Kämpfen.</p></div>';
+  openSheet('Beutel', `<div class="m-bag"><div class="m-items">${list.slice(page * per, page * per + per).map(x => `<button class="m-it ${x.id === it?.id ? 'sel' : ''} ${x.r >= 4 ? 'leg' : ''}" data-it="${x.id}" style="--rc:${RARITY[x.r].c}">${icHtml(x)}<b>${esc(x.name)}</b>${equippedBy(x.id) ? '<i>●</i>' : bestHeroFor(x) ? '<i class="up">▲</i>' : ''}</button>`).join('')}</div>${det}</div>`, s => {
     s.querySelectorAll('[data-it]').forEach(b => b.onclick = () => { sfx('click'); openBag(f, page, +b.dataset.it); });
+    s.querySelectorAll('[data-eqb]').forEach(b => b.onclick = () => { const hk = b.dataset.eqb; equip(hk, it); W.pendingParty = 1; refreshLooks(); sfx('level'); toast(`${esc(HEROES[hk].n)}: <b style="color:${RARITY[it.r].c}">${esc(it.name)}</b> angelegt`, 'lvl'); openBag(f, page, it.id); });
     s.querySelectorAll('[data-sv]').forEach(b => b.onclick = () => { const v = salvage(itemById(+b.dataset.sv)); save(); toast(`+${fmt(v)} ◆`, 'mini'); openBag(f, page, null); });
     s.querySelectorAll('[data-enh]').forEach(b => b.onclick = () => { if (enhance(itemById(+b.dataset.enh))) { sfx('buff'); W.pendingParty = 1; } openBag(f, page, it.id); });
     const sv = s.querySelector('#salv'); if (sv) sv.onclick = () => { let g = 0; G.inv.filter(x => x.r <= 1 && !equippedBy(x.id)).forEach(x => g += salvage(x)); save(); toast(`Zerlegt: +${fmt(g)} ◆`, 'mini'); openBag(f, 0, null); };
-  }, { tabs: [['all', 'Alle'], ['weapon', 'Waffen'], ['armor', 'Rüstung'], ['trinket', 'Schmuck']], tab: f, onTab: t => openBag(t, 0, null), pages: np, page, onPage: p => openBag(f, p, null) });
+  }, { tabs: [['all', 'Alle'], ['weapon', 'Waffen'], ['armor', 'Rüstung'], ['trinket', 'Schmuck']], tab: f, onTab: t => openBag(t, 0, null), pages: np, page, onPage: p => openBag(f, p, null), extra: '<button class="btn small" id="salv" title="Alle gewöhnlichen, nicht angelegten Teile zerlegen">Aufräumen</button>' });
 }
 
 /* ---------- Reise: Karte + Kapitel, Modi als Kacheln ---------- */
@@ -746,6 +769,7 @@ function boot() {
   $('#farm').onclick = () => { G.story.farm = false; save(); toast('Der Boss wird erneut herausgefordert!', 'lvl'); updateHud(); };
   $('#rotOk').onclick = () => { layoutMode.dismissed = 1; $('#rotate').hidden = true; };
   addEventListener('resize', layoutMode);
+  $('#world').addEventListener('click', () => { if ($('#sheet').classList.contains('open')) closeSheet(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
 }
 boot();

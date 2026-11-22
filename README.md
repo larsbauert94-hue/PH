@@ -12,6 +12,12 @@ Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden 
 
 Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten). Unter **Optionen → Grafik** lässt sich zwischen *Auto*, *Hoch* (Figuren mit Szenenlicht, Kantenlicht und Bodenverdeckung) und *Normal* wählen; *Auto* schaltet bei zu niedriger Bildrate selbst herunter.
 
+## Neu in Version 7.1
+- **Ausrüstungs-Vorschläge:** Fällt ein besseres Teil, erscheint unten rechts „Besser für …: +X ⚡ · Anlegen“ (bei Auto-Ausrüstung: „✓ Angelegt“)
+- **Beutel:** ▲ markiert Upgrades, „Anlegen: Held (+X ⚡)“ mit einem Tipp, „Aufräumen“ zerlegt Gewöhnliches
+- **Edlere Icons** nach Seltenheit (Lichtkegel, Glanz, Funkeln, pulsierende Legendäre)
+- **Bedienung:** Wischen blättert in allen Menüs, Tippen auf die Welt schließt das Menü
+
 ## Neu in Version 7
 - **Gemeinsame Gruppenstufe:** Helden steigen nur durch Kämpfe auf, alle haben immer dieselbe Stufe (kein Nachleveln, kein Gold-Training)
 - **Team-Übersicht:** die fünf Eingesetzten mit Ausrüstung, ▲ zeigt bessere Teile, Antippen eines Slots wechselt direkt mit Kampfkraft-Vergleich

@@ -686,10 +686,18 @@ const RIG = (() => {
   }
 
   /* ---------- Item-Icons ---------- */
-  function icon(cv, kind, col) {
+  function icon(cv, kind, col, r = 1) {
     const dpr = window.devicePixelRatio || 1, W = cv.clientWidth || 40; cv.width = Math.round(W * dpr); cv.height = cv.width;
     const c = cv.getContext('2d'), g = P(c); c.setTransform(cv.width / 16, 0, 0, cv.width / 16, 0, 0); c.clearRect(0, 0, 16, 16);
-    c.fillStyle = g.rad(8, 8, 10, [rgba(col, .35), 'rgba(0,0,0,0)']); c.fillRect(0, 0, 16, 16);
+    // Hintergrund: Samt mit Lichtkegel in Seltenheitsfarbe
+    c.fillStyle = g.rad(8, 6.5, 11, [rgba(col, .5 + r * .06), rgba(sh(col, -.55), .35), 'rgba(4,6,9,.9)']); c.fillRect(0, 0, 16, 16);
+    if (r >= 3) { c.save(); c.globalCompositeOperation = 'lighter'; for (let i = 0; i < 8; i++) { const a = i / 8 * TAU + .2; c.fillStyle = rgba(col, .07 + (r - 3) * .05); c.beginPath(); c.moveTo(8, 8); c.lineTo(8 + Math.cos(a - .12) * 12, 8 + Math.sin(a - .12) * 12); c.lineTo(8 + Math.cos(a + .12) * 12, 8 + Math.sin(a + .12) * 12); c.fill(); } c.restore(); }
+    c.save(); c.shadowColor = 'rgba(0,0,0,.75)'; c.shadowBlur = cv.width / 16 * 1.2; c.shadowOffsetY = cv.width / 16 * .5; icon2(c, g, kind, col); c.restore();
+    // Glanz und Funkeln je nach Seltenheit
+    if (r >= 2) { c.save(); c.globalCompositeOperation = 'source-atop'; c.restore(); c.save(); c.globalCompositeOperation = 'lighter'; c.fillStyle = g.lin(2, 2, 14, 14, ['rgba(255,255,255,0)', 'rgba(255,255,255,' + (.1 + r * .04) + ')', 'rgba(255,255,255,0)']); c.fillRect(0, 0, 16, 16); c.restore(); }
+    if (r >= 3) { c.save(); c.globalCompositeOperation = 'lighter'; const sp = r >= 4 ? [[12.6, 3.2, 1.6], [3.4, 12.4, 1.1], [13.2, 11.8, .8]] : [[12.6, 3.2, 1.2]]; for (const [x, y, s] of sp) { c.fillStyle = '#ffffff'; c.beginPath(); c.moveTo(x, y - s); c.quadraticCurveTo(x, y, x + s, y); c.quadraticCurveTo(x, y, x, y + s); c.quadraticCurveTo(x, y, x - s, y); c.quadraticCurveTo(x, y, x, y - s); c.fill(); g.glow(x, y, s * 1.8, col, .6); } c.restore(); }
+  }
+  function icon2(c, g, kind, col) {
     const metal = g.lin(3, 3, 13, 13, ['#ffffff', '#c8d0d8', '#7a8490']), wood = '#8a5a30';
     if (kind === 'sword') { g.fill(() => { c.moveTo(3.2, 12); c.lineTo(12, 2.6); c.lineTo(13.4, 2.6); c.lineTo(13.4, 4); c.lineTo(4.6, 12.8); c.closePath(); }, metal, .4); g.limb([[2.2, 10.2], [5.8, 13.8]], 1, '#c8a040', .3); g.limb([[3.2, 13], [1.6, 14.6]], 1.1, '#5a3a22', .3); }
     else if (kind === 'bow') { c.lineCap = 'round'; c.strokeStyle = OL; c.lineWidth = 2; c.beginPath(); c.moveTo(9, 1.5); c.quadraticCurveTo(2, 8, 9, 14.5); c.stroke(); c.strokeStyle = wood; c.lineWidth = 1.1; c.stroke(); c.strokeStyle = '#eee'; c.lineWidth = .3; c.beginPath(); c.moveTo(9, 1.5); c.lineTo(9, 14.5); c.stroke(); g.limb([[4, 8], [14, 8]], .6, '#d8c8a0', .25); }

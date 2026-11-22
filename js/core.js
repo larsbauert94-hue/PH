@@ -129,6 +129,7 @@ function heroKit(key) {
 const LVL_MAX = 120;
 function syncLevels() { if (!G.team) return; for (const k of Object.keys(G.heroes)) { G.heroes[k].lvl = G.team.lvl; G.heroes[k].xp = G.team.xp; } G.stats.maxLvl = Math.max(G.stats.maxLvl || 1, G.team.lvl); }
 function teamXp(xp) { const t = G.team; let ups = 0; t.xp += Math.round(xp * 1.35); while (t.lvl < LVL_MAX && t.xp >= xpNeed(t.lvl)) { t.xp -= xpNeed(t.lvl); t.lvl++; ups++; } if (t.lvl >= LVL_MAX) t.xp = 0; syncLevels(); if (ups) track('levels', ups); return ups; }
+function bestHeroFor(it) { let best = null; const by = equippedBy(it.id); if (by && G.party.includes(by)) return null; for (const k of G.party) { if (!G.heroes[k] || !canEquip(k, it) || G.heroes[k].eq[it.slot] === it.id) continue; const d = Math.round(powerDiff(k, it)); if (d > 0 && (!best || d > best.d)) best = { k, d }; } return best; }
 function upgradeFor(k, sl) { for (const it of G.inv) { if (it.slot !== sl || !canEquip(k, it) || G.heroes[k].eq[sl] === it.id) continue; const by = equippedBy(it.id); if (by && by !== k && G.party.includes(by)) continue; if (powerDiff(k, it) > 0) return true; } return false; }
 function grantXp(key, xp) {
   const hs = G.heroes[key]; if (!hs) return { ups: 0 };
@@ -183,11 +184,11 @@ function enhance(it) { const c = enhCost(it); if (G.gold < c || it.enh >= 10) re
 function addItem(it) { G.inv.push(it); if (it.r === 3) G.stats.epics++; if (it.r === 4) G.stats.legends++; }
 function powerDiff(k, it) { const hs = G.heroes[k], prev = hs.eq[it.slot], before = heroStats(k).power; hs.eq[it.slot] = it.id; const after = heroStats(k).power; hs.eq[it.slot] = prev; return after - before; }
 function autoEquip(keys = G.party) {
-  let n = 0;
+  let n = 0; const ch = []; autoEquip.last = ch;
   for (const k of keys) for (const slot of Object.keys(SLOTS)) {
     let best = null, bestD = 0;
     for (const it of G.inv) { if (it.slot !== slot || !canEquip(k, it)) continue; const by = equippedBy(it.id); if (by && by !== k && G.party.includes(by)) continue; if (G.heroes[k].eq[slot] === it.id) continue; const d = powerDiff(k, it); if (d > bestD) { bestD = d; best = it; } }
-    if (best) { equip(k, best); n++; }
+    if (best) { equip(k, best); n++; ch.push({ k, it: best, d: Math.round(bestD) }); }
   }
   // Überschuss automatisch zerlegen (gewöhnlich, nicht angelegt), damit der Beutel übersichtlich bleibt
   if (G.inv.length > 80) G.inv.filter(it => it.r === 0 && !equippedBy(it.id)).forEach(salvage);
