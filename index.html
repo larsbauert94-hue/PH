@@ -97,6 +97,17 @@ nav{display:flex;gap:6px}
 #sheet{position:fixed;top:0;bottom:0;right:0;width:min(760px,68vw);z-index:40;background:linear-gradient(160deg,rgba(18,24,32,.88),rgba(8,11,16,.92));backdrop-filter:blur(16px) saturate(1.2);-webkit-backdrop-filter:blur(16px) saturate(1.2);border-left:1px solid rgba(255,220,150,.22);box-shadow:-20px 0 60px rgba(0,0,0,.6);transform:translateX(102%);transition:transform .3s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;padding-right:var(--sr)}
 #sheet.open{transform:none}
 body.portrait #sheet{width:100%}
+#lvc{font-size:10.5px;color:var(--muted);margin-top:3px;font-weight:700} #lvc .ok{color:#8fe07a} #lvc .mid{color:#ffd060} #lvc .bad{color:#ff7a5a}
+.m-mapcol{display:flex;flex-direction:column;gap:6px;min-height:0} .m-mapcol .mapwrap{flex:1;min-height:0}
+.m-story .m-parts{position:static;display:flex;gap:4px} .m-story .m-parts .ptab{flex:1;font-size:11px;padding:5px 4px;white-space:nowrap;background:rgba(255,255,255,.04);color:var(--muted)} .m-story .m-parts .ptab.on{color:#fff;background:linear-gradient(color-mix(in srgb,var(--c) 45%,transparent),color-mix(in srgb,var(--c) 15%,transparent))}
+/* Sets */
+.m-sets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:8px}
+.m-set{display:flex;flex-direction:column;gap:3px;border-radius:14px;border:1px solid color-mix(in srgb,var(--sc) 45%,transparent);background:linear-gradient(160deg,color-mix(in srgb,var(--sc) 14%,transparent),rgba(255,255,255,.02));padding:8px 10px;min-height:0;overflow:hidden}
+.m-set.full{box-shadow:0 0 16px color-mix(in srgb,var(--sc) 45%,transparent)}
+.m-sh{display:flex;justify-content:space-between;align-items:baseline;gap:6px} .m-sh b{font-family:var(--display);font-size:13px;color:var(--sc);white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .m-sh span{font-weight:900;font-size:12px;color:var(--muted)}
+.m-sp{display:flex;gap:6px;margin:2px 0} .m-sp .ic{width:34px;height:34px}
+.m-set small{font-size:11px;color:var(--muted);line-height:1.25} .m-set small.on{color:#fff}
+.m-src{font-size:10.5px;color:var(--sc);margin-top:auto;line-height:1.25} .m-set .btn{margin-top:3px}
 /* Ausrüstungs-Vorschläge */
 #gsug{position:absolute;right:calc(10px + var(--sr));bottom:calc(8px + var(--sb));display:flex;flex-direction:column;gap:6px;z-index:30;pointer-events:none}
 .gsg{pointer-events:auto;position:relative;display:grid;grid-template-columns:40px minmax(0,1fr);gap:4px 8px;align-items:center;width:min(240px,27vw);padding:6px 22px 6px 6px;border-radius:14px;border:1px solid color-mix(in srgb,var(--rc) 70%,transparent);background:linear-gradient(120deg,rgba(16,20,28,.94),color-mix(in srgb,var(--rc) 22%,rgba(10,12,16,.94)));box-shadow:0 10px 28px rgba(0,0,0,.6),0 0 18px color-mix(in srgb,var(--rc) 35%,transparent);animation:gsgin .45s cubic-bezier(.2,1.3,.4,1);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
@@ -492,7 +503,7 @@ textarea#o-code{width:100%;background:rgba(0,0,0,.4);color:var(--fg);border:1px 
 .m-quests .ach.bonus{grid-column:1/-1}
 .m-reldet{flex:0 0 auto!important;display:flex;align-items:center;gap:10px;border-radius:12px;border:1px solid color-mix(in srgb,var(--rc) 50%,transparent);background:rgba(255,255,255,.04);padding:7px 10px;margin-bottom:8px}
 .m-reldet .ic{width:40px;height:40px} .m-reldet b{font-family:var(--display);font-size:14px;display:block} .m-reldet small{font-size:12px;color:var(--gold-2)} .m-cnt{margin-left:auto;font-weight:800;color:var(--muted)}
-.m-relics{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:6px}
+.m-relics{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:repeat(4,minmax(0,1fr));gap:6px}
 .m-rel{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:10px;border:1px solid color-mix(in srgb,var(--rc) 40%,transparent);background:rgba(255,255,255,.04);padding:4px;min-height:0;color:var(--fg)}
 .m-rel small{font-size:10px;line-height:1.15;text-align:center;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden} .m-rel.lk{opacity:.45} .m-rel.sel{box-shadow:0 0 0 2px var(--gold)} .m-rel .ic{width:32px;height:32px}
 .m-achs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:7px}
@@ -507,7 +518,7 @@ body.portrait #sheet{width:100%}
   <canvas id="world"></canvas>
   <div id="hud">
     <div class="tl">
-      <div class="tlc"><div class="chap"><small id="chapPart"></small><b id="chapName"></b><div id="pips"></div></div><div id="syn"></div></div>
+      <div class="tlc"><div class="chap"><small id="chapPart"></small><b id="chapName"></b><div id="pips"></div><div id="lvc"></div></div><div id="syn"></div></div>
       <button id="farm" hidden>Boss herausfordern</button>
     </div>
     <div class="tr">

@@ -12,6 +12,14 @@ Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden 
 
 Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten). Unter **Optionen → Grafik** lässt sich zwischen *Auto*, *Hoch* (Figuren mit Szenenlicht, Kantenlicht und Bodenverdeckung) und *Normal* wählen; *Auto* schaltet bei zu niedriger Bildrate selbst herunter.
 
+## Neu in Version 8
+- **Zwei neue Story-Teile (7 Kapitel):** Teil IV „Das Letzte Bündnis“ (Lindon, Dagorlad, Orodruin) und Teil V „Das Erste Zeitalter“ (Jähes Feuer, Beren & Lúthien, Fall von Gondolin, Angband)
+- **8 neue Helden:** Gil-galad, Círdan, Glorfindel, Lúthien, Beren, Fingolfin, Éomer, Haldir (insgesamt 42)
+- **Neue Gegner:** Morgoth, Glaurung, Gothmog, Carcharoth, Khamûl, Sauron in voller Macht, Balrog-Krieger, Werwölfe, Ostlinge
+- **14 Sets** mit eigener Übersicht (Beutel → Sets): Fortschritt, Boni und „▶ Farmen“ direkt zur Quelle (Kapitelbosse, Orthanc-Turm, Endloser Ansturm, Prüfungen der Macht)
+- **Spielfluss:** Stufenanzeige Gruppe vs. Gegner, Dialoge laufen automatisch weiter (abschaltbar)
+- **Mehr Details:** Kettenhemden, Schwertgurte, Stiefelstulpen, Kragen
+
 ## Neu in Version 7.1
 - **Ausrüstungs-Vorschläge:** Fällt ein besseres Teil, erscheint unten rechts „Besser für …: +X ⚡ · Anlegen“ (bei Auto-Ausrüstung: „✓ Angelegt“)
 - **Beutel:** ▲ markiert Upgrades, „Anlegen: Held (+X ⚡)“ mit einem Tipp, „Aufräumen“ zerlegt Gewöhnliches
@@ -34,9 +42,9 @@ Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten).
 
 ## Inhalt
 - **Vollbild im Querformat:** Die Welt läuft ununterbrochen, Menüs liegen als Glas-Panels darüber
-- **21 Story-Kapitel** in drei Teilen (Der Hobbit, Der Ringkrieg mit Epilog, Die Ringe der Macht), je 8 Wellen + Boss
+- **28 Story-Kapitel** in drei Teilen (Der Hobbit, Der Ringkrieg mit Epilog, Die Ringe der Macht), je 8 Wellen + Boss
 - **4 Nebenquests** (Der Alte Wald, Die Hügelgräberhöhen, Die Pfade der Toten, Die Tunnel von Ostirith), wiederholbar
-- **34 Helden** in den Rollen Tank, Schaden und Heiler; je 3 Passive, zwei Aktive und eine Ultimate
+- **42 Helden** in den Rollen Tank, Schaden und Heiler; je 3 Passive, zwei Aktive und eine Ultimate
 - **Mehrphasige Bosse** (Balrog und Smaug fliegen, Sauron ruft die Neun …) und Großangriffe mit Vorwarnung
 - **Bündnisse, 14 Heldenbande, 9 Begleiter, 21 Relikte, 8 Ausrüstungs-Sets** (farmbar durch erneute Bosskämpfe)
 - **Prüfungen der Macht** (Raid-Bosse, beliebig oft), **Orthanc-Turm**, **Heldenreisen** mit Erschwernissen und besserer Beute

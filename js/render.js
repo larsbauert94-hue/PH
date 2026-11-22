@@ -95,7 +95,7 @@ const RIG = (() => {
   };
   function dims(type, look) {
     if (type === 'hum') { const B = BODY[look.body] || BODY.man; return { h: B.ll + B.th + B.nk + B.hh + 2, big: !!B.big, w: B.big ? 20 : 8 }; }
-    if (type === 'quad') return { h: look.size ? 18 : 15, big: 0, w: look.size ? 12 : 10 };
+    if (type === 'quad') return look.huge ? { h: 34, big: 1, w: 22 } : { h: look.size ? 18 : 15, big: 0, w: look.size ? 12 : 10 };
     if (type === 'spider') return look.size ? { h: 30, big: 1, w: 22 } : { h: 14, big: 0, w: 10 };
     if (type === 'worm') return { h: 70, big: 1, w: 18 };
     if (type === 'dragon') return { h: 50, big: 1, w: 30 };
@@ -182,6 +182,7 @@ const RIG = (() => {
       else {
         const bc0 = front ? boots : sh(boots, -.3), sx = knee[0] + (ank[0] - knee[0]) * .38, sy = knee[1] + (ank[1] - knee[1]) * .38;
         g.taper([[sx, sy], ank], [B.lw * .92, B.lw * .66], bc0, ow * .8);
+        g.taper([[sx, sy], [sx + (ank[0] - sx) * .18, sy + (ank[1] - sy) * .18]], [B.lw * 1.05, B.lw * .98], sh(bc0, .18), ow * .6);
         g.fill(() => { c.moveTo(ank[0] - B.lw * .36, ank[1] - .2); c.lineTo(ank[0] - B.lw * .42, foot[1] + .55); c.lineTo(ank[0] + B.lw * .55 + 1.5 * K, foot[1] + .55); c.quadraticCurveTo(ank[0] + B.lw * .6 + 1.6 * K, foot[1] - .5, ank[0] + B.lw * .3, foot[1] - .7); c.lineTo(ank[0] + B.lw * .32, ank[1] - .2); c.closePath(); }, g.lin(0, ank[1], 0, foot[1] + .5, [sh(bc0, .15), bc0, sh(bc0, -.35)]), ow * .8);
         g.rr(ank[0] - B.lw * .44, foot[1] + .25, B.lw * .98 + 1.6 * K, .38, .15, sh(bc0, -.5), 0);
       }
@@ -203,6 +204,8 @@ const RIG = (() => {
     c.fillStyle = rgba('#000000', .22); c.beginPath(); c.ellipse(hxC - .1, chinY + .15, B.hw * .3, .45, 0, 0, TAU); c.fill();
     const wst = B.tw * .39, hipW = B.tw * .43, tg = g.lin(cx - B.tw / 2, top, cx + B.tw / 2, top + B.th * .4, [sh(tunic, -.32), sh(tunic, -.05), tunic, sh(tunic, .16)]);
     g.fill(() => { c.moveTo(cx - B.tw / 2 + .3, top + .9); c.quadraticCurveTo(cx - B.tw / 2 + .4, top - .3 - br, cx - B.tw * .15, top - .35 - br); c.lineTo(cx + B.tw * .15, top - .35 - br); c.quadraticCurveTo(cx + B.tw / 2 + .2, top - .2, cx + B.tw / 2 + .1, top + 1.4); c.quadraticCurveTo(cx + B.tw / 2 + .55, top + B.th * .36, cx + wst + .2, hipY - B.th * .26); c.lineTo(cx + hipW, hipY + .2); c.lineTo(cx - hipW, hipY + .2); c.lineTo(cx - wst, hipY - B.th * .3); c.quadraticCurveTo(cx - B.tw / 2 - .2, top + B.th * .36, cx - B.tw / 2 + .3, top + .9); c.closePath(); }, tg, ow);
+    if (!L.robe && !big) { c.strokeStyle = rgba(sh(tunic, -.55), .6); c.lineWidth = .28; c.beginPath(); c.moveTo(hxC - B.hw * .45, top + .1); c.quadraticCurveTo(hxC + .1, top + 1.6, hxC + B.hw * .5, top + .1); c.stroke(); }
+    if (!L.armor && !L.robe && !big && ['sword', 'dagger', 'axe'].includes(w)) { const bc0 = '#4a3020'; c.save(); c.lineCap = 'round'; c.strokeStyle = OL; c.lineWidth = .95; c.beginPath(); c.moveTo(sF[0] - .4, top + .6); c.lineTo(cx - B.tw * .36, hipY - 1.2); c.stroke(); c.strokeStyle = g.lin(0, top, 0, hipY, [sh(bc0, .25), bc0]); c.lineWidth = .7; c.stroke(); c.strokeStyle = rgba('#e8c890', .5); c.setLineDash([.3, .35]); c.lineWidth = .1; c.stroke(); c.setLineDash([]); c.restore(); }
     // Stofffalten, Brust- und Rückenschatten
     c.save(); c.beginPath(); c.moveTo(cx - B.tw / 2, top - 1); c.lineTo(cx + B.tw / 2 + 1, top - 1); c.lineTo(cx + B.tw / 2 + 1, hipY); c.lineTo(cx - B.tw / 2, hipY); c.clip();
     c.strokeStyle = rgba(sh(tunic, -.55), .38); c.lineWidth = .32; c.lineCap = 'round';
@@ -219,6 +222,9 @@ const RIG = (() => {
       const ah = B.th * .58;
       g.fill(() => { c.moveTo(cx - B.tw / 2 + .2, top + .4); c.lineTo(cx + B.tw / 2 - .2, top + .4); c.lineTo(cx + B.tw / 2 - .4, top + ah); c.quadraticCurveTo(cx, top + ah + 1.2, cx - B.tw / 2 + .4, top + ah); c.closePath(); }, g.lin(cx, top, cx, top + ah, [sh(L.armor, .45), L.armor, sh(L.armor, -.35)]), ow);
       g.ell(sF[0] + .2, top + .6, big ? 3.4 : 2.1, big ? 2.2 : 1.4, g.lin(sF[0], top - 1, sF[0], top + 2, [sh(L.armor, .5), sh(L.armor, -.2)]), ow);
+      c.save(); c.beginPath(); c.moveTo(cx - B.tw / 2 + .2, top + .4); c.lineTo(cx + B.tw / 2 - .2, top + .4); c.lineTo(cx + B.tw / 2 - .4, top + ah); c.quadraticCurveTo(cx, top + ah + 1.2, cx - B.tw / 2 + .4, top + ah); c.closePath(); c.clip();
+      c.strokeStyle = rgba(sh(L.armor, -.55), .32); c.lineWidth = .1; const st = big ? 1.4 : .8; for (let yy = top + 1, r2 = 0; yy < top + ah + 1; yy += st * .6, r2++) { c.beginPath(); for (let xx = cx - B.tw / 2 + (r2 % 2) * st * .5; xx < cx + B.tw / 2; xx += st) { c.moveTo(xx - st * .4, yy); c.quadraticCurveTo(xx, yy + st * .5, xx + st * .4, yy); } c.stroke(); }
+      c.strokeStyle = rgba('#ffffff', .25); c.lineWidth = .3; c.beginPath(); c.moveTo(cx + B.tw / 2 - .6, top + .8); c.lineTo(cx + B.tw / 2 - .8, top + ah - .4); c.stroke(); c.restore();
     }
     if (L.vest) { g.fill(() => { c.moveTo(cx - B.tw / 2 + .1, top + .6); c.lineTo(cx + .2, top + .8); c.lineTo(cx + .9, hipY - 1.6); c.lineTo(cx - B.tw / 2 + .3, hipY - 1.6); c.closePath(); }, g.lin(cx - B.tw / 2, 0, cx, 0, [sh(L.vest, -.25), L.vest]), .3); g.fill(() => { c.moveTo(cx + B.tw / 2 - .1, top + .8); c.lineTo(cx + 1.6, top + 1); c.lineTo(cx + 2, hipY - 1.6); c.lineTo(cx + B.tw / 2 - .3, hipY - 1.6); c.closePath(); }, g.lin(cx, 0, cx + B.tw / 2, 0, [L.vest, sh(L.vest, .12)]), .3); for (let i = 0; i < 3; i++) g.ell(cx + 1.4, top + 2 + i * 1.6, .25, .25, '#e0c070', 0); }
     if (L.bark) { c.strokeStyle = rgba(sh(tunic, -.45), .7); c.lineWidth = .5; for (let i = 0; i < 6; i++) { const bx = cx - B.tw / 2 + 1 + i * (B.tw - 2) / 5; c.beginPath(); c.moveTo(bx, top + 1); c.bezierCurveTo(bx + 1, top + B.th * .3, bx - 1, top + B.th * .6, bx + .4, hipY - .5); c.stroke(); } for (let i = 0; i < 4; i++) g.ell(cx - B.tw / 2 + 2 + (i * 3.1) % (B.tw - 3), top + 3 + (i * 4.7) % (B.th - 4), .9, .6, sh(L.hair || '#4f7a2e', -.1), 0); }
@@ -603,7 +609,7 @@ const RIG = (() => {
 
   /* ---------- Haupt-API ---------- */
   function draw(c, type, look, anim, el, gt) {
-    if (type === 'quad') return drawQuad(c, look, anim, el, gt);
+    if (type === 'quad') { if (look.huge) { c.save(); c.scale(1.9, 1.9); drawQuad(c, look, anim, el, gt); c.restore(); return; } return drawQuad(c, look, anim, el, gt); }
     if (type === 'spider') return drawSpider(c, look, anim, el, gt);
     if (type === 'worm') return drawWorm(c, look, anim, el, gt);
     if (type === 'olifant') return drawOlifant(c, look, anim, el, gt);

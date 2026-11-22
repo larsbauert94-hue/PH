@@ -39,6 +39,7 @@ function migrate() {
   for (const [k, v] of Object.entries(d)) if (G[k] === undefined) G[k] = v;
   for (const k of ['sides', 'comps', 'fullSet', 'loops', 'relics', 'towerBest', 'maxCombo']) if (G.stats[k] === undefined) G.stats[k] = 0;
   syncLevels();
+  if (G.heroes && (G.story?.ch > 10 || G.story?.loop > 0)) for (const k of ['eomer', 'haldir']) if (!G.heroes[k] && HEROES[k]) joinHero(k);
   delete G.idle; delete G.daily;
 }
 
@@ -126,7 +127,7 @@ function heroKit(key) {
   return { act: H.act, act2: hs.lvl >= ACT2_LVL ? H.act2 : null, ult };
 }
 /* Gemeinsame Gruppenstufe: alle Helden steigen nur durch Kämpfe auf und sind immer gleich stark gelevelt */
-const LVL_MAX = 120;
+const LVL_MAX = 250;
 function syncLevels() { if (!G.team) return; for (const k of Object.keys(G.heroes)) { G.heroes[k].lvl = G.team.lvl; G.heroes[k].xp = G.team.xp; } G.stats.maxLvl = Math.max(G.stats.maxLvl || 1, G.team.lvl); }
 function teamXp(xp) { const t = G.team; let ups = 0; t.xp += Math.round(xp * 1.35); while (t.lvl < LVL_MAX && t.xp >= xpNeed(t.lvl)) { t.xp -= xpNeed(t.lvl); t.lvl++; ups++; } if (t.lvl >= LVL_MAX) t.xp = 0; syncLevels(); if (ups) track('levels', ups); return ups; }
 function bestHeroFor(it) { let best = null; const by = equippedBy(it.id); if (by && G.party.includes(by)) return null; for (const k of G.party) { if (!G.heroes[k] || !canEquip(k, it) || G.heroes[k].eq[it.slot] === it.id) continue; const d = Math.round(powerDiff(k, it)); if (d > 0 && (!best || d > best.d)) best = { k, d }; } return best; }
@@ -288,10 +289,11 @@ function chapterCompanion(ch) { return COMPANIONS.find(c => c.from.ch === ch); }
 
 /* ---------- Sets ---------- */
 function chapterSet(ch) { return SETS.find(x => x.ch === ch); }
-function genSetItem(S2, lvl) {
+function setOwned(id) { const o = {}; for (const it of G.inv) if (it.set === id && (!o[it.slot] || it.r > o[it.slot].r || it.lvl > o[it.slot].lvl)) o[it.slot] = it; return o; }
+function genSetItem(S2, lvl, r = 3) {
   const slot = pick(['weapon', 'armor', 'trinket']);
   let base = slot; if (slot === 'weapon') { const cls = G.party.filter(k => HEROES[k]).flatMap(k => CLASSES[HEROES[k].cls].wcls); base = cls.length ? pick(cls) : 'klinge'; }
-  const it = genItem(lvl, 3, { base }); it.set = S2.id; it.name = `${S2.n}: ${{ weapon: BASES[base].names[0], armor: 'Rüstung', trinket: 'Amulett' }[slot]}`; return it;
+  const it = genItem(lvl, r, { base }); it.set = S2.id; it.name = `${S2.n}: ${{ weapon: BASES[base].names[0], armor: 'Rüstung', trinket: 'Amulett' }[slot]}`; return it;
 }
 function checkFullSet() { for (const k of G.party) { const n = {}; for (const s2 of Object.keys(SLOTS)) { const it = G.heroes[k].eq[s2] && itemById(G.heroes[k].eq[s2]); if (it?.set) n[it.set] = (n[it.set] || 0) + 1; } if (Object.values(n).some(x => x >= 3)) G.stats.fullSet = 1; } }
 

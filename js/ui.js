@@ -98,6 +98,7 @@ function updateHud() {
   $('#gold').textContent = fmt(G.gold); $('#mith').textContent = fmt(G.mithril);
   $('#power').textContent = fmt(G.party.reduce((a, k) => a + heroStats(k).power, 0));
   const cc = claimableCount(); $('#achBadge').hidden = !cc; $('#achBadge').textContent = cc;
+  if (G.team) { const el = waveLvl(Math.min(G.story.wave, WAVES)), d = G.team.lvl - el, v = `<span class="${d >= 0 ? 'ok' : d >= -3 ? 'mid' : 'bad'}">Gruppe St. ${G.team.lvl}</span> · Gegner St. ${el}`; if ($('#lvc').dataset.v !== v) { $('#lvc').innerHTML = v; $('#lvc').dataset.v = v; } }
   if (!updateHud.t || Date.now() - updateHud.t > 1000) { updateHud.t = Date.now(); refreshLooks(); const ev = owned().filter(k => canEvolve(k)?.ok).length; $('#hBadge').hidden = !ev; $('#hBadge').textContent = ev; }
   for (const u of W.heroes) {
     const el = document.querySelector(`#party .pc[data-k="${u.key}"]`); if (!el) continue;
@@ -146,18 +147,19 @@ function speakerInfo(s) {
 function dialog(lines) {
   if (!lines || !lines.length) return Promise.resolve();
   return new Promise(res => {
-    W.hold = true; const box = $('#dialog'); let i = 0, typing = null;
+    W.hold = true; const box = $('#dialog'); let i = 0, typing = null, auto = null;
+    const autoGo = txt => { clearTimeout(auto); if (G.settings.autoText !== false) auto = setTimeout(() => box.onclick && box.onclick(), Math.max(2200, txt.length * 52)); };
     const show = () => {
       const [s, txt] = lines[i], inf = speakerInfo(s);
       box.className = 'dlg ' + (inf.foe ? 'foe' : s === 'narr' ? 'narr' : '');
       box.innerHTML = `<div class="dport" style="--rc:${inf.col || '#ff5a3a'}">${inf.art}</div><div class="dbody"><div class="dname">${esc(inf.name)}</div><p class="dtext"></p><div class="dhint">Tippen zum Fortfahren</div></div><button class="dskip">Überspringen ›</button>`;
       box.hidden = false; paintCards(box);
       const p = box.querySelector('.dtext'); let n = 0; clearInterval(typing);
-      typing = setInterval(() => { n += 2; p.textContent = txt.slice(0, n); if (n >= txt.length) { clearInterval(typing); typing = null; } }, 18);
+      clearTimeout(auto); typing = setInterval(() => { n += 2; p.textContent = txt.slice(0, n); if (n >= txt.length) { clearInterval(typing); typing = null; autoGo(txt); } }, 18);
       box.querySelector('.dskip').onclick = e => { e.stopPropagation(); done(); };
-      box.onclick = () => { if (typing) { clearInterval(typing); typing = null; p.textContent = txt; return; } sfx('click'); i++; if (i >= lines.length) done(); else show(); };
+      box.onclick = () => { if (typing) { clearInterval(typing); typing = null; p.textContent = txt; autoGo(txt); return; } clearTimeout(auto); sfx('click'); i++; if (i >= lines.length) done(); else show(); };
     };
-    const done = () => { clearInterval(typing); box.hidden = true; box.onclick = null; W.hold = false; res(); };
+    const done = () => { clearInterval(typing); clearTimeout(auto); box.hidden = true; box.onclick = null; W.hold = false; res(); };
     show();
   });
 }
@@ -287,7 +289,7 @@ async function modeRun(id) {
       banner(`Welle ${n + 1}`, 'ult'); await W.walk(700);
       const r = await W.fight(n % 5 === 4 ? [...grp, ...grp].slice(0, 5) : grp, lvl, n % 5 === 4 ? 'elite' : 'normal', { keepHp: 1 }); onResult(r, 'normal');
       if (!r.win) break; n++; healParty(.08);
-      if (n % 5 === 0) { mith += 10 + n; items.push(genItem(lvl + 1, rollRarity('elite'))); toast(`Welle ${n} geschafft! Bonus gesichert.`, 'lvl'); }
+      if (n % 5 === 0) { mith += 10 + n; items.push(genItem(lvl + 1, rollRarity('elite'))); if (Math.random() < .5) items.push(genSetItem(SETS.find(x => x.src === 'horde'), lvl + 1)); toast(`Welle ${n} geschafft! Bonus gesichert.`, 'lvl'); }
     }
     gold = n * (60 + base * 12);
   } else if (id === 'rush') {
@@ -325,6 +327,7 @@ async function raidRun(key) {
   const tier = RAID_TIERS.filter(t => pct >= t).length, first = tier > st.tiers;
   st.best = Math.max(st.best, pct); if (first) st.tiers = tier;
   const rw = raidRewards(pct, first), items = []; for (let i = 0; i < rw.items; i++) items.push(genItem(raidLvl(), rollRarity(tier >= 5 ? 'boss' : 'elite')));
+  if (tier >= 2 && Math.random() < .5 + tier * .05) items.push(genSetItem(SETS.find(x => x.src === 'raid'), raidLvl(), tier >= 6 ? 4 : 3));
   G.gold += rw.gold; G.mithril += rw.mithril; items.forEach(addItem); if (G.settings.autoEquip) autoEquip(); save();
   await splash(`<div class="cdone"><div class="kicker">Prüfung beendet</div><h1>${Math.round(pct * 100)} % Schaden</h1><p>${first ? '<b>Neue Bestmarke!</b> ' : ''}Stufe ${tier} von ${RAID_TIERS.length} · ◆ ${fmt(rw.gold)} · ✧ ${rw.mithril} · ${items.length} Gegenstände</p><div class="dhint">Tippen zum Fortfahren</div></div>`, 0, 'doneS');
   W.setBg(prevBg); updateHud();
@@ -342,6 +345,7 @@ async function towerRun() {
   if (r.win) {
     G.tower.best = f; G.stats.towerBest = Math.max(G.stats.towerBest, f); track('tower', 1);
     const tr = towerReward(f); onResult(r, tg.kind); G.gold += tr.gold; G.mithril += tr.mithril;
+    if (Math.random() < .35) { const S2 = SETS.find(x => x.src === 'tower'), it = genSetItem(S2, towerLvl(f)); addItem(it); lootPop([it], 0); toast(`Set-Teil: <b style="color:${S2.c}">${esc(it.name)}</b>`, 'lvl'); suggestGear([it]); }
     toast(`Orthanc-Turm Etage ${f} bezwungen: +${fmt(tr.gold)} ◆ +${tr.mithril} ✧`, 'lvl'); save();
   } else { onResult(r, tg.kind); toast(`Etage ${f} war zu stark. Werdet stärker und versucht es erneut.`, 'unlock'); }
   W.setBg(prevBg);
@@ -547,7 +551,21 @@ function openHero(k, tab = openHero.tab || 'werte') {
 }
 
 /* ---------- Beutel: Raster links, Details rechts ---------- */
+/* ---------- Sets: Übersicht, Fortschritt und wo man sie farmt ---------- */
+function setSource(S) {
+  if (S.ch !== undefined) { const ok = chapterStatus(S.ch) === 'done'; return { t: `Boss von Kapitel ${S.ch + 1}: ${STORY[S.ch].n}`, ok, lbl: ok ? '▶ Boss farmen' : `🔒 ab Kapitel ${S.ch + 1}`, go: () => playNow({ type: 'boss', ch: S.ch }, 'Bosskampf: ' + STORY[S.ch].n) }; }
+  if (S.src === 'tower') return { t: 'Orthanc-Turm: 35 % pro bezwungener Etage', ok: true, lbl: '▶ Turm', go: () => playNow({ type: 'tower' }, 'Orthanc-Turm') };
+  if (S.src === 'horde') return { t: 'Endloser Ansturm: Chance alle 5 Wellen', ok: modeUnlocked(), lbl: modeUnlocked() ? '▶ Ansturm' : '🔒 ab Kapitel 4', go: () => playNow({ type: 'mode', id: 'horde' }, 'Endloser Ansturm') };
+  return { t: 'Prüfungen der Macht: ab Stufe 2', ok: modeUnlocked(), lbl: modeUnlocked() ? '▶ Prüfungen' : '🔒 ab Kapitel 4', go: () => openStory('modi') };
+}
+function openSets(page = openSets.page) {
+  const per = 6, np = pages(SETS.length, per); page = openSets.page = clampPg(page, np);
+  openSheet('Beutel', `<div class="m-sets">${SETS.slice(page * per, page * per + per).map((S, i) => { const o = setOwned(S.id), n = Object.keys(o).length, src = setSource(S); return `<div class="m-set ${n >= 3 ? 'full' : ''}" style="--sc:${S.c}"><div class="m-sh"><b>${esc(S.n)}</b><span>${n}/3</span></div><div class="m-sp">${['weapon', 'armor', 'trinket'].map(sl => o[sl] ? icHtml(o[sl]) : `<div class="ic empty" title="${SLOTS[sl]}"></div>`).join('')}</div><small class="${n >= 2 ? 'on' : ''}">2 Teile: ${esc(S.d2)}</small><small class="${n >= 3 ? 'on' : ''}">3 Teile: ${esc(S.d3)}</small><div class="m-src">${esc(src.t)}</div><button class="btn small ${src.ok ? 'gold' : ''}" data-farm="${page * per + i}" ${src.ok ? '' : 'disabled'}>${src.lbl}</button></div>`; }).join('')}</div>`, s => {
+    s.querySelectorAll('[data-farm]').forEach(b => b.onclick = () => setSource(SETS[+b.dataset.farm]).go());
+  }, { tabs: [['all', 'Alle'], ['weapon', 'Waffen'], ['armor', 'Rüstung'], ['trinket', 'Schmuck'], ['sets', 'Sets']], tab: 'sets', onTab: t => t === 'sets' ? openSets() : openBag(t, 0, null), pages: np, page, onPage: p => openSets(p) });
+}
 function openBag(f = openBag.f || 'all', page = openBag.page, sel = openBag.sel) {
+  if (f === 'sets') return openSets();
   openBag.f = f;
   const list = G.inv.filter(it => f === 'all' || it.slot === f).sort((a, b) => b.r - a.r || b.lvl - a.lvl);
   const per = 15, np = pages(list.length, per); page = openBag.page = clampPg(page, np);
@@ -562,12 +580,13 @@ function openBag(f = openBag.f || 'all', page = openBag.page, sel = openBag.sel)
     s.querySelectorAll('[data-sv]').forEach(b => b.onclick = () => { const v = salvage(itemById(+b.dataset.sv)); save(); toast(`+${fmt(v)} ◆`, 'mini'); openBag(f, page, null); });
     s.querySelectorAll('[data-enh]').forEach(b => b.onclick = () => { if (enhance(itemById(+b.dataset.enh))) { sfx('buff'); W.pendingParty = 1; } openBag(f, page, it.id); });
     const sv = s.querySelector('#salv'); if (sv) sv.onclick = () => { let g = 0; G.inv.filter(x => x.r <= 1 && !equippedBy(x.id)).forEach(x => g += salvage(x)); save(); toast(`Zerlegt: +${fmt(g)} ◆`, 'mini'); openBag(f, 0, null); };
-  }, { tabs: [['all', 'Alle'], ['weapon', 'Waffen'], ['armor', 'Rüstung'], ['trinket', 'Schmuck']], tab: f, onTab: t => openBag(t, 0, null), pages: np, page, onPage: p => openBag(f, p, null), extra: '<button class="btn small" id="salv" title="Alle gewöhnlichen, nicht angelegten Teile zerlegen">Aufräumen</button>' });
+  }, { tabs: [['all', 'Alle'], ['weapon', 'Waffen'], ['armor', 'Rüstung'], ['trinket', 'Schmuck'], ['sets', 'Sets']], tab: f, onTab: t => openBag(t, 0, null), pages: np, page, onPage: p => openBag(f, p, null), extra: '<button class="btn small" id="salv" title="Alle gewöhnlichen, nicht angelegten Teile zerlegen">Aufräumen</button>' });
 }
 
 /* ---------- Reise: Karte + Kapitel, Modi als Kacheln ---------- */
-const PARTS = ['Teil I · Der Hobbit', 'Teil II · Der Ringkrieg', 'Teil III · Die Ringe der Macht'];
-const PART_COL = ['#2e8a4a', '#b8402a', '#3a5ab8'];
+const PARTS = ['Teil I · Der Hobbit', 'Teil II · Der Ringkrieg', 'Teil III · Die Ringe der Macht', 'Teil IV · Das Letzte Bündnis', 'Teil V · Das Erste Zeitalter'];
+const PART_COL = ['#2e8a4a', '#b8402a', '#3a5ab8', '#c8902a', '#8a3ac8'];
+const PART_SHORT = ['I · Hobbit', 'II · Ringkrieg', 'III · Ringe', 'IV · Bündnis', 'V · Urzeit'];
 function chapterStatus(i) { if (i < G.story.ch || G.story.loop > 0) return 'done'; if (i === G.story.ch) return 'cur'; return 'locked'; }
 function drawMap(cv, part, sel) {
   const dpr = Math.min(2, devicePixelRatio || 1), W0 = cv.clientWidth, H0 = cv.clientHeight; cv.width = W0 * dpr; cv.height = H0 * dpr;
@@ -625,7 +644,7 @@ function openStory(tab = openStory.tab || 'story', part, sel) {
   if (part === undefined) part = Math.max(0, PARTS.indexOf(STORY[G.story.ch].part));
   if (typeof sel === 'string') { } else if (sel === undefined || STORY[sel]?.part !== PARTS[part]) sel = STORY[G.story.ch].part === PARTS[part] ? G.story.ch : STORY.findIndex(c => c.part === PARTS[part]);
   const mods = activeMods();
-  openSheet('Reise', `<div class="m-story"><div class="mapwrap"><canvas id="map" class="map"></canvas><div class="m-parts">${PARTS.map((p, i) => `<button class="ptab ${i === part ? 'on' : ''}" data-part="${i}" style="--c:${PART_COL[i]}">${esc(p.split(' · ')[1])}</button>`).join('')}</div>${mods.length ? `<div class="m-loop">Heldenreise ${G.story.loop + 1} · ☠ ${mods.length} Erschwernisse · +${G.story.loop * 25} % Beute</div>` : ''}</div><div id="chDetail">${typeof sel === 'string' ? sideCard(SIDE.find(x => 'side:' + x.id === sel)) : chapterCard(sel)}</div></div>`, s => {
+  openSheet('Reise', `<div class="m-story"><div class="m-mapcol"><div class="m-parts">${PARTS.map((p, i) => `<button class="ptab ${i === part ? 'on' : ''}" data-part="${i}" style="--c:${PART_COL[i]}">${PART_SHORT[i]}</button>`).join('')}</div><div class="mapwrap"><canvas id="map" class="map"></canvas>${mods.length ? `<div class="m-loop">Heldenreise ${G.story.loop + 1} · ☠ ${mods.length} Erschwernisse · +${G.story.loop * 25} % Beute</div>` : ''}</div></div><div id="chDetail">${typeof sel === 'string' ? sideCard(SIDE.find(x => 'side:' + x.id === sel)) : chapterCard(sel)}</div></div>`, s => {
     const cv = s.querySelector('#map');
     requestAnimationFrame(() => drawMap(cv, part, sel));
     const wire = root => {
@@ -710,7 +729,7 @@ function openSettings() {
   const S = G.settings;
   const tg = (id, on, label) => `<div class="opt"><span>${label}</span><button class="btn small ${on ? 'on' : ''}" id="${id}">${on ? 'An' : 'Aus'}</button></div>`;
   openSheet('Optionen', `<div class="m-opts"><div>
-    ${tg('o-mus', S.music !== false, 'Musik')}${tg('o-snd', S.sound, 'Soundeffekte')}${tg('o-eq', S.autoEquip, 'Beste Ausrüstung automatisch')}${tg('o-party', S.autoParty, 'Gruppe automatisch')}${tg('o-ult', S.autoUlt !== false, 'Ultimates automatisch')}
+    ${tg('o-mus', S.music !== false, 'Musik')}${tg('o-snd', S.sound, 'Soundeffekte')}${tg('o-eq', S.autoEquip, 'Beste Ausrüstung automatisch')}${tg('o-party', S.autoParty, 'Gruppe automatisch')}${tg('o-ult', S.autoUlt !== false, 'Ultimates automatisch')}${tg('o-txt', S.autoText !== false, 'Dialoge automatisch weiter')}
     <div class="opt"><span>Grafik</span><span class="seg">${[['auto', 'Auto'], ['hoch', 'Hoch'], ['normal', 'Normal']].map(([v, l]) => `<button class="btn small ${(S.gfx || 'auto') === v ? 'on' : ''}" data-gfx="${v}">${l}</button>`).join('')}</span></div></div>
     <div><h3 class="sect">Spielstand</h3><p class="muted small">Mit dem Code stellst du deinen Fortschritt wieder her, auch auf einem anderen Gerät.</p>
     <div class="opt"><button class="btn small" id="o-exp">Code kopieren</button><button class="btn small" id="o-imp">Code einfügen</button><button class="btn small danger" id="o-del">Neu beginnen</button></div>
@@ -719,6 +738,7 @@ function openSettings() {
     <p class="muted small">Inoffizielles Fan-Spiel nach J.R.R. Tolkien und „Die Ringe der Macht“. Grafiken, Texte und Mechaniken sind eigene Umsetzungen.</p></div></div>`, s => {
     s.querySelectorAll('[data-gfx]').forEach(b => b.onclick = () => { S.gfx = b.dataset.gfx; W.lowFps = false; W._pf = null; save(); openSettings(); });
     s.querySelector('#o-ult').onclick = () => { S.autoUlt = S.autoUlt === false; save(); openSettings(); };
+    s.querySelector('#o-txt').onclick = () => { S.autoText = S.autoText === false; save(); openSettings(); };
     s.querySelector('#o-snd').onclick = () => { S.sound = !S.sound; save(); openSettings(); };
     s.querySelector('#o-mus').onclick = () => { S.music = S.music === false; save(); MUSIC.sync(); openSettings(); };
     const ta = s.querySelector('#o-code');
