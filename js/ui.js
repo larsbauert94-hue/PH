@@ -222,7 +222,7 @@ function onResult(r, kind) {
     lootPop(rw.items, rw.gold); if (rw.mithril) toast(`+${rw.mithril} ✧ Mithril`, 'mini');
     const r0 = Object.values(res)[0];
     if (r0 && r0.ups) {
-      const a = r0.from, b = G.team.lvl; sfx('level'); toast(`Gruppenstufe <b>${b}</b>! Alle Helden werden stärker.`, 'lvl');
+      const a = r0.from, b = G.team.lvl; sfx('level'); toast(`Gruppenstufe <b>${b}</b>! Alle Helden werden stärker.`, 'lvl'); setTimeout(() => W.levelFx(b), 600);
       for (const k of party) { const H = HEROES[k]; if (a < ACT2_LVL && b >= ACT2_LVL) toast(`${esc(H.n)}: neue Fähigkeit <b>${esc(H.act2.n)}</b>`, 'unlock'); H.pas.forEach(ps => { if (ps.lvl > 1 && a < ps.lvl && b >= ps.lvl) toast(`${esc(H.n)}: Passiv <b>${esc(ps.n)}</b>`, 'unlock'); }); }
       if (STAGE_CAP.slice(0, 2).some(c2 => a < c2 && b >= c2)) toast('Neue Entwicklungsstufe möglich! Entwickle deine Helden im Heldenmenü.', 'unlock');
     }

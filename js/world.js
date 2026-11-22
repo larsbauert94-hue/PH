@@ -165,7 +165,8 @@ class World {
   }
   restoreHeroes() { for (const h of this.heroes) { if (!alive(h)) { h.fade = 1; } h.hp = h.maxHp; h.statuses = []; h.cd = {}; h.threat = 0; h.atb = 0; h.usedRevive = 0; h.usedReviveAlly = 0; h.holdAnim = null; h.anim = { n: 'idle', el: 0 }; } }
   /* Laufenden Kampf ohne Folgen beenden (für „Sofort spielen“) */
-  gearUp(u) { this.burst(u.x + u.ox, u.y + u.oy - u.h * .5, 'holy', 14, .9, .7); this.fxs.push({ k: 'pillar', x: u.x + u.ox, y: u.y + u.oy, c: '#ffe080', t: 0, dur: 650 }); this.num(u, 'Neue Ausrüstung', '#ffe39a'); }
+  levelFx(lv) { for (const h of this.heroes) if (alive(h)) { this.fxs.push({ k: 'pillar', x: h.x + h.ox, y: h.y + h.oy, c: '#ffe080', t: 0, dur: 900 }); this.burst(h.x + h.ox, h.y + h.oy - h.h * .5, 'holy', 12, .8, .9); } this.flash('#ffe9a8', 350); this.h.banner?.(`Gruppenstufe ${lv}!`, 'ult'); }
+  gearUp(u) { this.burst(u.x + u.ox, u.y + u.oy - u.h * .5, 'holy', 14, .9, .7); this.fxs.push({ k: 'pillar', x: u.x + u.ox, y: u.y + u.oy, c: '#ffe080', t: 0, dur: 650 }); }
   abort() {
     if (!this.fighting) { this.abortNext = true; return; }
     this.fighting = false; this.busy = false; this.enemies.forEach(e => { e.fade = 0; e.hp = 0; });
@@ -183,7 +184,7 @@ class World {
     const dist = this.LW * .75;
     await Promise.all(this.enemies.map((e, i) => { e.ox = dist + i * 8; this.setAnim(e, 'walk'); return this.moveTo(e, e.x, e.y, 1300 + i * 120); }));
     this.walking = false; this.all().forEach(u => this.setAnim(u, 'idle'));
-    if (kind === 'boss') { this.focus(this.enemies[0], 1.28, 900); this.shake(3); sfx('crit'); }
+    if (kind === 'boss') { const bz = this.enemies.find(e => e.boss) || this.enemies[0]; this.cine = { t: this.time, dur: 2100 }; this.focus(bz, 1.34, 1600); this.setAnim(bz, 'shout'); sfx('crit'); await this.wait(350); this.shake(5); this.flash('#ff3a1a', 450); this.fxs.push({ k: 'ring', x: bz.x, y: bz.y - 2, r: 80, c: '#ffd0a0', t: 0, dur: 750 }); this.fxs.push({ k: 'ring', x: bz.x, y: bz.y - 2, r: 46, c: '#ff8a50', t: 0, dur: 520 }); this.burst(bz.x, bz.y - 3, 'stone', 28, 1.9, .5); await this.wait(1100); }
     if (this.abortNext) { this.abortNext = false; this.enemies.forEach(e => { e.fade = 0; e.hp = 0; }); return { win: false, aborted: true, enemies: [], dmgPct: 0 }; }
     this.applyStartPassives();
     const ch = opts.chaos;
@@ -495,6 +496,7 @@ class World {
   die(u) {
     if (u.p?.reviveSelf && !u.usedRevive) { u.usedRevive = 1; u.hp = Math.round(u.maxHp * u.p.reviveSelf); this.num(u, 'Unbeugsam', '#ffe080'); this.burst(u.x, u.y - u.h * .5, 'holy', 14, 1, .6); return; }
     u.hp = 0; u.statuses = []; u.charging = false; this.setAnim(u, 'dead'); sfx('die');
+    if (u.side === 'enemy' && this.fighting && this.enemies.every(e => !alive(e) || e === u)) { this.slowUntil = this.time + 750; this.cine = { t: this.time, dur: 1500 }; this.focus(u, 1.24, 1000); this.flash('#fff4d0', 380); this.fxs.push({ k: 'rays', x: u.x + u.ox, y: u.y + u.oy - u.h * .5, t: 0, dur: 1300 }); }
     if (u.side === 'enemy') { this.h.kill?.(u); const n = u.big ? 34 : 18; for (let i = 0; i < n; i++) this.parts.push({ x: u.x + u.ox + rnd(-u.w, u.w) * .6, y: u.y + u.oy - rnd(0, u.h), vx: rnd(-.25, .25), vy: -rnd(.15, .6), g: -.002, t: 0, life: rnd(700, 1300), c: pick(['#ff9a40', '#ffcf70', '#c04a20', '#4a3a3a']), s: Math.random() < .4 ? 1.6 : 1, glow: Math.random() < .7 }); }
     this.burst(u.x, u.y - u.h * .5, u.side === 'enemy' ? 'dark' : 'slash', 10, 1);
     if (u.side === 'hero') {
@@ -507,7 +509,7 @@ class World {
   burst(x, y, kind, n = 10, spread = 1.2, up = 0) {
     const c = FX_COL[kind] || ['#ffffff'];
     const glow = ['fire', 'light', 'lightning', 'heal', 'holy', 'buff', 'ice', 'dark', 'water'].includes(kind);
-    if (glow && n >= 6) this.fxs.push({ k: 'burst', x, y, r: 6 + n * .4, c: c[0], t: 0, dur: 320 });
+    if (glow && n >= 6) { this.fxs.push({ k: 'burst', x, y, r: 6 + n * .4, c: c[0], t: 0, dur: 320 }); if (this.hq()) this.fxs.push({ k: 'light', x, y, r: 34 + n * 1.6, c: c[0], t: 0, dur: 520, a: .24 }); }
     for (let i = 0; i < n; i++) this.parts.push({ x: x + rnd(-2, 2), y: y + rnd(-2, 2), vx: rnd(-spread, spread), vy: rnd(-spread, spread) - up, g: up ? -.004 : .035, t: 0, life: rnd(350, 750), c: pick(c), s: Math.random() < .3 ? 1.6 : 1, glow });
   }
   num(u, txt, c, sc = 1) { this.nums.push({ x: u.x + u.ox + rnd(-4, 4), y: u.y + u.oy - u.h - 10, txt: String(txt), c, sc, t: 0 }); }
@@ -540,7 +542,7 @@ class World {
     if (this.hq()) this.drawRays(ctx, gt, L);
     this.drawAtmos(ctx, gt);
     const units = this.all().filter(u => u.fade > 0).sort((a, b) => (a.y + a.oy) - (b.y + b.oy));
-    for (const u of units) { const x = u.x + u.ox + u.kb, y = u.y + u.oy; const Ls = LIGHT[this.bgKey] || LIGHT._, sd = Ls.from === 'left' ? 1 : Ls.from === 'right' ? -1 : 0, fl = hasS(u, 'fly') ? .45 : 1; ctx.globalAlpha = .32 * u.fade * fl; ctx.save(); ctx.translate(x + sd * u.h * .32, y); ctx.transform(1, 0, sd * -.9, 1, 0, 0); const cs = ctx.createRadialGradient(0, 0, 0, 0, 0, u.h * .55); cs.addColorStop(0, 'rgba(0,0,0,.55)'); cs.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = cs; ctx.beginPath(); ctx.ellipse(0, 0, u.h * .5 + u.w * .3, (u.w + 2) * .32, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); ctx.globalAlpha = .55 * u.fade * fl; const gr = ctx.createRadialGradient(x, y, 0, x, y, u.w + 1); gr.addColorStop(0, 'rgba(0,0,0,.85)'); gr.addColorStop(.6, 'rgba(0,0,0,.35)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(x, y, u.w + 1, (u.w + 1) * .24, 0, 0, Math.PI * 2); ctx.fill(); }
+    for (const u of units) { const x = u.x + u.ox + u.kb, y = u.y + u.oy; const Ls = LIGHT[this.bgKey] || LIGHT._, sd = Ls.from === 'left' ? 1 : Ls.from === 'right' ? -1 : 0, fl = hasS(u, 'fly') ? .45 : 1; ctx.globalAlpha = .32 * u.fade * fl; ctx.save(); ctx.translate(x + sd * u.h * .32, y); ctx.transform(1, 0, sd * -.9, 1, 0, 0); const spr = this.shadowSprite(), rx = u.h * .5 + u.w * .3, ry = (u.w + 2) * .32; ctx.globalAlpha *= .65; ctx.drawImage(spr, -rx, -ry, rx * 2, ry * 2); ctx.restore(); ctx.globalAlpha = .62 * u.fade * fl; const cx2 = u.w + 1, cy2 = (u.w + 1) * .24; ctx.drawImage(spr, x - cx2, y - cy2, cx2 * 2, cy2 * 2); }
     ctx.globalAlpha = 1;
     if (this.walking && this.time - (this._dust || 0) > 220) { this._dust = this.time; for (const h of this.heroes) if (alive(h) && Math.random() < .6) this.burst(h.x + h.ox - 3, h.y + h.oy - 1, 'stone', 2, .35, .15); }
     for (const f of this.fxs) if (f.under) this.drawFx(f);
@@ -574,7 +576,7 @@ class World {
     const LG = LIGHT[this.bgKey] || LIGHT._;
     if (LG.grade) { ctx.save(); ctx.globalCompositeOperation = 'soft-light'; ctx.globalAlpha = .35; const gr = ctx.createLinearGradient(0, 0, 0, this.cv.height); gr.addColorStop(0, LG.grade[0]); gr.addColorStop(1, LG.grade[1]); ctx.fillStyle = gr; ctx.fillRect(0, 0, this.cv.width, this.cv.height); ctx.restore(); }
     if (this.hq()) this.drawGrain(ctx);
-    if (this.cine) { const k = (this.time - this.cine.t) / 1500; if (k >= 1) this.cine = null; else { const e = k < .2 ? RIG.easeOut(k / .2) : k > .75 ? 1 - (k - .75) / .25 : 1, bh = this.cv.height * .085 * e; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, this.cv.width, bh); ctx.fillRect(0, this.cv.height - bh, this.cv.width, bh); } }
+    if (this.cine) { const k = (this.time - this.cine.t) / (this.cine.dur || 1500); if (k >= 1) this.cine = null; else { const e = k < .2 ? RIG.easeOut(k / .2) : k > .75 ? 1 - (k - .75) / .25 : 1, bh = this.cv.height * .085 * e; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, this.cv.width, bh); ctx.fillRect(0, this.cv.height - bh, this.cv.width, bh); } }
     // Vignette
     const vg = ctx.createRadialGradient(this.cv.width / 2, this.cv.height * .55, this.cv.height * .4, this.cv.width / 2, this.cv.height * .55, this.cv.width * .75);
     vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.5)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, this.cv.width, this.cv.height);
@@ -601,14 +603,16 @@ class World {
     if (T.lava) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .12 + Math.sin(gt / 500) * .05; const g = ctx.createLinearGradient(0, 144, 0, 76); g.addColorStop(0, '#ff4a10'); g.addColorStop(1, 'rgba(255,80,20,0)'); ctx.fillStyle = g; ctx.fillRect(-20, 76, this.LW + 40, 70); ctx.restore(); }
   }
   /* Kino-Nachbearbeitung: helle Stellen weich überstrahlen (Verkleinern, Potenzieren, Hochskalieren) */
+  shadowSprite() { if (!this._shs) { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(0,0,0,.85)'); g.addColorStop(.6, 'rgba(0,0,0,.35)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); this._shs = c; } return this._shs; }
   bloom(ctx) {
     const W1 = this.cv.width >> 2, H1 = this.cv.height >> 2, W2 = W1 >> 2, H2 = H1 >> 2;
     if (!this._b1) { this._b1 = document.createElement('canvas'); this._b2 = document.createElement('canvas'); }
     const a = this._b1, b = this._b2; if (a.width !== W1) { a.width = W1; a.height = H1; b.width = W2; b.height = H2; }
-    const ac = a.getContext('2d'), bc = b.getContext('2d');
+    this._bfr = (this._bfr || 0) + 1;
+    if (this._bfr % 2 || !this._bReady) { const ac = a.getContext('2d'), bc = b.getContext('2d');
     ac.globalCompositeOperation = 'copy'; ac.drawImage(this.cv, 0, 0, W1, H1);
     ac.globalCompositeOperation = 'multiply'; ac.drawImage(a, 0, 0); ac.drawImage(a, 0, 0);
-    bc.globalCompositeOperation = 'copy'; bc.drawImage(a, 0, 0, W2, H2);
+    bc.globalCompositeOperation = 'copy'; bc.drawImage(a, 0, 0, W2, H2); this._bReady = 1; }
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = true; ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .26; ctx.drawImage(b, 0, 0, this.cv.width, this.cv.height); ctx.globalAlpha = .14; ctx.drawImage(a, 0, 0, this.cv.width, this.cv.height); ctx.restore();
   }
   drawRays(ctx, gt, L) {
@@ -739,7 +743,9 @@ class World {
   drawFx(f) {
     const ctx = this.ctx, k = f.t / f.dur;
     ctx.save();
-    if (f.k === 'slash') { ctx.globalCompositeOperation = 'lighter'; ctx.translate(f.x, f.y); ctx.scale(f.dir, 1); const st = -1.6 + k * .9, en = st + 2.2 * Math.min(1, k * 2.2); ctx.lineCap = 'round'; for (const [w, col] of [[3.2, 'rgba(160,200,255,.35)'], [1.4, 'rgba(255,255,255,.95)']]) { ctx.globalAlpha = 1 - k; ctx.strokeStyle = col; ctx.lineWidth = w * (1 - k * .6); ctx.beginPath(); ctx.arc(0, 0, f.r, st, en); ctx.stroke(); } }
+    if (f.k === 'rays') { ctx.globalCompositeOperation = 'lighter'; ctx.translate(f.x, f.y); ctx.rotate(this.time / 1100); const a = Math.sin(Math.min(1, k * 1.4) * Math.PI); for (let i = 0; i < 14; i++) { ctx.rotate(Math.PI / 7); const len = 70 + (i % 3) * 26, g = ctx.createLinearGradient(0, 0, len, 0); g.addColorStop(0, `rgba(255,244,210,${.55 * a})`); g.addColorStop(1, 'rgba(255,244,210,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(len, -3 - (i % 3) * 2.5); ctx.lineTo(len, 3 + (i % 3) * 2.5); ctx.fill(); } const g2 = ctx.createRadialGradient(0, 0, 0, 0, 0, 26); g2.addColorStop(0, `rgba(255,255,240,${.8 * a})`); g2.addColorStop(1, 'rgba(255,240,200,0)'); ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(0, 0, 26, 0, Math.PI * 2); ctx.fill(); }
+    else if (f.k === 'light') { ctx.globalCompositeOperation = 'lighter'; const a = (1 - k) * (1 - k) * (f.a || .25), g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r); g.addColorStop(0, RIG.rgba(f.c, a)); g.addColorStop(.5, RIG.rgba(f.c, a * .35)); g.addColorStop(1, RIG.rgba(f.c, 0)); ctx.fillStyle = g; ctx.fillRect(f.x - f.r, f.y - f.r, f.r * 2, f.r * 2); }
+    else if (f.k === 'slash') { ctx.globalCompositeOperation = 'lighter'; ctx.translate(f.x, f.y); ctx.scale(f.dir, 1); const st = -1.6 + k * .9, en = st + 2.2 * Math.min(1, k * 2.2); ctx.lineCap = 'round'; for (const [w, col] of [[3.2, 'rgba(160,200,255,.35)'], [1.4, 'rgba(255,255,255,.95)']]) { ctx.globalAlpha = 1 - k; ctx.strokeStyle = col; ctx.lineWidth = w * (1 - k * .6); ctx.beginPath(); ctx.arc(0, 0, f.r, st, en); ctx.stroke(); } }
     else if (f.k === 'bolt') { ctx.globalCompositeOperation = 'lighter'; ctx.lineJoin = 'round'; const pts = f.pts || (f.pts = Array.from({ length: 9 }, (_, i) => [f.x + (f.tx - f.x) * i / 8 + (i && i < 8 ? rnd(-4, 4) : 0), f.y + (f.ty - f.y) * i / 8 + (i && i < 8 ? rnd(-3, 3) : 0)])); if (Math.random() < .3) f.pts = null; for (const [w, col] of [[3, 'rgba(100,170,255,.4)'], [1, '#ffffff']]) { ctx.globalAlpha = 1 - k * .7; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(...p) : ctx.moveTo(...p)); ctx.stroke(); } }
     else if (f.k === 'ring') { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = (1 - k) * .9; ctx.strokeStyle = f.c; ctx.lineWidth = 1.4 * (1 - k) + .3; ctx.beginPath(); ctx.ellipse(f.x, f.y, 2 + RIG.easeOut(k) * f.r, (2 + RIG.easeOut(k) * f.r) * .45, 0, 0, Math.PI * 2); ctx.stroke(); }
     else if (f.k === 'circle') { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.sin(k * Math.PI) * .9; ctx.translate(f.x, f.y); ctx.scale(1, .38); ctx.rotate(k * 3); ctx.strokeStyle = f.c; ctx.lineWidth = .7; ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ctx.stroke(); ctx.beginPath(); ctx.arc(0, 0, 6.5, 0, Math.PI * 2); ctx.stroke(); for (let i = 0; i < 8; i++) { ctx.rotate(Math.PI / 4); ctx.fillStyle = f.c; ctx.fillRect(6.8, -.4, 1.8, .8); } }

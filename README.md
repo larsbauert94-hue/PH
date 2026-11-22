@@ -12,6 +12,13 @@ Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden 
 
 Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten). Unter **Optionen → Grafik** lässt sich zwischen *Auto*, *Hoch* (Figuren mit Szenenlicht, Kantenlicht und Bodenverdeckung) und *Normal* wählen; *Auto* schaltet bei zu niedriger Bildrate selbst herunter.
 
+## Neu in Version 8.2
+- **Boss-Auftritt als Kinoszene:** Kinobalken, Kamerafahrt, Brüllen mit Schockwelle und Staub
+- **Finisher-Zeitlupe:** der letzte Treffer in Zeitlupe mit Zoom und Lichtstrahlen
+- **Gruppenstufen-Feier:** Lichtsäulen über allen Helden
+- **Dynamisches Licht:** Feuer, Blitze und heilige Magie erhellen die Umgebung
+- **Optimiert:** vorberechnete Schatten, Bloom nur jedes zweite Bild
+
 ## Neu in Version 8.1
 - **Neue Symbole:** gemalte Menü-Icons (Helm, Beutel, Karte, Schriftrolle, Kristall, Pokal, Zahnrad) und Münze/Mithril/Blitz in der Leiste
 - **Edleres Menü:** goldene Zierlinie, metallische Knöpfe, leuchtende Tabs, Tiefe für alle Karten
