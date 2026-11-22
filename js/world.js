@@ -460,6 +460,7 @@ class World {
     t.hp = Math.max(0, t.hp - dmg);
     if (crit && a.side === 'hero') this.h.crit?.();
     if (crit || t.boss) this.hitstop = Math.max(this.hitstop || 0, crit ? 70 : 35);
+    if (crit) { this.fxs.push({ k: 'ring', x: t.x + t.ox, y: t.y + t.oy - t.h * .45, r: 30 + (t.big ? 16 : 0), c: '#fff2c0', t: 0, dur: 420 }); this.fxs.push({ k: 'burst', x: t.x + t.ox, y: t.y + t.oy - t.h * .5, r: 12, c: '#ffe8a0', t: 0, dur: 220 }); }
     this.num(t, dmg === 0 ? 'Schild' : (crit ? dmg + '!' : dmg), dmg === 0 ? '#a8d4ff' : crit ? '#ffd040' : t.side === 'hero' ? '#ff9a8a' : '#ffffff', crit ? 2 : 1);
     t.flash = 110; t.kb = (t.side === 'hero' ? -1 : 1) * (crit ? 3.5 : 2); if (t.anim.n === 'idle' || t.anim.n === 'hurt') this.setAnim(t, 'hurt');
     this.shake(crit ? 2.5 : 1.1); sfx(crit ? 'crit' : 'hit');
@@ -493,7 +494,7 @@ class World {
   die(u) {
     if (u.p?.reviveSelf && !u.usedRevive) { u.usedRevive = 1; u.hp = Math.round(u.maxHp * u.p.reviveSelf); this.num(u, 'Unbeugsam', '#ffe080'); this.burst(u.x, u.y - u.h * .5, 'holy', 14, 1, .6); return; }
     u.hp = 0; u.statuses = []; u.charging = false; this.setAnim(u, 'dead'); sfx('die');
-    if (u.side === 'enemy') this.h.kill?.(u);
+    if (u.side === 'enemy') { this.h.kill?.(u); const n = u.big ? 34 : 18; for (let i = 0; i < n; i++) this.parts.push({ x: u.x + u.ox + rnd(-u.w, u.w) * .6, y: u.y + u.oy - rnd(0, u.h), vx: rnd(-.25, .25), vy: -rnd(.15, .6), g: -.002, t: 0, life: rnd(700, 1300), c: pick(['#ff9a40', '#ffcf70', '#c04a20', '#4a3a3a']), s: Math.random() < .4 ? 1.6 : 1, glow: Math.random() < .7 }); }
     this.burst(u.x, u.y - u.h * .5, u.side === 'enemy' ? 'dark' : 'slash', 10, 1);
     if (u.side === 'hero') {
       const saver = this.heroes.find(h => alive(h) && h.p.reviveAlly && !h.usedReviveAlly);
@@ -535,6 +536,7 @@ class World {
     tile(L.far, .12, YO, L.HZ + 4);
     tile(L.mid, .35, YO, L.HZ + 4);
     tile(L.ground, 1, L.HZ + YO, LH - L.HZ - YO + 4);
+    if (this.hq()) this.drawRays(ctx, gt, L);
     this.drawAtmos(ctx, gt);
     const units = this.all().filter(u => u.fade > 0).sort((a, b) => (a.y + a.oy) - (b.y + b.oy));
     for (const u of units) { const x = u.x + u.ox + u.kb, y = u.y + u.oy; ctx.globalAlpha = .45 * u.fade; const gr = ctx.createRadialGradient(x, y, 0, x, y, u.w + 2); gr.addColorStop(0, 'rgba(0,0,0,.7)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(x, y, u.w + 2, (u.w + 2) * .28, 0, 0, Math.PI * 2); ctx.fill(); }
@@ -547,6 +549,7 @@ class World {
     for (const f of this.fxs) if (!f.under) this.drawFx(f);
     for (const p of this.projs) this.drawProj(p);
     this.drawParts(ctx);
+    if (this.hq()) this.drawFore(ctx, tile);
     for (const u of units) if (alive(u) && (this.fighting || u.side === 'enemy')) this.drawBars(u);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     for (const n of this.nums) {
@@ -566,6 +569,7 @@ class World {
     }
     ctx.globalAlpha = 1;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+    if (this.hq()) this.bloom(ctx);
     const LG = LIGHT[this.bgKey] || LIGHT._;
     if (LG.grade) { ctx.save(); ctx.globalCompositeOperation = 'soft-light'; ctx.globalAlpha = .35; const gr = ctx.createLinearGradient(0, 0, 0, this.cv.height); gr.addColorStop(0, LG.grade[0]); gr.addColorStop(1, LG.grade[1]); ctx.fillStyle = gr; ctx.fillRect(0, 0, this.cv.width, this.cv.height); ctx.restore(); }
     if (this.hq()) this.drawGrain(ctx);
@@ -594,6 +598,41 @@ class World {
     for (let i = 0; i < 5; i++) { const x = ((gt * .004 * (i + 1) - this.scroll * .5 + i * 90) % (this.LW + 120) + this.LW + 120) % (this.LW + 120) - 60, y = 72 + i * 6; const g = ctx.createRadialGradient(x, y, 0, x, y, 50); g.addColorStop(0, T.sky ? T.sky[T.sky.length - 1] : '#fff'); g.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y, 60, 9, 0, 0, Math.PI * 2); ctx.fill(); }
     ctx.restore();
     if (T.lava) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .12 + Math.sin(gt / 500) * .05; const g = ctx.createLinearGradient(0, 144, 0, 76); g.addColorStop(0, '#ff4a10'); g.addColorStop(1, 'rgba(255,80,20,0)'); ctx.fillStyle = g; ctx.fillRect(-20, 76, this.LW + 40, 70); ctx.restore(); }
+  }
+  /* Kino-Nachbearbeitung: helle Stellen weich überstrahlen (Verkleinern, Potenzieren, Hochskalieren) */
+  bloom(ctx) {
+    const W1 = this.cv.width >> 2, H1 = this.cv.height >> 2, W2 = W1 >> 2, H2 = H1 >> 2;
+    if (!this._b1) { this._b1 = document.createElement('canvas'); this._b2 = document.createElement('canvas'); }
+    const a = this._b1, b = this._b2; if (a.width !== W1) { a.width = W1; a.height = H1; b.width = W2; b.height = H2; }
+    const ac = a.getContext('2d'), bc = b.getContext('2d');
+    ac.globalCompositeOperation = 'copy'; ac.drawImage(this.cv, 0, 0, W1, H1);
+    ac.globalCompositeOperation = 'multiply'; ac.drawImage(a, 0, 0); ac.drawImage(a, 0, 0);
+    bc.globalCompositeOperation = 'copy'; bc.drawImage(a, 0, 0, W2, H2);
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = true; ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .26; ctx.drawImage(b, 0, 0, this.cv.width, this.cv.height); ctx.globalAlpha = .14; ctx.drawImage(a, 0, 0, this.cv.width, this.cv.height); ctx.restore();
+  }
+  drawRays(ctx, gt, L) {
+    const Lt = LIGHT[this.bgKey] || LIGHT._, sky = ['shire', 'amonhen', 'lake', 'erebor', 'eregion', 'south', 'sea', 'snow', 'mirkwood', 'helm', 'pelennor'].includes(this.bgKey);
+    const hz = L.HZ + YO;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    if (sky) { const sx = this.LW * .78, sy = YO - 8; for (let i = 0; i < 6; i++) { const a = 1.95 + i * .17 + Math.sin(gt / 3000 + i * 1.7) * .03, w = .035 + (i % 3) * .015, len = 260; ctx.globalAlpha = .05 + .035 * Math.sin(gt / 1700 + i * 2.1) ** 2; const g = ctx.createLinearGradient(sx, sy, sx + Math.cos(a) * len * .7, sy + Math.sin(a) * len * .7); g.addColorStop(0, `rgba(${Lt.c},.9)`); g.addColorStop(1, `rgba(${Lt.c},0)`); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + Math.cos(a - w) * len, sy + Math.sin(a - w) * len); ctx.lineTo(sx + Math.cos(a + w) * len, sy + Math.sin(a + w) * len); ctx.closePath(); ctx.fill(); } }
+    // Dunst am Horizont trennt Hinter- und Vordergrund
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+    const fg = ctx.createLinearGradient(0, hz - 14, 0, hz + 16); fg.addColorStop(0, `rgba(${Lt.c},0)`); fg.addColorStop(.5, `rgba(${Lt.c},.13)`); fg.addColorStop(1, `rgba(${Lt.c},0)`); ctx.fillStyle = fg; ctx.fillRect(-30, hz - 14, this.LW + 60, 30);
+    ctx.restore();
+  }
+  /* Unscharfe Vordergrund-Silhouetten (Gras, Steine) wie bei einer Kamera mit geringer Schärfentiefe */
+  drawFore(ctx, tile) {
+    const key = this.bgKey; if (!this._fore || this._foreKey !== key) {
+      const T = 512, H = 30, q = .22, cv = document.createElement('canvas'); cv.width = T * q * this.s | 0; cv.height = H * q * this.s | 0; const c = cv.getContext('2d'); c.scale(q * this.s, q * this.s);
+      let seed = 0; for (const ch of key) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0; const R = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+      const snow = key === 'snow', col = snow ? 'rgba(210,225,240,.9)' : key === 'doom' || key === 'moria' ? 'rgba(18,8,6,.95)' : 'rgba(8,12,8,.95)';
+      c.fillStyle = col;
+      for (let i = 0; i < 9; i++) { const x = R() * T, w = 30 + R() * 60, h = 8 + R() * 14; c.beginPath(); c.ellipse(x, H, w / 2, h, 0, Math.PI, 0); c.fill(); if (x + w / 2 > T) { c.beginPath(); c.ellipse(x - T, H, w / 2, h, 0, Math.PI, 0); c.fill(); } }
+      for (let i = 0; i < 70; i++) { const x = R() * T, h = 6 + R() * 16; c.beginPath(); c.moveTo(x - 1.6, H); c.quadraticCurveTo(x + R() * 4 - 2, H - h * .6, x + R() * 6 - 3, H - h); c.lineTo(x + 1.6, H); c.fill(); }
+      this._fore = cv; this._foreKey = key;
+    }
+    const w = 512, off = -((this.scroll * 1.45) % w + w) % w;
+    ctx.save(); ctx.globalAlpha = .9; for (let x = off - w; x < this.LW + w; x += w) ctx.drawImage(this._fore, x - 20, LH - 30 + 4, w, 30); ctx.restore();
   }
   drawTrail(u) {
     const a = u.anim; if (!alive(u) || a.n !== 'attack' || ['bow', 'staff'].includes(u.look.wpn) || u.type !== 'hum') return;

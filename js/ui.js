@@ -98,6 +98,7 @@ function updateHud() {
   $('#gold').textContent = fmt(G.gold); $('#mith').textContent = fmt(G.mithril);
   $('#power').textContent = fmt(G.party.reduce((a, k) => a + heroStats(k).power, 0));
   const cc = claimableCount(); $('#achBadge').hidden = !cc; $('#achBadge').textContent = cc;
+  if (!updateHud.t || Date.now() - updateHud.t > 1000) { updateHud.t = Date.now(); const ev = owned().filter(k => canEvolve(k)?.ok).length; $('#hBadge').hidden = !ev; $('#hBadge').textContent = ev; }
   for (const u of W.heroes) {
     const el = document.querySelector(`#party .pc[data-k="${u.key}"]`); if (!el) continue;
     el.querySelector('.ultbar i').style.width = Math.min(100, u.energy) + '%';
@@ -427,9 +428,15 @@ function openHeroes(tab = openHeroes.tab || 'helden', page = openHeroes.page) {
     s.querySelectorAll('.hcard[data-k]').forEach(b => b.onclick = () => { sfx('click'); openHero(b.dataset.k); });
     s.querySelectorAll('[data-cp]').forEach(b => b.onclick = () => { const id = b.dataset.cp; if (!G.comps[id]) return; G.companion = id; sfx('click'); W.pendingParty = 1; save(); openHeroes(); });
     paintComps(s);
+    const oa = s.querySelector('#optAll'); if (oa) oa.onclick = () => {
+      const p0 = G.party.reduce((a, k) => a + heroStats(k).power, 0); if (G.settings.autoParty) autoParty(); const eq = autoEquip(); let tr = 0;
+      for (let guard = 0; guard < 400; guard++) { const k = G.party.filter(x => G.heroes[x].lvl < STAGE_CAP[G.heroes[x].stage] && G.gold >= trainCost(x)).sort((a, b) => G.heroes[a].lvl - G.heroes[b].lvl)[0]; if (!k || !train(k)) break; tr++; }
+      save(); W.pendingParty = 1; buildHud(); const p1 = G.party.reduce((a, k) => a + heroStats(k).power, 0);
+      sfx(tr || eq ? 'level' : 'click'); toast(tr || eq ? `Optimiert: ${eq} Ausrüstungswechsel, ${tr} Trainingsstufen · Kampfkraft +${fmt(p1 - p0)}` : 'Schon alles optimal. Sammle mehr Gold für Training.', tr || eq ? 'lvl' : 'mini'); openHeroes();
+    };
     const ap = s.querySelector('#autoP'); if (ap) ap.onclick = () => { G.settings.autoParty = !G.settings.autoParty; if (G.settings.autoParty) { autoParty(); W.pendingParty = 1; buildHud(); } save(); openHeroes(); };
   }, { tabs: [['helden', `Helden ${own.length}/${Object.keys(HEROES).length}`], ['begleiter', 'Begleiter'], ['buende', 'Bündnisse']], tab, onTab: t => openHeroes(t, 0), pages: np, page, onPage: p => openHeroes(tab, p),
-    extra: tab === 'helden' ? `<button class="btn small ${G.settings.autoParty ? 'on' : ''}" id="autoP">Auto-Gruppe</button>` : '' });
+    extra: tab === 'helden' ? `<button class="btn small gold" id="optAll">⚡ Optimieren</button><button class="btn small ${G.settings.autoParty ? 'on' : ''}" id="autoP" title="Gruppe automatisch aufstellen">Auto</button>` : '' });
 }
 function paintComps(root) { root.querySelectorAll('canvas[data-comp]').forEach(c => { const cp = COMPANIONS.find(x => x.id === c.dataset.comp); requestAnimationFrame(() => compArt(c, cp)); }); }
 function compArt(cv, cp) {
