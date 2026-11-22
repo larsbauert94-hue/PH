@@ -539,7 +539,9 @@ class World {
     this.drawAtmosBack(ctx, gt);
     tile(L.far, .12, YO, L.HZ + 4);
     this.drawLandmark(ctx, gt, L);
+    if (this.bgKey === 'weather' || this.bgKey === 'helm') this.drawStorm(ctx, gt, L);
     tile(L.mid, .35, YO, L.HZ + 4);
+    this.drawLandmark(ctx, gt, L, true);
     tile(L.ground, 1, L.HZ + YO, LH - L.HZ - YO + 4);
     if (this.hq()) this.drawRays(ctx, gt, L);
     this.drawAtmos(ctx, gt);
@@ -642,10 +644,18 @@ class World {
     const w = 512, off = -((this.scroll * 1.45) % w + w) % w;
     ctx.save(); ctx.globalAlpha = .9; for (let x = off - w; x < this.LW + w; x += w) ctx.drawImage(this._fore, x - 20, LH - 30 + 4, w, 30); ctx.restore();
   }
-  drawLandmark(ctx, gt, L) {
-    const lm = RIG.landmark(this.bgKey, this.s); if (!lm) return;
+  drawStorm(ctx, gt, L) {
+    if (!this._bolt || this.time > this._bolt.end + 2500 + Math.random() * 4000) { if (!this._bolt || this.time > this._bolt.end) { const x = 30 + Math.random() * (this.LW - 60), pts = [[x, YO - 6]]; let px = x, py = YO - 6; while (py < L.HZ + YO - 18) { px += (Math.random() - .5) * 12; py += 5 + Math.random() * 7; pts.push([px, py]); } this._bolt = { pts, t: this.time, end: this.time + 260 }; } }
+    const b = this._bolt, k = (this.time - b.t) / 260; if (k < 0 || k > 1) return;
+    const a = k < .15 ? 1 : k < .3 ? .3 : k < .45 ? .9 : 1 - k;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(200,215,255,${.22 * a})`; ctx.fillRect(-20, YO - 20, this.LW + 40, L.HZ + 30);
+    ctx.strokeStyle = `rgba(235,240,255,${a})`; ctx.lineWidth = 1.1; ctx.lineJoin = 'round'; ctx.beginPath(); b.pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke(); ctx.strokeStyle = `rgba(150,180,255,${a * .5})`; ctx.lineWidth = 3; ctx.stroke(); ctx.restore();
+  }
+  drawLandmark(ctx, gt, L, front = false) {
+    const lm = RIG.landmark(this.bgKey, this.s); if (!lm || lm.front !== front) return;
     const k = lm.k, w = lm.w * k, h = lm.h * k, span = this.LW + w + 60; let X = this.LW * .6 - w / 2 - ((this.scroll * .05) % span + span) % span; if (X < -w - 30) X += span;
-    const Y = L.HZ + YO - h + lm.base * k + 2; ctx.save(); ctx.translate(X, Y); ctx.scale(k, k); ctx.drawImage(lm.cv, 0, 0, lm.w, lm.h); if (lm.anim) lm.anim(ctx, 0, 0, gt); ctx.restore();
+    const bobY = this.bgKey === 'sea' ? Math.sin(gt / 900) * 1.2 : 0, rot = this.bgKey === 'sea' ? Math.sin(gt / 1300) * .025 : 0;
+    const Y = L.HZ + YO - h + lm.base * k + 2 + bobY; ctx.save(); ctx.translate(X + w / 2, Y + h); ctx.rotate(rot); ctx.translate(-w / 2, -h); ctx.scale(k, k); ctx.drawImage(lm.cv, 0, 0, lm.w, lm.h); if (lm.anim) lm.anim(ctx, 0, 0, gt); ctx.restore();
   }
   impact(t, dir, heavy) {
     const x = t.x + t.ox, y = t.y + t.oy - t.h * .5, n = heavy ? 16 : 9;
