@@ -12,6 +12,7 @@ const FX_COL = {
   leaf: ['#6ab03a', '#a8d860', '#3a7a2a'], bite: ['#ffffff', '#e04040'], web: ['#e8e8f0', '#c8c8d8'], holy: ['#ffe080', '#ffffff', '#ffd040']
 };
 const DIFF_E = { hp: 1, dmg: 1 };
+STATUS.fly = { n: 'Fliegt', l: 'FLUG', c: '#c8e8ff', d: 'Nahkampfangriffe verfehlen zu 50 %.' };
 
 class World {
   constructor(canvas, hooks = {}) {
@@ -67,11 +68,11 @@ class World {
   }
   addEnemy(key, lvl, kind) {
     const E = ENEMIES[key], m = 1 + .15 * (lvl - 1) + .002 * (lvl - 1) * (lvl - 1), D = DIFF_E;
-    const ps = clamp(.55 + .09 * this.heroes.length, .72, 1), hpMul = (E.boss ? 4.6 : E.elite ? 3 : 2.6) * D.hp * ps;
+    const ps = clamp(.55 + .09 * this.heroes.length, .72, 1), hpMul = (E.boss ? 4.6 * modVal('bossHp') * (this.raid ? 34 : 1) : E.elite ? 3 : 2.6) * D.hp * ps * modVal('hp');
     const u = this.prep({
       side: 'enemy', key, name: E.n, type: E.type, look: Object.assign({ wpn: E.wpn || 'sword' }, E.look), wpn: E.wpn || 'claws',
-      maxHp: Math.round(E.hp * m * hpMul), atk: Math.round(E.atk * m * D.dmg * 3.3 * ps), mag: Math.round(E.mag * m * D.dmg * 3.3 * ps), def: Math.round(E.def * m), res: Math.round(E.res * m),
-      spd: E.spd, crit: 5, critDmg: 50, p: {}, boss: !!E.boss, elite: !!E.elite || kind === 'elite', tags: E.tags || [], lvl, statuses: [], cd: {}, threat: 0,
+      maxHp: Math.round(E.hp * m * hpMul), atk: Math.round(E.atk * m * D.dmg * 3.3 * ps * modVal('dmg')), mag: Math.round(E.mag * m * D.dmg * 3.3 * ps * modVal('dmg')), def: Math.round(E.def * m), res: Math.round(E.res * m),
+      spd: Math.round(E.spd * modVal('spd')), crit: 5, critDmg: 50, p: {}, boss: !!E.boss, elite: !!E.elite || kind === 'elite', tags: E.tags || [], lvl, statuses: [], cd: {}, threat: 0,
       skills: E.sk.map(id => ESK[id]), xp: Math.round(E.xp * (1 + .22 * (lvl - 1))), gold: Math.round(E.g * (1 + .16 * (lvl - 1))), transform: E.transform, ranged: !!E.ranged,
       atkStat: E.look.glowC && E.wpn === 'staff' ? 'mag' : 'atk'
     });
@@ -111,6 +112,7 @@ class World {
     this.shakeV = Math.max(0, this.shakeV - dt * .02);
     if (this.flashV) { this.flashV.t += dt; if (this.flashV.t > this.flashV.dur) this.flashV = null; }
     this.ambient(dt);
+    if (this.fighting && !this.busy && this.raid && this.time >= this.raidEnd) { this.busy = true; this.finish('time'); }
     if (this.fighting && !this.busy && !this.hold) {
       const live = this.all().filter(alive);
       for (const u of live) u.atb += effSpd(u) * dt * .016;
@@ -142,9 +144,11 @@ class World {
     this.walking = false; this.heroes.filter(alive).forEach(h => this.setAnim(h, 'idle'));
   }
   restoreHeroes() { for (const h of this.heroes) { if (!alive(h)) { h.fade = 1; } h.hp = h.maxHp; h.statuses = []; h.cd = {}; h.threat = 0; h.atb = 0; h.usedRevive = 0; h.usedReviveAlly = 0; h.holdAnim = null; h.anim = { n: 'idle', el: 0 }; } }
-  async fight(group, lvl, kind) {
+  async fight(group, lvl, kind, opts = {}) {
+    this.raid = !!opts.raid; this.raidEnd = 0;
     this.enemies = []; this.parts = this.parts.filter(p => p.amb);
     this.restoreHeroes();
+    if (hasMod('noEnergy')) this.heroes.forEach(h => h.energy = 0);
     group.forEach(k => this.addEnemy(k, lvl, kind)); this.layoutEnemies();
     // Gegner marschieren heran, während die Gruppe weiterzieht
     this.walking = true; this.heroes.forEach(h => this.setAnim(h, 'walk'));
@@ -155,6 +159,7 @@ class World {
     this.applyStartPassives();
     [...this.heroes, ...this.enemies].forEach(u => { u.atb = rnd(0, 40) + u.spd; });
     this.fighting = true; this.busy = false; this.turn = 0;
+    if (this.raid) this.raidEnd = this.time + (opts.time || 45000);
     return new Promise(res => { this.onFightEnd = res; });
   }
   applyStartPassives() {
@@ -168,15 +173,16 @@ class World {
       if (p.startHaste) addS(u, 'haste', 3, 0, this);
     }
   }
-  checkEnd() { if (!this.fighting) return null; if (this.enemies.every(e => !alive(e))) return 'win'; if (this.heroes.every(h => !alive(h))) return 'lose'; return null; }
+  checkEnd() { if (!this.fighting) return null; if (this.enemies.every(e => !alive(e))) return 'win'; if (this.heroes.every(h => !alive(h))) return 'lose'; if (this.raid && this.time >= this.raidEnd) return 'time'; return null; }
   async finish(res) {
     this.fighting = false; this.busy = true;
-    if (res === 'win') { this.heroes.filter(alive).forEach(h => { h.holdAnim = 'victory'; this.setAnim(h, 'victory'); }); sfx('win'); }
+    if (res === 'win' || res === 'time') { this.heroes.filter(alive).forEach(h => { h.holdAnim = 'victory'; this.setAnim(h, 'victory'); }); sfx('win'); }
     else sfx('lose');
     await this.wait(1300);
     this.heroes.forEach(h => { h.holdAnim = null; if (alive(h)) this.setAnim(h, 'idle'); });
     this.busy = false;
-    const cb = this.onFightEnd; this.onFightEnd = null; cb && cb({ win: res === 'win', enemies: this.enemies });
+    const boss = this.enemies.find(e => e.boss);
+    const cb = this.onFightEnd; this.onFightEnd = null; cb && cb({ win: res === 'win', timeout: res === 'time', enemies: this.enemies, dmgPct: boss ? 1 - boss.hp / boss.maxHp : 0 });
   }
   async act(u) {
     this.busy = true; u.atb = 0; this.active = u; this.turn++;
@@ -205,9 +211,24 @@ class World {
     if (u.boss && u.hp < u.maxHp * .5 && !u.phased) {
       u.phased = 1;
       if (u.transform) await this.transformUnit(u);
+      else if (PHASE2[u.key]) await this.phaseTwo(u);
       else { addS(u, 'enrage', 99, 0, this); this.h.banner?.(`${u.name} gerät in Raserei!`, 'foe'); this.flash('#ff3a1a', 400); this.shake(3); sfx('crit'); await this.wait(600); }
     }
     return false;
+  }
+  async phaseTwo(u) {
+    const P2 = PHASE2[u.key];
+    this.h.banner?.(P2.msg, 'warn'); this.flash('#ff3a1a', 500); this.shake(4); sfx('ult'); this.focus(u, 1.24, 1300);
+    addS(u, 'enrage', 99, 0, this);
+    if (P2.fly) { addS(u, 'fly', 99, 0, this); u.flyY = 1; }
+    if (P2.add) u.skills = [...u.skills, ...P2.add.map(id => ESK[id])];
+    for (const k of P2.summon || []) {
+      if (this.enemies.filter(alive).length >= 5) break;
+      const e = this.addEnemy(k, Math.max(1, u.lvl - 1), 'normal'); e.summoned = 1;
+      const sp = this.spread(), cx = this.cx, free = [[22, 96], [24, 122], [10, 108], [40, 100], [40, 124]].map(s2 => [cx + s2[0] * sp, s2[1]]).find(s2 => !this.enemies.some(o => alive(o) && o !== e && Math.abs(o.x - s2[0]) < 8 && Math.abs(o.y - s2[1]) < 8)) || [cx + 30, 108];
+      e.x = free[0]; e.y = free[1]; e.atb = 0; this.burst(e.x, e.y - 8, 'dark', 16, 1.2, .5); await this.wait(150);
+    }
+    await this.wait(600);
   }
   async transformUnit(u) {
     const T = u.transform, E = ENEMIES[T.to];
@@ -375,6 +396,7 @@ class World {
   }
   hit(a, t, sk, mult = 1) {
     if (!alive(t)) return 0;
+    if (hasS(t, 'fly') && (sk.anim === 'melee' || sk.anim === 'spin') && Math.random() < .5) { this.num(t, 'Verfehlt', '#c8e8ff'); sfx('miss'); return 0; }
     if (t.p?.dodge && Math.random() < t.p.dodge / 100) { this.num(t, 'Ausgewichen', '#c8c8c8'); sfx('miss'); return 0; }
     const stat = sk.stat || (sk.basic ? a.atkStat : 'atk');
     const A = effStat(a, stat), D = effStat(t, stat === 'mag' ? 'res' : 'def');
@@ -416,7 +438,7 @@ class World {
   heal(src, t, amt, o = {}) {
     if (!alive(t)) return 0;
     const sp = src.p || {}, tp = t.p || {};
-    amt *= (1 + (sp.healPct || 0) / 100) * (1 + (tp.healRecv || 0) / 100);
+    amt *= (1 + (sp.healPct || 0) / 100) * (1 + (tp.healRecv || 0) / 100) * (src.side === 'hero' ? modVal('heal') : 1);
     if (!o.silent && src.side === 'hero' && Math.random() < src.crit / 100) amt *= 1.5;
     amt = Math.round(amt);
     const before = t.hp; t.hp = Math.min(t.maxHp, t.hp + amt); const got = t.hp - before;
@@ -480,6 +502,7 @@ class World {
     for (const u of units) { const x = u.x + u.ox + u.kb, y = u.y + u.oy; ctx.globalAlpha = .45 * u.fade; const gr = ctx.createRadialGradient(x, y, 0, x, y, u.w + 2); gr.addColorStop(0, 'rgba(0,0,0,.7)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(x, y, u.w + 2, (u.w + 2) * .28, 0, 0, Math.PI * 2); ctx.fill(); }
     ctx.globalAlpha = 1;
     for (const f of this.fxs) if (f.under) this.drawFx(f);
+    this.drawCompanion(ctx, gt);
     for (const u of units) this.drawUnit(u, gt);
     for (const f of this.fxs) if (!f.under) this.drawFx(f);
     for (const p of this.projs) this.drawProj(p);
@@ -501,6 +524,14 @@ class World {
     if (this.flashV) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .5 * Math.pow(1 - this.flashV.t / this.flashV.dur, 2); ctx.fillStyle = this.flashV.c; ctx.fillRect(0, 0, this.cv.width, this.cv.height); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; }
     if (this.fade > 0) { ctx.globalAlpha = Math.sin(this.fade * Math.PI); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, this.cv.width, this.cv.height); ctx.globalAlpha = 1; }
   }
+  drawCompanion(ctx, gt) {
+    const cp = typeof G !== 'undefined' && G && COMPANIONS.find(c => c.id === G.companion && G.comps[c.id]); if (!cp) return;
+    const back = this.heroes.length ? Math.min(...this.heroes.map(h => h.x)) : this.cx - 80, anim = this.walking ? 'walk' : 'idle', el = gt % 1000;
+    if (cp.kind === 'eagle') { const x = this.cx - 40 + Math.sin(gt / 2600) * 60, y = 30 + Math.sin(gt / 900) * 5; ctx.save(); ctx.translate(x, y); RIG.drawEagle(ctx, cp.look, gt); ctx.restore(); return; }
+    if (cp.kind === 'ghosts') { for (let i = 0; i < 3; i++) { ctx.save(); ctx.globalAlpha = .38; ctx.shadowColor = 'rgba(160,255,210,.9)'; ctx.shadowBlur = 8 * this.s; ctx.translate(back - 16 - i * 9, 98 + i * 11); RIG.draw(ctx, 'hum', Object.assign({ wpn: 'sword' }, ENEMIES.dead_soldier.look), anim, el, gt + i * 500); ctx.restore(); } return; }
+    if (cp.kind === 'sled') { ctx.save(); ctx.translate(back - 20, 120); const P = RIG.P(ctx); P.rr(-10, -4, 10, 4, 1, '#7a5a3a', .4); for (let i = 0; i < 2; i++) { ctx.save(); ctx.translate(4 + i * 7, -i * 2); ctx.scale(.45, .45); RIG.draw(ctx, 'quad', Object.assign({ eye: '#2a1a1a' }, cp.look), anim, el, gt + i * 300); ctx.restore(); } ctx.restore(); return; }
+    ctx.save(); ctx.translate(back - 22, 117); RIG.draw(ctx, 'quad', Object.assign({ horse: 1, pony: cp.kind === 'pony', eye: '#2a1a12' }, cp.look), anim, el, gt); ctx.restore();
+  }
   drawAtmosBack(ctx, gt) {
     const T = BACKGROUNDS[this.bgKey] || {};
     if (T.sun) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .07 + Math.sin(gt / 3000) * .02; ctx.fillStyle = '#fff3c0'; const sx = this.LW * .75; for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(sx - 6 + i * 4, 12); ctx.lineTo(sx - 90 - i * 40, 150); ctx.lineTo(sx - 60 - i * 40, 150); ctx.closePath(); ctx.fill(); } ctx.restore(); }
@@ -514,9 +545,12 @@ class World {
   }
   drawUnit(u, gt) {
     const ctx = this.ctx, x = u.x + u.ox + u.kb, y = u.y + u.oy;
-    ctx.save(); ctx.translate(x, y); if (u.side === 'enemy') ctx.scale(-1, 1);
-    ctx.globalAlpha = u.fade * (hasS(u, 'invis') ? .38 : 1);
+    const fly = hasS(u, 'fly') ? 14 + Math.sin(gt / 260) * 3 : 0;
+    ctx.save(); ctx.translate(x, y - fly); if (u.side === 'enemy') ctx.scale(-1, 1);
+    ctx.globalAlpha = u.fade * (hasS(u, 'invis') ? .38 : 1) * (u.look.ghost ? .62 : 1);
+    if (u.look.ghost) { ctx.shadowColor = 'rgba(160,255,210,.9)'; ctx.shadowBlur = 8 * this.s; }
     RIG.draw(ctx, u.type, u.look, u.anim.n, u.anim.el, gt + u.gt0);
+    ctx.shadowBlur = 0;
     if (u.flash > 0) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.min(1, u.flash / 110) * .55; RIG.draw(ctx, u.type, u.look, u.anim.n, u.anim.el, gt + u.gt0); ctx.globalCompositeOperation = 'source-over'; }
     ctx.restore(); ctx.globalAlpha = 1;
     if (hasS(u, 'shield') && alive(u)) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .22 + Math.sin(gt / 200) * .06; const r = u.h * .62; const g = ctx.createRadialGradient(x, y - u.h * .5, r * .5, x, y - u.h * .5, r); g.addColorStop(0, 'rgba(120,180,255,0)'); g.addColorStop(1, 'rgba(160,210,255,.9)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y - u.h * .5, r * .75, r, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }

@@ -296,6 +296,26 @@ nav{max-width:260px}
 .help ul{margin:0 0 10px;padding-left:18px;display:grid;gap:5px;font-size:15px}
 @media (max-height:430px){ .nb{width:44px;height:42px} .nb em{font-size:8.5px} .nb svg{width:17px;height:17px} nav{max-width:228px} }
 @media (max-width:600px){ .chcard{grid-template-columns:80px 1fr} }
+
+.comps{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px;margin-bottom:14px}
+.comp{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:12px;padding:6px 6px 8px}
+.comp canvas{width:100%;aspect-ratio:4/3;border-radius:9px;display:block}
+.comp b{font-family:var(--display);font-size:12px} .comp small{font-size:10.5px;color:var(--muted);line-height:1.25}
+.comp.on{border-color:var(--gold);box-shadow:0 0 14px rgba(232,189,92,.25)} .comp.lk canvas{filter:brightness(0);opacity:.5} .comp.lk{opacity:.7}
+.compart{width:min(46vw,280px);aspect-ratio:4/3;border-radius:16px;border:1px solid rgba(232,189,92,.5);margin:8px auto;display:block}
+.fchip.bond{--fc:#ff8aa8;opacity:.55} .fchip.bond.on{opacity:1}
+.setl{border-left:3px solid var(--sc);background:rgba(255,255,255,.04);border-radius:8px;padding:5px 9px;margin-top:6px;font-size:12.5px;display:flex;flex-direction:column}
+.setl b{color:var(--sc);font-family:var(--display);font-size:13px} .setl span{color:var(--muted)} .setl span.on{color:#fff}
+.chcard.side{border-color:rgba(168,136,255,.45)}
+.chcard .btn{margin-top:8px}
+.mods{display:flex;flex-wrap:wrap;gap:6px;align-items:center;background:rgba(255,90,60,.08);border:1px solid rgba(255,106,74,.35);border-radius:12px;padding:8px 12px;margin-bottom:12px;font-size:13px}
+.mods span{background:rgba(0,0,0,.3);border-radius:8px;padding:2px 8px;color:#ffb0a0} .mods span.good{color:#9fe07a}
+.sect{font-size:15px;margin:14px 0 8px;color:var(--gold)} .sect small{display:block;font-family:var(--body);font-size:12px;color:var(--muted);font-weight:400}
+.raids{display:grid;gap:7px;margin-bottom:12px}
+.raid{display:grid;grid-template-columns:56px 1fr auto;gap:10px;align-items:center;background:rgba(255,255,255,.04);border:1px solid rgba(255,100,70,.3);border-radius:12px;padding:6px 10px}
+.raid canvas{width:56px;height:56px;border-radius:10px;display:block} .raid b{font-family:var(--display);font-size:14px} .raid small{display:block;font-size:12px;color:var(--muted)} .raid .bar{height:5px;margin-top:3px}
+.bar.big{height:12px;width:min(320px,80%)}
+textarea#o-code{width:100%;background:rgba(0,0,0,.4);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:8px;font-family:ui-monospace,monospace;font-size:11px;-webkit-user-select:text;user-select:text}
 @media (prefers-reduced-motion:reduce){.pc.ready,#farm,.phone{animation:none}}
 </style>
 
@@ -322,7 +342,7 @@ nav{max-width:260px}
     <div id="bossbar" hidden><span id="bossName"></span><div class="bb"><i id="bossFill"></i></div></div>
     <div id="banner"></div>
     <div id="combo"></div>
-    <button id="chest" title="Lagerfeuer-Truhe" aria-label="Lagerfeuer-Truhe"><span class="cf"><i id="chestFill"></i></span><svg viewBox="0 0 24 24"><path d="M4 10h16v9H4z"/><path d="M4 10c0-4 3-6 8-6s8 2 8 6"/><path d="M11 12h2v3h-2z"/></svg><small id="chestT"></small></button>
+    <button id="chest" title="Siegestruhe" aria-label="Siegestruhe"><span class="cf"><i id="chestFill"></i></span><svg viewBox="0 0 24 24"><path d="M4 10h16v9H4z"/><path d="M4 10c0-4 3-6 8-6s8 2 8 6"/><path d="M11 12h2v3h-2z"/></svg><small id="chestT"></small></button>
     <div id="party"></div>
     <div id="loot"></div>
   </div>

@@ -6,14 +6,14 @@ Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden 
 
 ## Inhalt
 - **Vollbild im Querformat:** Die Welt läuft ununterbrochen, Menüs liegen als Glas-Panels darüber
-- **21 Story-Kapitel** in drei Teilen (Der Hobbit, Der Ringkrieg mit Epilog, Die Ringe der Macht), je 8 Wellen + Boss, danach endlose Heldenreisen
-- **32 Helden** in den Rollen Tank, Schaden und Heiler; je 3 Passive, eine häufige und eine seltene Aktive (ab Stufe 10) und eine Ultimate
-- **Bündnisse** (z. B. Gemeinschaft, Hobbits, Elben, Zwerge, Thorins Gefolgschaft) mit Gruppenboni
-- **Relikte** von jedem Boss, **tägliche Aufträge**, **Lagerfeuer-Truhe** (Belohnungen über Zeit), **Training** mit Gold
-- **Gemeinschafts-Kombos** bei schnell aufeinanderfolgenden Ultimates, **Boss-Großangriffe** mit Vorwarnung
-- **Reise-Karte** von Mittelerde mit antippbaren Stationen, **Orthanc-Turm** als endlose Herausforderung
-- **Flüssige Animationen** mit Vektor-Rigs, Parallax-Landschaften, Licht und Partikeln; Smaug als Drache
-- **Ausrüstung** in fünf Seltenheiten, Entwicklungsstufen, Erfolge
+- **21 Story-Kapitel** in drei Teilen (Der Hobbit, Der Ringkrieg mit Epilog, Die Ringe der Macht), je 8 Wellen + Boss
+- **4 Nebenquests** (Der Alte Wald, Die Hügelgräberhöhen, Die Pfade der Toten, Die Tunnel von Ostirith), wiederholbar
+- **34 Helden** in den Rollen Tank, Schaden und Heiler; je 3 Passive, zwei Aktive und eine Ultimate
+- **Mehrphasige Bosse** (Balrog und Smaug fliegen, Sauron ruft die Neun …) und Großangriffe mit Vorwarnung
+- **Bündnisse, 14 Heldenbande, 9 Begleiter, 21 Relikte, 8 Ausrüstungs-Sets** (farmbar durch erneute Bosskämpfe)
+- **Prüfungen der Macht** (Raid-Bosse, beliebig oft), **Orthanc-Turm**, **Heldenreisen** mit Erschwernissen und besserer Beute
+- **Auftragstafel und Siegestruhe** ohne Zeitsperren: alles wird erspielt
+- **Selbst erzeugte Musik**, Spielstand-Export und -Import
 
 ## Dateien
 - `index.html`: Seite und Stylesheet

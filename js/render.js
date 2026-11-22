@@ -258,6 +258,10 @@ const RIG = (() => {
     if (hat === 'wizard') {
       g.ell(hx0 + .2, y0 - .2, HW * .95, 1, sh(hc, -.1), ow);
       g.fill(() => { c.moveTo(x0 + .2, y0 - .4); c.lineTo(x0 + HW - .2, y0 - .4); c.quadraticCurveTo(x0 + HW * .6, y0 - 5, x0 - 1.4 + Math.sin(gt / 900) * .5, y0 - 8.4); c.quadraticCurveTo(x0 + HW * .3, y0 - 4, x0 + .2, y0 - .4); }, g.lin(x0, 0, x0 + HW, 0, [sh(hc, -.25), hc, sh(hc, .15)]), ow);
+    } else if (hat === 'feather') {
+      g.ell(hx0 + .2, y0 - .1, HW * .95, 1.1, sh(hc, -.1), ow);
+      g.fill(() => { c.moveTo(x0 + .4, y0 - .3); c.quadraticCurveTo(x0 + HW * .5, y0 - 5.4, x0 + HW - .4, y0 - .3); }, g.lin(0, y0 - 5, 0, y0, [sh(hc, .2), hc]), ow);
+      c.strokeStyle = '#3a6ad8'; c.lineWidth = .7; c.beginPath(); c.moveTo(x0 + 1.2, y0 - 1.6); c.quadraticCurveTo(x0 - 1.8, y0 - 5 + Math.sin(gt / 500) * .4, x0 - 3.4, y0 - 7); c.stroke();
     } else if (hat === 'hood') {
       g.fill(() => { c.moveTo(x0 + HW + .4, y0 + HH * .7); c.quadraticCurveTo(x0 + HW + .8, y0 - 1.4, x0 + HW * .4, y0 - 1.3); c.quadraticCurveTo(x0 - 1.4, y0 - 1, x0 - 1.2, y0 + HH + 2); c.lineTo(x0 + 2, y0 + HH + 1); c.quadraticCurveTo(x0 + 1.4, y0 + 1.6, x0 + HW - .8, y0 + 1.2); c.quadraticCurveTo(x0 + HW - .2, y0 + HH * .5, x0 + HW + .4, y0 + HH * .7); }, g.lin(x0, y0, x0 + HW, y0 + HH, [sh(hc, .1), hc, sh(hc, -.35)]), ow);
       if (L.noface) { c.fillStyle = '#030304'; c.beginPath(); c.ellipse(x0 + HW * .62, y0 + HH * .5, HW * .32, HH * .36, 0, 0, TAU); c.fill(); if (L.glow) { g.glow(ex, ey, 2.6, L.glow, .9); g.glow(ex - 2, ey, 2.2, L.glow, .7); } }
@@ -330,6 +334,7 @@ const RIG = (() => {
 
   /* ---------- Vierbeiner ---------- */
   function drawQuad(c, L, anim, el, gt) {
+    if (L.horse) return drawHorse(c, L, anim, el, gt);
     const g = P(c), big = L.size ? 1 : 0, bl = big ? 20 : 16, bh = big ? 8.4 : 6.6, ll = big ? 7.4 : 6.2;
     const fur = L.fur, belly = L.belly;
     let lean = 0, jaw = 0, bob = 0, ph = gt / 900 * TAU, gait = 0, fall = 0;
@@ -359,6 +364,34 @@ const RIG = (() => {
     g.ell(hx + 6, hy - .1, .6, .55, '#141010', 0);
     g.glow(hx + 1.6, hy - .8, 1.8, L.eye || '#ffd040', .7); g.ell(hx + 1.6, hy - .8, .45, .4, L.eye || '#ffd040', 0);
     if (fall) c.restore();
+  }
+
+  function drawHorse(c, L, anim, el, gt) {
+    const g = P(c), pony = L.pony, bl = pony ? 17 : 21, bh = pony ? 8 : 8.5, ll = pony ? 8 : 12;
+    let ph = gt / 1400 * TAU, gait = 0, bob = (Math.sin(ph) + 1) * .3;
+    if (anim === 'walk') { ph = el / 520 * TAU; gait = 1; bob = Math.abs(Math.sin(ph)) * .9; }
+    const by = -ll - bh / 2 + bob, mane = L.mane || sh(L.fur, -.4);
+    c.lineCap = 'round'; c.strokeStyle = OL; c.lineWidth = 3; const tw = Math.sin(gt / 380) * 1.5;
+    c.beginPath(); c.moveTo(-bl / 2 + 1, by - 2); c.quadraticCurveTo(-bl / 2 - 4, by + 1 + tw, -bl / 2 - 4, by + 7 + tw); c.stroke(); c.strokeStyle = mane; c.lineWidth = 2; c.stroke();
+    const leg = (x, off, far) => { const a = gait ? Math.sin(ph + off) * .5 : 0, lift = gait ? Math.max(0, Math.cos(ph + off)) * 1.6 : 0; const hip = [x, by + bh * .3], foot = [x + Math.sin(a) * 3.5, -.6 - lift], knee = [(hip[0] + foot[0]) / 2 + (off % 2 ? -.6 : .6), (hip[1] + foot[1]) / 2]; g.limb([hip, knee, foot], 1.8, far ? sh(L.fur, -.3) : L.fur); g.limb([[foot[0] - .3, foot[1]], [foot[0] + .5, foot[1]]], 1.6, '#2a2018', .3); };
+    leg(-bl / 2 + 3, Math.PI, 1); leg(bl / 2 - 3, 0, 1);
+    g.ell(0, by, bl / 2, bh / 2, g.lin(0, by - bh / 2, 0, by + bh / 2, [sh(L.fur, .15), L.fur, L.belly]));
+    if (L.gear) { g.rr(-3, by - bh / 2 - .5, 6, 3.4, 1, L.gear, .3); g.limb([[0, by + bh / 2 - 1], [0, by + bh / 2 + 2]], .4, '#5a3a22', 0); }
+    leg(-bl / 2 + 4.5, 0, 0); leg(bl / 2 - 1.5, Math.PI, 0);
+    const nx = bl / 2 - 1, hx = bl / 2 + 4 + (gait ? Math.sin(ph * 2) * .5 : 0), hy = by - bh / 2 - (pony ? 5 : 8);
+    g.limb([[nx - 2, by - 1], [hx - 1, hy + 2]], pony ? 4 : 4.4, L.fur);
+    for (let i = 0; i < 4; i++) g.ell(nx - 2 + i * 1.4, by - 3 - i * 2.2 * (pony ? .7 : 1), 1.2, 1.4, mane, .25);
+    g.fill(() => { c.moveTo(hx - 2, hy - 1); c.lineTo(hx + 5, hy + 1.5); c.lineTo(hx + 5, hy + 3.4); c.lineTo(hx - 2, hy + 3); c.closePath(); }, L.fur, .4);
+    g.ell(hx - 1, hy, 2.6, 2.4, L.fur);
+    g.fill(() => { c.moveTo(hx - 1.6, hy - 2); c.lineTo(hx - 1, hy - 4.4); c.lineTo(hx, hy - 1.8); }, sh(L.fur, -.1), .3);
+    g.ell(hx + .4, hy - .3, .5, .5, L.eye || '#2a1a12', 0); g.ell(hx + 4.6, hy + 2.6, .4, .3, '#1a1010', 0);
+  }
+  function drawEagle(c, L, gt) {
+    const g = P(c), f = Math.sin(gt / 220);
+    for (const side of [-1, 1]) g.fill(() => { c.moveTo(0, 0); c.quadraticCurveTo(side * 10, -6 - f * 8, side * 22, -2 - f * 10); c.quadraticCurveTo(side * 16, 1 - f * 3, side * 18, 3 - f * 4); c.quadraticCurveTo(side * 9, 2, 0, 3); }, g.lin(0, -10, 0, 4, [sh(L.fur, .2), L.fur, sh(L.fur, -.3)]), .5);
+    g.ell(0, 1, 3.2, 5, g.lin(0, -3, 0, 6, [L.belly, L.fur]), .5);
+    g.ell(2.4, -3.6, 2.1, 1.9, '#e8dcc0', .4); g.fill(() => { c.moveTo(4, -4); c.lineTo(6.4, -3); c.lineTo(4, -2.4); }, '#e8b830', .3); g.ell(3, -4.2, .35, .35, '#1a1010', 0);
+    g.fill(() => { c.moveTo(-1.6, 5.5); c.lineTo(0, 9); c.lineTo(1.6, 5.5); }, L.fur, .4);
   }
 
   /* ---------- Spinnen ---------- */
@@ -661,5 +694,5 @@ const RIG = (() => {
     return out;
   }
 
-  return { draw, toCanvas, card, layers, dims, ANIMS, impactTime, animTime, background, icon, BODY, sh, rgba, ease, easeOut, P };
+  return { drawEagle, draw, toCanvas, card, layers, dims, ANIMS, impactTime, animTime, background, icon, BODY, sh, rgba, ease, easeOut, P };
 })();

@@ -236,7 +236,21 @@ const HEROES = {
     act2: { n: 'Vögel des Himmels', d: 'Alle Feinde 90 % Magie und verlangsamt.', cd: 4, anim: 'cast', fx: 'leaf', tgt: 'all', dmg: .9, stat: 'mag', st: [['slow', .7, 2]] },
     ult: { n: 'Ruf der Wildnis', d: 'Belebt alle Gefallenen (40 %), heilt alle um 45 %.', anim: 'cast', fx: 'leaf', tgt: 'allAllies', revive: .4, healPct: .45 },
     pas: [PS('Freund der Tiere', 1, { healPct: 12 }, '+12 % Heilung.'), PS('Kaninchenschlitten', 15, { spd: 3 }, '+3 Tempo.'), PS('Der Braune', 25, { startBuffRegen: 1 }, 'Kampfbeginn: Erholung für die Gruppe.')] },
+  tom: { n: 'Tom Bombadil', cls: 'naturheiler', wpn: 'staff', era: 'Älter als alles', stages: ['Herr des Alten Waldes', 'Der Älteste', 'Iarwain Ben-adar'],
+    look: { body: 'man', skin: '#ecb890', hair: '#7a5a3a', hs: 'wild', beard: 'short', bc: '#7a5a3a', eyeC: '#4a8ad8', tunic: '#2a5aa8', pants: '#6a5a3a', boots: '#e8c040', hat: 'feather', hatC: '#5a4a2a', wc: '#6a4a2a', glowC: '#fff0a0' },
+    stageLook: [{}, { tunic: '#3a6ac8' }, { tunic: '#4a7ae0', aura: '#fff0b0' }],
+    act: { n: 'Lied des Waldes', d: 'Heilt den schwächsten Verbündeten (190 % Magie) und reinigt.', cd: 1, anim: 'shout', fx: 'heal', tgt: 'lowestAlly', heal: 1.9, cleanse: 1 },
+    act2: { n: 'Hey dol! Fröhlich dol!', d: 'Heilt alle (110 % Magie), Gruppe erhält Eile.', cd: 4, anim: 'shout', fx: 'leaf', tgt: 'allAllies', heal: 1.1, buff: [['haste', 2]] },
+    ult: { n: 'Herr von Wald und Wasser', d: 'Belebt alle Gefallenen (60 %), heilt alle um 50 %.', anim: 'shout', fx: 'leaf', tgt: 'allAllies', revive: .6, healPct: .5 },
+    pas: [PS('Uralt', 1, { healPct: 15, hpPct: 10 }, '+15 % Heilung, +10 % LP.'), PS('Unberührt vom Ring', 15, { dodge: 15 }, '15 % Ausweichen.'), PS('Meister', 25, { auraHp: 8 }, 'Gruppe: +8 % LP.')] },
   // ---------- Zweites Zeitalter ----------
+  bronwyn: { n: 'Bronwyn', cls: 'schildwache', wpn: 'sword', era: 'Zweites Zeitalter', stages: ['Heilerin von Tirharad', 'Stimme der Südlande', 'Herrin von Ostirith'],
+    look: { body: 'slim', skin: '#d8a888', hair: '#3a2418', hs: 'long', eyeC: '#5a3a2a', tunic: '#6a3a3a', pants: '#4a3a30', cape: '#5a3a2a', bracers: '#5a3a22', shield: '#7a5a3a', wc: '#d0d6dc' },
+    stageLook: [{}, { armor: '#8a8a7a' }, { armor: '#c8c0a0', cape: '#7a2a2a' }],
+    act: { n: 'Schutz der Dörfler', d: '130 % Schaden, Spott und Wacht.', cd: 2, anim: 'melee', fx: 'slash', tgt: 'single', dmg: 1.3, taunt: 2, self: [['defUp', 2]] },
+    act2: { n: 'Ruf nach Ostirith', d: 'Heilt alle um 15 % und gibt Wacht.', cd: 5, anim: 'shout', fx: 'heal', tgt: 'allAllies', healPct: .15, buff: [['defUp', 2]] },
+    ult: { n: 'Wir weichen nicht', d: 'Alle Feinde 180 %, Schild für die Gruppe, Spott.', anim: 'spin', fx: 'holy', tgt: 'all', dmg: 1.8, shieldAll: 1.8, shieldStat: 'atk', taunt: 2 },
+    pas: [PS('Heilerin', 1, { healRecv: 20, hpPct: 10 }, '+20 % erhaltene Heilung, +10 % LP.'), PS('Standhaft', 15, { dmgRed: 10 }, '−10 % erlittener Schaden.'), PS('Hoffnung der Südlande', 25, { auraDef: 8 }, 'Gruppe: +8 % Verteidigung.')] },
   isildur: { n: 'Isildur', cls: 'klingenmeister', wpn: 'sword', era: 'Zweites Zeitalter', stages: ['Seekadett', 'Sohn Elendils', 'Hoher König'],
     look: { body: 'man', skin: '#dcac88', hair: '#3a2a1e', hs: 'short', eyeC: '#4a6a8a', tunic: '#2d4a6a', pants: '#2a2a2e', cape: '#1e2f4a', wc: '#d8e0e8' },
     stageLook: [{}, { armor: '#b0b8c0' }, { armor: '#e0e6ee', hat: 'circlet', hatC: '#f0f0f0', wc: '#fff0c0', emblem: 'tree' }],
@@ -410,6 +424,11 @@ const ENEMIES = {
   necromancer:{ n: 'Der Nekromant', type: 'hum', look: { body: 'giant', skin: '#0a0a0c', tunic: '#141418', robe: 1, hat: 'hood', hatC: '#101014', noface: 1, glow: '#ff6020', wc: '#3a3a3a', glowC: '#ff6020' }, wpn: 'staff', hp: 560, atk: 12, def: 12, mag: 26, res: 18, spd: 10, sk: ['darkness', 'gaze', 'summonNaz', 'drain'], xp: 260, g: 140, tags: ['geist'], boss: 1, ranged: 1 },
   ruffian:   { n: 'Strolch', type: 'hum', look: { body: 'man', skin: '#c8a080', hair: '#3a2a1a', hs: 'short', beard: 'stubble', tunic: '#5a4a3a', pants: '#3a3226', hat: 'hood', hatC: '#4a3a2a', wc: '#7a7a72' }, wpn: 'mace', hp: 85, atk: 14, def: 8, mag: 3, res: 6, spd: 11, sk: ['slash', 'heavy'], xp: 26, g: 14, tags: [] },
   sharkey:   { n: 'Sharkey', type: 'hum', look: { body: 'man', skin: '#c8b8a8', hair: '#d8d8d8', hs: 'long', beard: 'long', bc: '#d0d0d0', tunic: '#a8a49a', robe: 1, cape: '#8a867a', wc: '#2a2a2a', glowC: '#c8c8ff' }, wpn: 'staff', hp: 440, atk: 10, def: 11, mag: 24, res: 16, spd: 12, sk: ['staff', 'voice', 'summonRuff'], xp: 220, g: 120, tags: [], boss: 1, ranged: 1 },
+  willow:    { n: 'Der Alte Weidenmann', type: 'hum', look: { body: 'ent', skin: '#4a3a2a', hair: '#3a4a2a', hs: 'leaves', tunic: '#3a2a1a', pants: '#2a1e14', bark: 1, glow: '#ffcc40', wc: '#3a2a1a' }, wpn: 'claws', hp: 380, atk: 18, def: 14, mag: 16, res: 12, spd: 6, sk: ['smash', 'drain', 'heavy'], xp: 160, g: 80, tags: ['pflanze'], boss: 1 },
+  wight_king:{ n: 'König der Grabunholde', type: 'hum', look: { body: 'uruk', skin: '#c8d8e0', hair: '#e8f0f4', hs: 'long', tunic: '#2a3a42', robe: 1, hat: 'crown', hatC: '#c8b060', wc: '#c8d0d8', glow: '#9ff' }, wpn: 'sword', hp: 420, atk: 14, def: 10, mag: 20, res: 14, spd: 9, sk: ['drain', 'morgul', 'shriek'], xp: 180, g: 90, tags: ['geist'], boss: 1 },
+  dead_soldier:{ n: 'Toter Krieger', type: 'hum', look: { body: 'man', skin: '#a8d8c0', hair: '#c8e8d8', hs: 'long', tunic: '#5a8a78', pants: '#4a7a68', armor: '#7aa898', hat: 'helm', hatC: '#7aa898', wc: '#c8e8d8', glow: '#e0fff0', ghost: 1 }, wpn: 'sword', hp: 90, atk: 15, def: 8, mag: 10, res: 12, spd: 11, sk: ['slash', 'morgul'], xp: 28, g: 12, tags: ['geist'] },
+  king_dead: { n: 'König der Toten', type: 'hum', look: { body: 'uruk', skin: '#a8d8c0', hair: '#c8e8d8', hs: 'long', beard: 'long', bc: '#c8e8d8', tunic: '#4a7a68', armor: '#7aa898', hat: 'crown', hatC: '#9ac8b8', wc: '#c8e8d8', glow: '#ffffff', ghost: 1 }, wpn: 'sword', hp: 520, atk: 22, def: 13, mag: 16, res: 14, spd: 10, sk: ['heavy', 'shriek', 'morgul'], xp: 240, g: 110, tags: ['geist'], boss: 1 },
+  uruk_captain:{ n: 'Uruk-Hauptmann', type: 'hum', look: { body: 'uruk', skin: '#8a8f7a', hair: '#1a1a1a', hs: 'wild', tunic: '#3a2f2a', pants: '#2a2420', armor: '#5a524a', cape: '#3a2a22', hat: 'helm', hatC: '#4a4440', wc: '#9a9a90', glow: '#e0e080' }, wpn: 'sword', hp: 520, atk: 23, def: 14, mag: 4, res: 9, spd: 11, sk: ['heavy', 'slash', 'warcry', 'summonOrc'], xp: 220, g: 110, tags: ['ork'], boss: 1 },
   // Bosse Ringkrieg
   black_rider:{ n: 'Schwarzer Reiter', type: 'hum', look: { body: 'man', skin: '#0a0a0c', tunic: '#121216', robe: 1, cape: '#0e0e12', hat: 'hood', hatC: '#101014', wc: '#c8d0d8', glow: '#ff2020', noface: 1 }, wpn: 'sword', hp: 330, atk: 14, def: 8, mag: 15, res: 11, spd: 11, sk: ['morgul', 'shriek', 'slash'], xp: 90, g: 50, tags: ['geist'], boss: 1 },
   balrog:    { n: 'Balrog', type: 'hum', look: { body: 'giant', skin: '#2a120c', tunic: '#1a0a06', pants: '#1a0a06', hs: 'fire', hair: '#ff6a1a', wings: '#1a0a08', horns: '#3a2a20', fire: 1, wc: '#ff8a2a', glow: '#ffb030' }, wpn: 'whip', hp: 560, atk: 22, def: 13, mag: 20, res: 13, spd: 9, sk: ['whip', 'firesword', 'heavy'], xp: 180, g: 90, tags: ['dämon'], boss: 1 },
@@ -579,6 +598,7 @@ const AFFIX = {
   threat: { n: 'Bedrohung %', suf: 'der Herausforderung', f: l => 8 + l * 0.4 }
 };
 const LEGENDARIES = [
+  { n: 'Dolch von Westernis', base: 'klinge', fav: 'merry', main: 'atk', bonus: { vsGeist: .6, crit: 8 }, p: '+60 % Schaden gegen Geister.', special: 1 },
   { n: 'Andúril, Flamme des Westens', base: 'klinge', fav: 'aragorn', main: 'atk', bonus: { critDmg: 25, burnOnHit: .2 }, p: 'Treffer setzen mit 20 % in Brand.' },
   { n: 'Stich', base: 'klinge', fav: 'frodo', main: 'atk', bonus: { dodge: 8, vsOrk: .3 }, p: '+30 % Schaden gegen Orks.' },
   { n: 'Glamdring, Feindhammer', base: 'klinge', main: 'atk', bonus: { crit: 8, vsOrk: .25 }, p: '+25 % Schaden gegen Orks.' },
@@ -612,11 +632,15 @@ const ACHIEVEMENTS = [
   { id: 'ch14', n: 'Der Ring ist vernichtet', d: 'Besiege Sauron am Schicksalsberg.', stat: 'chapters', goal: 14, r: { mithril: 200 } },
   { id: 'ch15', n: 'Heimkehr', d: 'Befreie das Auenland.', stat: 'chapters', goal: 15, r: { mithril: 100 } },
   { id: 'ch21', n: 'Die Ringe der Macht', d: 'Schließe Teil III ab.', stat: 'chapters', goal: 21, r: { mithril: 300 } },
+  { id: 'side4', n: 'Abseits der Pfade', d: 'Schließe alle 4 Nebenquests ab.', stat: 'sides', goal: 4, r: { mithril: 150 } },
+  { id: 'comp5', n: 'Treue Begleiter', d: 'Sammle 5 Begleiter.', stat: 'comps', goal: 5, r: { mithril: 100 } },
+  { id: 'set3', n: 'Vollständig gerüstet', d: 'Trage ein vollständiges Set.', stat: 'fullSet', goal: 1, r: { mithril: 80 } },
+  { id: 'loop2', n: 'Heldenreise', d: 'Beginne eine zweite Reise.', stat: 'loops', goal: 1, r: { mithril: 200 } },
   { id: 'relics10', n: 'Schatzkammer', d: 'Sammle 10 Relikte.', stat: 'relics', goal: 10, r: { mithril: 100 } },
   { id: 'tower20', n: 'Herr des Turms', d: 'Erreiche Etage 20 im Orthanc-Turm.', stat: 'towerBest', goal: 20, r: { mithril: 150 } },
   { id: 'combo4', n: 'Gemeinsam stark', d: 'Erreiche eine Kombo ×4.', stat: 'maxCombo', goal: 4, r: { mithril: 60 } },
   { id: 'heroes10', n: 'Die Gemeinschaft wächst', d: 'Versammle 10 Helden.', stat: 'heroes', goal: 10, r: { mithril: 60 } },
-  { id: 'heroes32', n: 'Rat von Elrond', d: 'Versammle alle 32 Helden.', stat: 'heroes', goal: 32, r: { mithril: 250 } },
+  { id: 'heroes34', n: 'Rat von Elrond', d: 'Versammle alle 34 Helden.', stat: 'heroes', goal: 34, r: { mithril: 250 } },
   { id: 'epic5', n: 'Schatzsucher', d: 'Finde 5 epische Gegenstände.', stat: 'epics', goal: 5, r: { mithril: 50 } },
   { id: 'legend1', n: 'Legendär', d: 'Finde einen legendären Gegenstand.', stat: 'legends', goal: 1, r: { mithril: 80 } },
   { id: 'evo1', n: 'Aufstieg', d: 'Entwickle einen Helden.', stat: 'evolutions', goal: 1, r: { mithril: 40 } },
@@ -648,4 +672,97 @@ const BACKGROUNDS = {
 
 /* Stufen der Kapitel gleichmäßig verteilen; 8 Wellen + Boss pro Kapitel */
 const WAVES = 8;
-STORY.forEach((c, i) => { c.lvl = Math.round(1 + i * 2.6); });
+STORY.forEach((c, i) => { c.lvl = Math.round(1 + i * 2.7 + i * i * .04); });
+
+/* ---------------- Zweite Bossphase (bei 50 % LP) ---------------- */
+const PHASE2 = {
+  bert: { msg: 'Die Trolle werden rasend!' }, goblin_king: { msg: 'Der Großork ruft seine Horde!', summon: ['goblin', 'goblin'] },
+  spider_mother: { msg: 'Die Brut schwärmt aus!', summon: ['spiderling', 'spiderling'] }, smaug: { msg: 'Smaug erhebt sich in die Lüfte!', fly: 1 },
+  azog: { msg: 'Azog ruft die Warge!', summon: ['warg', 'warg'] }, necromancer: { msg: 'Der Schatten nimmt Gestalt an!', summon: ['wight', 'wight'] },
+  black_rider: { msg: 'Weitere Reiter nahen!', summon: ['nazgul'] }, balrog: { msg: 'Der Balrog breitet seine Schattenflügel aus!', fly: 1, add: ['firebreath'] },
+  lurtz: { msg: 'Lurtz ruft die Uruk-hai!', summon: ['uruk', 'uruk'] }, saruman: { msg: 'Saruman entfesselt die Macht von Orthanc!', add: ['voice'] },
+  shelob: { msg: 'Kankras Brut schwärmt aus!', summon: ['spiderling', 'spiderling'] }, witch_king: { msg: 'Ein geflügelter Schatten stürzt herab!', summon: ['nazgul'], fly: 1 },
+  sauron: { msg: 'Sauron ruft die Neun!', summon: ['nazgul', 'nazgul'] }, sharkey: { msg: 'Sharkeys Strolche eilen herbei!', summon: ['ruffian', 'ruffian'] },
+  snow_boss: { msg: 'Das Eis birst!', add: ['frost'] }, seawurm: { msg: 'Der Seewurm taucht ab und schlägt erneut zu!', fly: 1 },
+  adar: { msg: 'Adar ruft seine Kinder!', summon: ['adar_orc', 'adar_orc'] }, dark_wizard: { msg: 'Die Mystikerinnen eilen herbei!', summon: ['mystic', 'mystic'] },
+  damrod: { msg: 'Damrod reißt die Decke ein!', add: ['trample'] }, willow: { msg: 'Die Wurzeln des Waldes erwachen!', add: ['frost'] },
+  wight_king: { msg: 'Die Gräber öffnen sich!', summon: ['wight', 'wight'] }, king_dead: { msg: 'Das Heer der Toten erhebt sich!', summon: ['dead_soldier', 'dead_soldier'] },
+  uruk_captain: { msg: 'Der Hauptmann ruft Verstärkung!', summon: ['adar_orc', 'adar_orc'] }
+};
+
+/* ---------------- Begleiter ---------------- */
+const COMPANIONS = [
+  { id: 'myrte', n: 'Myrte das Pony', d: '+6 % LP für die Gruppe', e: { hp: 6 }, kind: 'pony', look: { fur: '#8a6a4a', belly: '#b89a7a', mane: '#3a2a1a' }, from: { ch: 0 } },
+  { id: 'kaninchen', n: 'Radagasts Kaninchenschlitten', d: '+8 % Tempo', e: { spd: 8 }, kind: 'sled', look: { fur: '#d8d0c0', belly: '#f0e8e0' }, from: { ch: 5 } },
+  { id: 'lutz', n: 'Lutz das Pony', d: '+8 % Verteidigung', e: { def: 8 }, kind: 'pony', look: { fur: '#6a5a4a', belly: '#9a8a7a', mane: '#2a2018' }, from: { ch: 7 } },
+  { id: 'asfaloth', n: 'Asfaloth', d: '+10 % Heilung, +4 % LP', e: { healPct: 10, hp: 4 }, kind: 'horse', look: { fur: '#f0f0f0', belly: '#ffffff', mane: '#e8e8e8', gear: '#c8a040' }, from: { ch: 8 } },
+  { id: 'schattenfell', n: 'Schattenfell', d: '+10 % Tempo, +6 % Magie', e: { spd: 10, mag: 6 }, kind: 'horse', look: { fur: '#e8e8f0', belly: '#ffffff', mane: '#d8d8e8' }, from: { ch: 10 } },
+  { id: 'gwaihir', n: 'Gwaihir der Windfürst', d: '+15 % Ultimate-Aufladung', e: { ultCharge: 15 }, kind: 'eagle', look: { fur: '#7a5a3a', belly: '#c8a878' }, from: { ch: 13 } },
+  { id: 'nross', n: 'Ross von Númenor', d: '+8 % Angriff', e: { atk: 8 }, kind: 'horse', look: { fur: '#3a2a22', belly: '#5a4a3a', mane: '#1a1210', gear: '#c8ccd4' }, from: { ch: 16 } },
+  { id: 'toten', n: 'Das Heer der Toten', d: '+10 % Angriff, +5 % Krit', e: { atk: 10, crit: 5 }, kind: 'ghosts', look: {}, from: { side: 'toten' } },
+  { id: 'dicker', n: 'Dicker Klumpen', d: '+8 % LP, +5 % Ausweichen', e: { hp: 8, dodge: 5 }, kind: 'pony', look: { fur: '#c8b088', belly: '#e8d8b8', mane: '#6a5a3a' }, from: { side: 'wald' } }
+];
+
+/* ---------------- Heldenbande (beide in der Gruppe: Bonus für beide) ---------------- */
+const BONDS = [
+  { a: 'frodo', b: 'sam', n: 'Unzertrennlich', e: { hp: 10, atk: 6 }, d: '+10 % LP, +6 % Angriff' },
+  { a: 'legolas', b: 'gimli', n: 'Ungleiche Freunde', e: { crit: 8 }, d: '+8 % Krit' },
+  { a: 'aragorn', b: 'arwen', n: 'Abendstern', e: { atk: 6, healPct: 15 }, d: '+6 % Angriff, +15 % Heilung' },
+  { a: 'merry', b: 'pippin', n: 'Vettern', e: { dodge: 8 }, d: '+8 % Ausweichen' },
+  { a: 'bilbo', b: 'thorin', n: 'Freundschaft unter dem Berg', e: { def: 10 }, d: '+10 % Verteidigung' },
+  { a: 'thorin', b: 'balin', n: 'Alte Gefährten', e: { hp: 8 }, d: '+8 % LP' },
+  { a: 'eowyn', b: 'faramir', n: 'Häuser der Heilung', e: { hp: 10 }, d: '+10 % LP' },
+  { a: 'theoden', b: 'eowyn', n: 'Haus Eorl', e: { atk: 8 }, d: '+8 % Angriff' },
+  { a: 'boromir', b: 'faramir', n: 'Söhne Denethors', e: { def: 8, atk: 6 }, d: '+8 % Verteidigung, +6 % Angriff' },
+  { a: 'galadriel', b: 'elrond', n: 'Weise der Eldar', e: { mag: 8, healPct: 10 }, d: '+8 % Magie, +10 % Heilung' },
+  { a: 'isildur', b: 'elendil', n: 'Vater und Sohn', e: { atk: 8 }, d: '+8 % Angriff' },
+  { a: 'nori', b: 'fremder', n: 'Sternenfreunde', e: { mag: 10 }, d: '+10 % Magie' },
+  { a: 'gandalf', b: 'radagast', n: 'Brüder im Orden', e: { ultCharge: 10 }, d: 'Ultimate +10 %' },
+  { a: 'arondir', b: 'bronwyn', n: 'Über alle Grenzen', e: { hp: 8, crit: 5 }, d: '+8 % LP, +5 % Krit' }
+];
+
+/* ---------------- Ausrüstungs-Sets (fallen bei Bossen) ---------------- */
+const SETS = [
+  { id: 'erebor', n: 'Erbe von Erebor', ch: 4, c: '#e8c060', b2: { hpPct: 15 }, b3: { dmgRed: 10 }, d2: '+15 % LP', d3: '−10 % erlittener Schaden' },
+  { id: 'istari', n: 'Gewänder der Istari', ch: 5, c: '#c8b8ff', b2: { magPct: 15 }, b3: { ultCharge: 20 }, d2: '+15 % Magie', d3: 'Ultimate +20 %' },
+  { id: 'mithril', n: 'Mithril aus Khazad-dûm', ch: 8, c: '#e8f0f8', b2: { defPct: 15 }, b3: { thorns: 15 }, d2: '+15 % Verteidigung', d3: '15 % Dornen' },
+  { id: 'galadhrim', n: 'Rüstung der Galadhrim', ch: 9, c: '#9fd08a', b2: { dodge: 10 }, b3: { crit: 15 }, d2: '+10 % Ausweichen', d3: '+15 % Krit' },
+  { id: 'gondor', n: 'Waffen von Gondor', ch: 12, c: '#d8dce6', b2: { atkPct: 12 }, b3: { bossDmg: 25 }, d2: '+12 % Angriff', d3: '+25 % gegen Bosse' },
+  { id: 'mordor', n: 'Schwarze Rüstung von Mordor', ch: 13, c: '#ff6a4a', b2: { lifesteal: 8 }, b3: { atkPct: 20 }, d2: '8 % Lebensraub', d3: '+20 % Angriff' },
+  { id: 'numenor', n: 'Stahl von Númenor', ch: 16, c: '#7ac8f0', b2: { critDmg: 25 }, b3: { doubleHit: .15 }, d2: '+25 % Krit-Schaden', d3: '15 % Doppeltreffer' },
+  { id: 'bund', n: 'Rüstung des Letzten Bündnisses', ch: 20, c: '#ffd77a', b2: { hpPct: 10, atkPct: 10 }, b3: { reviveSelf: .4 }, d2: '+10 % LP & Angriff', d3: 'Überlebt einmal einen tödlichen Treffer' }
+];
+
+/* ---------------- Nebenquests (nach einem Story-Kapitel freigeschaltet, beliebig wiederholbar) ---------------- */
+const SIDE = [
+  { id: 'wald', n: 'Der Alte Wald', after: 6, bg: 'mirkwood', map: [26, 38],
+    intro: [['narr', 'Hinter Bockland liegt der Alte Wald. Die Bäume hier sind wach, und sie mögen keine Fremden.'], ['merry', 'Der Alte Weidenmann! Weg von dem Baum!']],
+    waves: [['wolf', 'wolf'], ['wight', 'wolf'], ['wolf', 'wolf', 'wight']], boss: ['willow'],
+    outro: [['tom', 'Hey dol! Fröhlich dol! Alter Weidenmann, lass sie gehen!'], ['tom', 'Tom Bombadil geht ein Stück mit euch. Und mein Pony auch.']], hero: 'tom', comp: 'dicker' },
+  { id: 'huegel', n: 'Die Hügelgräberhöhen', after: 7, bg: 'weather', map: [27, 27],
+    intro: [['narr', 'Nebel liegt über den alten Gräbern der Könige von Arnor. Kalte Stimmen singen in der Tiefe.'], ['frodo', 'Ich … kann mich kaum bewegen …']],
+    waves: [['wight', 'wight'], ['wight', 'wolf', 'wolf'], ['wight', 'wight', 'wight']], boss: ['wight_king', 'wight'],
+    outro: [['merry', 'In dem Grab lagen Klingen aus Westernis. Diese hier fühlt sich an, als wäre sie für Geister gemacht.']], legend: 'Dolch von Westernis' },
+  { id: 'toten', n: 'Die Pfade der Toten', after: 11, bg: 'dolguldur', map: [42, 60],
+    intro: [['aragorn', 'Ich bin Isildurs Erbe. Kommt heraus und erfüllt euren Eid!'], ['gimli', 'Ich habe keine Angst vor Geistern. Na ja … fast keine.']],
+    waves: [['dead_soldier', 'dead_soldier'], ['dead_soldier', 'dead_soldier', 'wight'], ['dead_soldier', 'dead_soldier', 'dead_soldier']], boss: ['king_dead', 'dead_soldier'],
+    outro: [['e:king_dead', 'Wir kämpfen … für den Erben Isildurs. Dann sind wir frei.']], comp: 'toten' },
+  { id: 'ostirith', n: 'Die Tunnel von Ostirith', after: 17, bg: 'south', map: [76, 72],
+    intro: [['arondir', 'Unter dem Wachturm graben sie Tunnel. Die Dörfler sitzen in der Falle.'], ['bronwyn', 'Dann kämpfen wir uns zu ihnen durch. Gemeinsam.']],
+    waves: [['adar_orc', 'adar_orc'], ['adar_orc', 'orc_archer', 'warg'], ['adar_orc', 'adar_orc', 'adar_orc']], boss: ['uruk_captain', 'adar_orc'],
+    outro: [['bronwyn', 'Ostirith hält. Und ich gehe mit euch, wohin auch immer der Weg führt.']], hero: 'bronwyn' }
+];
+
+/* ---------------- Heldenreise-Modifikatoren ---------------- */
+const MODS = [
+  { n: 'Flinke Feinde', d: 'Gegner +20 % Tempo', e: { spd: 1.2 } }, { n: 'Zähe Feinde', d: 'Gegner +30 % LP', e: { hp: 1.3 } },
+  { n: 'Wilde Feinde', d: 'Gegner +20 % Schaden', e: { dmg: 1.2 } }, { n: 'Dunkle Zeiten', d: 'Heilung −25 %', e: { heal: .75 } },
+  { n: 'Ohne Gnade', d: 'Bosse +40 % LP', e: { bossHp: 1.4 } }, { n: 'Verfluchtes Land', d: 'Ultimate-Leisten starten leer', e: { noEnergy: 1 } }
+];
+
+/* ---------------- Raid-Prüfungen (jederzeit, beliebig oft) ---------------- */
+const RAIDS = [
+  { key: 'balrog', n: 'Der Balrog von Moria', bg: 'moria' }, { key: 'smaug', n: 'Smaug der Goldene', bg: 'erebor' },
+  { key: 'witch_king', n: 'Der Hexenkönig', bg: 'pelennor' }, { key: 'sauron', n: 'Sauron', bg: 'doom' }
+];
+const RAID_TIERS = [.05, .1, .2, .35, .5, .75, 1];

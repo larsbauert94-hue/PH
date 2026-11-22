@@ -28,6 +28,37 @@ const SFX = {
 };
 function sfx(n) { try { const now = performance.now(); if (lastSfx[n] && now - lastSfx[n] < 40) return; lastSfx[n] = now; SFX[n] && SFX[n](); } catch (e) { } }
 
+/* ---------- Musik (selbst erzeugt) ---------- */
+const MUSIC = (() => {
+  let timer = 0, next = 0, step = 0, bus = null, mode = 'explore';
+  const CH = { explore: [[50, 53, 57], [46, 50, 53], [53, 57, 60], [48, 52, 55]], battle: [[50, 53, 57], [46, 50, 53], [48, 52, 55], [45, 49, 52]], boss: [[50, 53, 57], [46, 50, 53], [43, 46, 50], [45, 49, 52]] };
+  const BPM = { explore: 72, battle: 100, boss: 116 };
+  const f = m => 440 * Math.pow(2, (m - 69) / 12);
+  function out() {
+    const a = ac(); if (!a) return null;
+    if (!bus) { bus = a.createGain(); bus.gain.value = .5; const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2600; const dl = a.createDelay(); dl.delayTime.value = .32; const fb = a.createGain(); fb.gain.value = .28; bus.connect(lp); lp.connect(a.destination); lp.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(a.destination); }
+    return a;
+  }
+  function note(a, freq, t, d, type, vol, att = .02) { const o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.value = freq; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + att); g.gain.exponentialRampToValueAtTime(.0001, t + d); o.connect(g).connect(bus); o.start(t); o.stop(t + d + .05); }
+  function drum(a, t, low, vol) { const o = a.createOscillator(), g = a.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(low ? 90 : 160, t); o.frequency.exponentialRampToValueAtTime(low ? 40 : 70, t + .2); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + .3); o.connect(g).connect(bus); o.start(t); o.stop(t + .35); }
+  function schedule() {
+    const a = out(); if (!a) return;
+    if (next < a.currentTime) next = a.currentTime + .05;
+    while (next < a.currentTime + .4) {
+      const spb = 60 / BPM[mode] / 2, bar = Math.floor(step / 8) % 4, beat = step % 8, chord = CH[mode][bar], t = next;
+      if (beat === 0) { chord.forEach(m => note(a, f(m + 12), t, spb * 8.5, 'triangle', .016, .5)); note(a, f(chord[0] - 12), t, spb * 7, 'sine', .05, .05); }
+      if (mode === 'explore') { if (beat % 2 === 0) note(a, f(chord[(beat / 2) % 3] + 24), t, spb * 2.2, 'sine', .014); }
+      else { const arp = [0, 1, 2, 1, 0, 2, 1, 2][beat]; note(a, f(chord[arp] + 24), t, spb * 1.2, 'triangle', .013); if (beat % 2 === 0) note(a, f(chord[0] - (mode === 'boss' ? 12 : 0)), t, spb * 1.5, 'sine', .03); }
+      if (mode === 'battle' && (beat === 0 || beat === 4)) drum(a, t, 1, .12);
+      if (mode === 'boss') { if (beat % 2 === 0) drum(a, t, 1, beat === 0 ? .2 : .12); if (beat === 3 || beat === 7) drum(a, t, 0, .07); }
+      next += spb; step++;
+    }
+  }
+  return {
+    sync() { const on = G && G.settings.music !== false && started; if (on && !timer) { timer = setInterval(() => { const m = !W ? 'explore' : W.fighting ? (W.enemies.some(e => e.boss && alive(e)) ? 'boss' : 'battle') : 'explore'; if (m !== mode && step % 8 === 0) mode = m; schedule(); }, 100); } if (!on && timer) { clearInterval(timer); timer = 0; } }
+  };
+})();
+
 /* ---------- Kleine Helfer ---------- */
 function toast(html, cls = '') { const t = document.createElement('div'); t.className = 'toast ' + cls; t.innerHTML = html; $('#toasts').appendChild(t); setTimeout(() => t.classList.add('out'), 2600); setTimeout(() => t.remove(), 3200); }
 function heroCol(k) { return ROLE_COL[roleOf(k)]; }
@@ -59,9 +90,10 @@ function updateHud() {
   const w = G.story.wave;
   $('#pips').innerHTML = Array.from({ length: WAVES }, (_, i) => `<i class="${i < w ? 'done' : i === w ? 'cur' : ''} ${isEliteWave(i) ? 'el' : ''}"></i>`).join('') + `<b class="${w >= WAVES ? 'cur' : ''}">✦</b>`;
   $('#farm').hidden = !(G.story.farm && w >= WAVES);
-  const syn = activeFactions().filter(f => f.tier >= 0).map(f => `<span style="--fc:${f.F.c}" title="${esc(f.F.n)}: ${esc(f.F.t[f.tier][2])}">${f.F.ic}<b>${f.n}</b></span>`).join('');
+  const bn = activeBonds().length, mods = activeMods();
+  const syn = activeFactions().filter(f => f.tier >= 0).map(f => `<span style="--fc:${f.F.c}" title="${esc(f.F.n)}: ${esc(f.F.t[f.tier][2])}">${f.F.ic}<b>${f.n}</b></span>`).join('') + (bn ? `<span style="--fc:#ff8aa8" title="Heldenbande">♥<b>${bn}</b></span>` : '') + (mods.length ? `<span style="--fc:#ff6a4a" title="${esc(mods.map(m => m.d).join(', '))}">☠<b>${mods.length}</b></span>` : '');
   if ($('#syn').dataset.v !== syn) { $('#syn').innerHTML = syn; $('#syn').dataset.v = syn; }
-  const idle = idleState(); $('#chestFill').style.height = Math.min(100, idle.min / 120 * 100) + '%'; $('#chest').classList.toggle('ready', idle.min >= 30); $('#chestT').textContent = idle.min >= 60 ? Math.floor(idle.min / 60) + ' h' : Math.floor(idle.min) + ' min';
+  const cs = chestState(); $('#chestFill').style.height = (cs.n / CHEST_MAX * 100) + '%'; $('#chest').classList.toggle('ready', cs.ready); $('#chestT').textContent = cs.n + '/' + CHEST_MAX;
   const qc = questsClaimable(); $('#qBadge').hidden = !qc; $('#qBadge').textContent = qc;
   $('#gold').textContent = fmt(G.gold); $('#mith').textContent = fmt(G.mithril);
   $('#power').textContent = fmt(G.party.reduce((a, k) => a + heroStats(k).power, 0));
@@ -112,7 +144,7 @@ function dialog(lines) {
 }
 function splash(html, ms = 0, cls = '') {
   return new Promise(res => {
-    const s = $('#splash'); s.className = 'splash ' + cls; s.innerHTML = html; s.hidden = false; paintCards(s);
+    const s = $('#splash'); s.className = 'splash ' + cls; s.innerHTML = html; s.hidden = false; paintCards(s); paintComps(s);
     W.hold = true;
     const close = () => { s.classList.add('out'); setTimeout(() => { s.hidden = true; s.classList.remove('out'); W.hold = false; res(); }, 300); };
     if (ms) setTimeout(close, ms); else { s.onclick = () => { s.onclick = null; sfx('click'); close(); }; }
@@ -138,8 +170,9 @@ function applyParty() {
 function onResult(r, kind) {
   const party = G.party.slice();
   if (r.win) {
-    G.stats.wins++;
+    G.stats.wins++; addChest(kind === 'boss' ? 3 : 1);
     const rw = battleReward(kind, r.enemies.filter(e => e.xp));
+    if (kind === 'boss' && r.setCh !== undefined) { const S2 = chapterSet(r.setCh); if (S2 && Math.random() < .6) rw.items.push(genSetItem(S2, r.enemies.reduce((a, e) => Math.max(a, e.lvl), 1))); }
     const lvBefore = Object.fromEntries(owned().map(k => [k, G.heroes[k].lvl]));
     const res = applyReward(rw, party);
     lootPop(rw.items, rw.gold); if (rw.mithril) toast(`+${rw.mithril} ✧ Mithril`, 'mini');
@@ -155,7 +188,59 @@ function onResult(r, kind) {
     const xp = Math.round(r.enemies.filter(e => !alive(e) && e.xp).reduce((a, e) => a + e.xp, 0) * .4);
     applyReward({ xp, gold: 0, items: [], mithril: 0 }, party);
   }
-  save(); updateHud();
+  checkFullSet(); save(); updateHud();
+}
+async function bossRematch(ch) {
+  const C = STORY[ch], prevBg = W.bgKey; G.queue = null; save();
+  W.setBg(C.bg); await splash(`<div class="ctitle"><div class="kicker">Erneuter Bosskampf</div><h1>Kapitel ${ch + 1}</h1><h2>${esc(C.n)}</h2></div>`, 1600, 'chap');
+  applyParty(); await W.walk(1000);
+  const lvl = C.lvl + 3 + G.story.loop * LOOP_LVL, r = await W.fight(C.boss, lvl, 'boss'); r.setCh = ch;
+  onResult(r, 'boss'); if (r.win) { G.stats.bosses++; track('bosses', 1); } else toast('Der Boss war zu stark. Werdet stärker und versucht es erneut.', 'unlock');
+  W.setBg(prevBg);
+}
+async function sideRun(id) {
+  const sd = SIDE.find(x => x.id === id), prevBg = W.bgKey, first = !G.side[id]; G.queue = null; save();
+  W.setBg(sd.bg); await splash(`<div class="ctitle"><div class="kicker">Nebenquest</div><h1>${first ? 'Neu' : 'Wiederholung'}</h1><h2>${esc(sd.n)}</h2></div>`, 1800, 'chap');
+  if (first) await dialog(sd.intro);
+  const lvl = sideLvl(sd);
+  for (let i = 0; i < sd.waves.length; i++) {
+    applyParty(); await W.walk(1100);
+    const r = await W.fight(sd.waves[i], lvl + Math.floor(i / 2), 'normal'); onResult(r, 'normal');
+    if (!r.win) { toast(`${esc(sd.n)}: Die Gruppe musste sich zurückziehen.`, 'unlock'); W.setBg(prevBg); return; }
+  }
+  applyParty(); await W.walk(1000);
+  const bk = sd.boss.find(k => ENEMIES[k].boss) || sd.boss[0]; await bossSplash(bk);
+  const r = await W.fight(sd.boss, lvl + 2, 'boss'); onResult(r, 'boss');
+  if (r.win) {
+    G.stats.bosses++; track('bosses', 1);
+    if (first) {
+      G.side[id] = 1; G.stats.sides = Object.keys(G.side).length;
+      await dialog(sd.outro);
+      if (sd.hero) { joinHero(sd.hero); applyParty(); await joinSplash(sd.hero); }
+      if (sd.comp) { const cp = grantCompanion(sd.comp); if (cp) await companionSplash(cp); }
+      if (sd.legend) { const li = LEGENDARIES.findIndex(l => l.n === sd.legend); const it = genItem(lvl + 2, 4, { leg: li }); addItem(it); if (G.settings.autoEquip) autoEquip(); await splash(`<div class="cdone"><div class="kicker">Legendärer Fund</div><div class="loot1">${icHtml(it)}<b style="color:${RARITY[4].c}">${esc(it.name)}</b></div><p>${esc(it.passive || '')}</p><div class="dhint">Tippen zum Fortfahren</div></div>`, 0, 'doneS'); }
+      G.mithril += 40; toast('Nebenquest abgeschlossen: +40 ✧', 'lvl');
+    } else G.side[id]++;
+    save();
+  } else toast(`${esc(sd.n)}: Der Boss war zu stark.`, 'unlock');
+  W.setBg(prevBg);
+}
+async function raidRun(key) {
+  const R = RAIDS.find(x => x.key === key), prevBg = W.bgKey; G.queue = null; save();
+  W.setBg(R.bg); await splash(`<div class="ctitle"><div class="kicker">Prüfung der Macht</div><h1>45 Sekunden</h1><h2>${esc(R.n)}</h2></div>`, 1800, 'chap');
+  applyParty(); await W.walk(800);
+  const r = await W.fight([key], raidLvl(), 'boss', { raid: 1, time: 45000 });
+  const st = G.raid[key] || (G.raid[key] = { best: 0, tiers: 0 }), pct = r.dmgPct;
+  const tier = RAID_TIERS.filter(t => pct >= t).length, first = tier > st.tiers;
+  st.best = Math.max(st.best, pct); if (first) st.tiers = tier;
+  const rw = raidRewards(pct, first), items = []; for (let i = 0; i < rw.items; i++) items.push(genItem(raidLvl(), rollRarity(tier >= 5 ? 'boss' : 'elite')));
+  G.gold += rw.gold; G.mithril += rw.mithril; items.forEach(addItem); if (G.settings.autoEquip) autoEquip(); save();
+  await splash(`<div class="cdone"><div class="kicker">Prüfung beendet</div><h1>${Math.round(pct * 100)} % Schaden</h1><p>${first ? '<b>Neue Bestmarke!</b> ' : ''}Stufe ${tier} von ${RAID_TIERS.length} · ◆ ${fmt(rw.gold)} · ✧ ${rw.mithril} · ${items.length} Gegenstände</p><div class="dhint">Tippen zum Fortfahren</div></div>`, 0, 'doneS');
+  W.setBg(prevBg); updateHud();
+}
+function companionSplash(cp) {
+  sfx('join');
+  return splash(`<div class="cdone"><div class="kicker">Neuer Begleiter</div><canvas class="compart" data-comp="${cp.id}"></canvas><h1>${esc(cp.n)}</h1><p>${esc(cp.d)}</p><div class="dhint">Tippen zum Fortfahren</div></div>`, 0, 'doneS');
 }
 async function towerRun() {
   const f = towerFloor(), tg = towerGroup(f), prevBg = W.bgKey;
@@ -183,6 +268,7 @@ async function director() {
     }
     const w = G.story.wave, mk = G.story.ch + '-' + w;
     if (G.tower.queued) { await towerRun(); continue; }
+    if (G.queue) { const q = G.queue; if (q.type === 'boss') await bossRematch(q.ch); else if (q.type === 'side') await sideRun(q.id); else if (q.type === 'raid') await raidRun(q.key); else G.queue = null; continue; }
     if (w < WAVES) {
       if ((ch.mid?.[w] || ch.midLine?.[w]) && !G.story.mids[mk]) {
         await dialog(ch.midLine?.[w]); for (const k of ch.mid?.[w] || []) { joinHero(k); applyParty(); await joinSplash(k); }
@@ -202,7 +288,7 @@ async function director() {
     if (!G.story.bossSeen) { await dialog(ch.bossLine); G.story.bossSeen = true; save(); }
     applyParty(); await W.walk(1200);
     const bk = ch.boss.find(k => ENEMIES[k].boss) || ch.boss[0]; await bossSplash(bk);
-    const r = await W.fight(ch.boss, waveLvl(WAVES) + 1, 'boss');
+    const r = await W.fight(ch.boss, waveLvl(WAVES) + 1, 'boss'); r.setCh = G.story.ch;
     onResult(r, 'boss');
     if (r.win) {
       G.stats.bosses++; track('bosses', 1); await W.wait(400);
@@ -211,11 +297,12 @@ async function director() {
       for (const k of ch.away || []) { G.away[k] = 1; toast(`${esc(HEROES[k].n)} hat die Gruppe verlassen …`, 'unlock'); }
       const relic = G.story.loop === 0 ? grantRelic(G.story.ch) : null;
       if (relic) { W.pendingParty = 1; await splash(`<div class="cdone relic"><div class="kicker">Relikt gefunden</div><canvas class="ric" data-ic="${relic.ic}" data-c="${relic.c}"></canvas><h1>${esc(relic.n)}</h1><p>Dauerhafter Gruppenbonus: <b>${esc(relic.d)}</b></p><div class="dhint">Tippen zum Fortfahren</div></div>`, 0, 'doneS'); }
+      const cp = chapterCompanion(G.story.ch); if (cp && !G.comps[cp.id]) { grantCompanion(cp.id); W.pendingParty = 1; await companionSplash(cp); }
       G.stats.chapters = Math.max(G.stats.chapters, G.story.ch + 1 + G.story.loop * STORY.length);
       const chest = genItem(chapterLvl() + 2, Math.random() < .25 ? 4 : 3); addItem(chest); const mith = 20 + G.story.ch * 4; G.mithril += mith;
       if (G.settings.autoEquip) autoEquip();
       await splash(`<div class="cdone"><div class="kicker">Kapitel abgeschlossen</div><h1>${esc(ch.n)}</h1><p>Kapitel-Truhe: ✧ ${mith} Mithril und</p><div class="loot1">${icHtml(chest)}<b style="color:${RARITY[chest.r].c}">${esc(chest.name)}</b></div><div class="dhint">Tippen zum Fortfahren</div></div>`, 0, 'doneS');
-      G.story.ch++; if (G.story.ch >= STORY.length) { G.story.ch = 0; G.story.loop++; }
+      G.story.ch++; if (G.story.ch >= STORY.length) { G.story.ch = 0; G.story.loop++; G.stats.loops++; const m = activeMods(); await splash(`<div class="cdone"><div class="kicker">Heldenreise ${G.story.loop + 1}</div><h1>Die Reise beginnt von Neuem</h1><p>Stärkere Gegner, bessere Beute (+${G.story.loop * 25} % Gold & EP, seltenere Gegenstände).</p><p><b>Erschwernisse:</b> ${m.map(x => esc(x.d)).join(' · ')}</p><div class="dhint">Tippen zum Fortfahren</div></div>`, 0, 'doneS'); }
       Object.assign(G.story, { wave: 0, intro: false, bossSeen: false, farm: false }); applyParty(); save();
     } else { G.story.farm = true; save(); banner('Der Boss ist zu stark. Die Gruppe trainiert.', 'foe'); toast('Werdet stärker und fordert den Boss dann erneut heraus.', 'unlock'); }
   }
@@ -233,7 +320,7 @@ function openSheet(title, html, after) {
 function closeSheet() { cancelAnimationFrame(artRaf); const s = $('#sheet'); s.classList.remove('open'); setTimeout(() => { if (!s.classList.contains('open')) s.hidden = true; }, 260); }
 function heroCard(k, locked) {
   const H = HEROES[k], C = CLASSES[H.cls], hs = G.heroes[k];
-  if (locked) { const ci = STORY.findIndex(c => [...(c.join || []), ...(c.end || []), ...Object.values(c.mid || {}).flat()].includes(k)); return `<div class="hcard locked" style="--rc:${ROLE_COL[C.role]}"><canvas data-card="${k}" data-bust="1" data-stage="0"></canvas><div class="hc-info"><b>???</b><small>Kapitel ${ci + 1}</small></div></div>`; }
+  if (locked) { const ci = STORY.findIndex(c => [...(c.join || []), ...(c.end || []), ...Object.values(c.mid || {}).flat()].includes(k)), sd = SIDE.find(x => x.hero === k); return `<div class="hcard locked" style="--rc:${ROLE_COL[C.role]}"><canvas data-card="${k}" data-bust="1" data-stage="0"></canvas><div class="hc-info"><b>???</b><small>${ci >= 0 ? 'Kapitel ' + (ci + 1) : sd ? 'Nebenquest: ' + esc(sd.n) : ''}</small></div></div>`; }
   return `<button class="hcard ${G.party.includes(k) ? 'in' : ''} ${G.away[k] ? 'away' : ''}" data-k="${k}" style="--rc:${ROLE_COL[C.role]}"><canvas data-card="${k}" data-bust="1"></canvas><span class="role-dot r-${C.role}"></span><div class="hc-info"><b>${esc(H.n)}</b>${stars(hs.stage)}<span class="pw">⚡ ${fmt(heroStats(k).power)}</span><small>Stufe ${hs.lvl}</small></div>${G.away[k] ? '<span class="tag">Fort</span>' : G.party.includes(k) ? '<span class="tag in">Gruppe</span>' : ''}</button>`;
 }
 function openHeroes() {
@@ -241,14 +328,34 @@ function openHeroes() {
   const locked = Object.keys(HEROES).filter(k => !G.heroes[k]);
   openSheet('Helden', `
     <div class="party-row"><div class="pr-title">${own.length} von ${Object.keys(HEROES).length} Helden <small>${G.settings.autoParty ? 'Gruppe wird automatisch aufgestellt' : 'Eigene Aufstellung'}</small></div><button class="btn small ${G.settings.autoParty ? 'on' : ''}" id="autoP">Auto-Aufstellung</button></div>
+    ${companionPanel()}
     ${factionPanel()}
     <div class="grid">${own.map(k => heroCard(k)).join('')}${locked.map(k => heroCard(k, 1)).join('')}</div>`, s => {
     s.querySelectorAll('.hcard[data-k]').forEach(b => b.onclick = () => { sfx('click'); openHero(b.dataset.k); });
+    s.querySelectorAll('[data-cp]').forEach(b => b.onclick = () => { const id = b.dataset.cp; if (!G.comps[id]) return; G.companion = id; sfx('click'); W.pendingParty = 1; save(); openHeroes(); });
+    paintComps(s);
     s.querySelector('#autoP').onclick = () => { G.settings.autoParty = !G.settings.autoParty; if (G.settings.autoParty) { autoParty(); W.pendingParty = 1; buildHud(); } save(); openHeroes(); };
   });
 }
+function paintComps(root) { root.querySelectorAll('canvas[data-comp]').forEach(c => { const cp = COMPANIONS.find(x => x.id === c.dataset.comp); requestAnimationFrame(() => compArt(c, cp)); }); }
+function compArt(cv, cp) {
+  const dpr = Math.min(2, devicePixelRatio || 1); cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; const c = cv.getContext('2d');
+  const g = c.createRadialGradient(cv.width / 2, cv.height / 2, 2, cv.width / 2, cv.height / 2, cv.width * .7); g.addColorStop(0, 'rgba(232,189,92,.35)'); g.addColorStop(1, 'rgba(10,13,18,1)'); c.fillStyle = g; c.fillRect(0, 0, cv.width, cv.height);
+  const sc = cv.height / 34; c.setTransform(sc, 0, 0, sc, cv.width / 2, cv.height * .86);
+  if (cp.kind === 'eagle') { c.translate(0, -14); RIG.drawEagle(c, cp.look, 400); }
+  else if (cp.kind === 'ghosts') { c.globalAlpha = .7; RIG.draw(c, 'hum', Object.assign({ wpn: 'sword' }, ENEMIES.dead_soldier.look), 'idle', 0, 400); }
+  else if (cp.kind === 'sled') { c.scale(.8, .8); RIG.draw(c, 'quad', Object.assign({ eye: '#2a1a1a' }, cp.look), 'idle', 0, 400); }
+  else RIG.draw(c, 'quad', Object.assign({ horse: 1, pony: cp.kind === 'pony', eye: '#2a1a12' }, cp.look), 'idle', 0, 400);
+}
+function companionPanel() {
+  return `<div class="pr-title" style="margin-bottom:6px">Begleiter <small>Ein Begleiter reist mit und stärkt die ganze Gruppe.</small></div><div class="comps">${COMPANIONS.map(cp => { const own = G.comps[cp.id], src = cp.from.ch !== undefined ? 'Kapitel ' + (cp.from.ch + 1) : 'Nebenquest: ' + esc(SIDE.find(x => x.id === cp.from.side)?.n || ''); return `<button class="comp ${own ? '' : 'lk'} ${G.companion === cp.id ? 'on' : ''}" data-cp="${cp.id}"><canvas data-comp="${cp.id}"></canvas><b>${own ? esc(cp.n) : '???'}</b><small>${own ? esc(cp.d) : src}</small>${G.companion === cp.id ? '<span class="tag in">Aktiv</span>' : ''}</button>`; }).join('')}</div>`;
+}
 function factionPanel() {
   return `<div class="facs">${activeFactions().map(f => `<div class="fac ${f.tier >= 0 ? 'on' : ''}" style="--fc:${f.F.c}"><span class="fi">${f.F.ic}</span><div><b>${esc(f.F.n)}</b><small>${f.F.t.map((t, i) => `<i class="${f.tier >= i ? 'act' : ''}">${t[0]}: ${esc(t[2])}</i>`).join(' · ')}</small></div><span class="fn">${f.n}</span></div>`).join('')}</div>`;
+}
+function setLines(k) {
+  const n = {}; for (const sl of Object.keys(SLOTS)) { const it = G.heroes[k].eq[sl] && itemById(G.heroes[k].eq[sl]); if (it?.set) n[it.set] = (n[it.set] || 0) + 1; }
+  return Object.entries(n).map(([id, c]) => { const S2 = SETS.find(x => x.id === id); return `<div class="setl" style="--sc:${S2.c}"><b>${esc(S2.n)} (${c}/3)</b><span class="${c >= 2 ? 'on' : ''}">2: ${esc(S2.d2)}</span><span class="${c >= 3 ? 'on' : ''}">3: ${esc(S2.d3)}</span></div>`; }).join('');
 }
 function heroFactions(k) { return Object.values(FACTIONS).filter(F => F.m.includes(k)).map(F => `<span class="fchip" style="--fc:${F.c}">${F.ic} ${esc(F.n)}</span>`).join(''); }
 function skillRow(type, s, locked, note) {
@@ -263,7 +370,7 @@ function openHero(k) {
       <div class="hero-art" style="--rc:${ROLE_COL[C.role]}"><canvas id="bigArt"></canvas><div class="ha-foot">${stars(hs.stage)}<span>${esc(heroTitle(k))}</span></div></div>
       <div class="hero-info">
         <div class="hi-top"><span class="role r-${C.role}">${ROLES[C.role].n}</span><span class="muted">${esc(C.n)} · ${esc(C.sub)}</span></div>
-        <div class="hi-fac">${heroFactions(k)}</div>
+        <div class="hi-fac">${heroFactions(k)}${BONDS.filter(b => b.a === k || b.b === k).map(b => { const o = b.a === k ? b.b : b.a, on = G.party.includes(k) && G.party.includes(o); return `<span class="fchip bond ${on ? 'on' : ''}" title="${esc(b.d)}">♥ ${esc(b.n)} · ${G.heroes[o] ? esc(HEROES[o].n) : '???'}${on ? ' · aktiv' : ''}</span>`; }).join('')}</div>
         <div class="power">⚡ ${fmt(st.power)}<small>Kampfkraft</small></div>
         <div class="lvl"><span>Stufe ${hs.lvl}<small>/${cap}</small></span><div class="bar"><i style="width:${hs.lvl >= cap ? 100 : hs.xp / xpNeed(hs.lvl) * 100}%"></i></div></div>
         <div class="stats">${[['Leben', st.hp], [magic ? 'Magie' : 'Angriff', magic ? st.mag : st.atk], ['Verteidigung', st.def], ['Tempo', st.spd], ['Krit', st.crit + ' %']].map(([n, v]) => `<div><small>${n}</small><b>${typeof v === 'number' ? fmt(v) : v}</b></div>`).join('')}</div>
@@ -272,7 +379,7 @@ function openHero(k) {
         ${skillRow('act', H.act, false, `alle ${H.act.cd + 1} Züge`)}
         ${skillRow('act2', H.act2, hs.lvl < ACT2_LVL, hs.lvl < ACT2_LVL ? `ab Stufe ${ACT2_LVL}` : `alle ${H.act2.cd + 1} Züge`)}
         ${H.pas.map(p => skillRow('pas', p, hs.lvl < p.lvl, hs.lvl < p.lvl ? `ab Stufe ${p.lvl}` : '')).join('')}
-        <h3>Ausrüstung</h3><div class="gear">${gear}</div>
+        <h3>Ausrüstung</h3><div class="gear">${gear}</div>${setLines(k)}
         <div class="acts">
           <button class="btn" id="train" ${hs.lvl >= cap || G.gold < trainCost(k) ? 'disabled' : ''}>Training +1 Stufe <small>◆${fmt(trainCost(k))}</small></button>
           <button class="btn" id="bestEq">Beste Ausrüstung</button>
@@ -325,6 +432,13 @@ function drawMap(cv, part, sel) {
   c.setLineDash([r * 1.4, r * .9]); c.lineWidth = r * .55; c.strokeStyle = col; c.beginPath();
   idx.forEach((i, j) => { const p = STORY[i].map; j ? c.lineTo(X(p[0]), Y(p[1])) : c.moveTo(X(p[0]), Y(p[1])); }); c.stroke(); c.setLineDash([]);
   cv._hits = [];
+  SIDE.filter(sd => STORY[sd.after].part === PARTS[part]).forEach(sd => {
+    const x = X(sd.map[0]), y = Y(sd.map[1]), R = r * 2.4, un = sideUnlocked(sd), done = G.side[sd.id];
+    c.save(); c.translate(x, y); c.rotate(Math.PI / 4); c.fillStyle = done ? '#8a6ac8' : un ? '#a888ff' : '#8a8070'; c.fillRect(-R * .8, -R * .8, R * 1.6, R * 1.6); c.lineWidth = r * .4; c.strokeStyle = '#2a1a0a'; c.strokeRect(-R * .8, -R * .8, R * 1.6, R * 1.6); c.restore();
+    if (sel === 'side:' + sd.id) { c.strokeStyle = '#fff6d0'; c.lineWidth = r * .6; c.beginPath(); c.arc(x, y, R + r * 1.4, 0, Math.PI * 2); c.stroke(); }
+    c.fillStyle = '#fff'; c.font = `800 ${r * 2.4}px Cinzel, serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(done ? '✓' : un ? '!' : '🔒', x, y + r * .2);
+    cv._hits.push({ i: 'side:' + sd.id, x: x / (Math.min(2, devicePixelRatio || 1)), y: y / (Math.min(2, devicePixelRatio || 1)), r: Math.max(22, R / Math.min(2, devicePixelRatio || 1) + 8) });
+  });
   idx.forEach(i => {
     const p = STORY[i].map, st = chapterStatus(i), R = r * (st === 'cur' ? 3.1 : 2.6), x = X(p[0]), y = Y(p[1]);
     if (st === 'cur') { c.fillStyle = 'rgba(192,57,30,.25)'; c.beginPath(); c.arc(x, y, R * 1.7, 0, Math.PI * 2); c.fill(); }
@@ -345,19 +459,43 @@ function chapterCard(i) {
     <div class="cc-row"><b>Boss</b><span>${seen ? esc(ENEMIES[boss].n) : '???'}</span></div>
     ${joins.length ? `<div class="cc-row"><b>Gefährten</b><span>${joins.map(k => G.heroes[k] ? esc(HEROES[k].n) : '???').join(', ')}</span></div>` : ''}
     <div class="cc-row"><b>Relikt</b><span>${G.relics[i] ? esc(RELICS[i].n) + ' · ' + esc(RELICS[i].d) : '???'}</span></div>
-    <div class="cc-row"><b>Gegnerstufe</b><span>${C.lvl + G.story.loop * LOOP_LVL}–${C.lvl + G.story.loop * LOOP_LVL + 4}</span></div></div></div>`;
+    <div class="cc-row"><b>Gegnerstufe</b><span>${C.lvl + G.story.loop * LOOP_LVL}–${C.lvl + G.story.loop * LOOP_LVL + 4}</span></div>
+    ${chapterSet(i) ? `<div class="cc-row"><b>Set-Beute</b><span style="color:${chapterSet(i).c}">${esc(chapterSet(i).n)}</span></div>` : ''}
+    ${chapterCompanion(i) ? `<div class="cc-row"><b>Begleiter</b><span>${G.comps[chapterCompanion(i).id] ? esc(chapterCompanion(i).n) : '???'}</span></div>` : ''}
+    ${st === 'done' ? `<button class="btn gold small" data-rematch="${i}" ${G.queue ? 'disabled' : ''}>Boss erneut bekämpfen${chapterSet(i) ? ' · Set-Teile' : ''}</button>` : ''}</div></div>`;
+}
+function sideCard(sd) {
+  const un = sideUnlocked(sd), done = G.side[sd.id];
+  const rew = [sd.hero ? (done ? esc(HEROES[sd.hero].n) : 'Neuer Held') : '', sd.comp ? (done ? esc(COMPANIONS.find(c => c.id === sd.comp).n) : 'Begleiter') : '', sd.legend ? (done ? esc(sd.legend) : 'Legendäre Waffe') : ''].filter(Boolean).join(', ');
+  const boss = sd.boss.find(k => ENEMIES[k].boss);
+  return `<div class="chcard side ${un ? (done ? 'done' : 'cur') : 'locked'}"><div class="cc-art"><canvas data-card="${boss}" data-enemy="1" data-bust="1" class="${un ? '' : 'sil'}"></canvas></div><div class="cc-info">
+    <small>Nebenquest · ab Kapitel ${sd.after + 2}</small><h3>${esc(sd.n)}</h3>
+    <div class="cc-st">${!un ? '🔒 Noch nicht erreicht' : done ? `✓ Abgeschlossen (${done}×)` : '◆ Verfügbar'}</div>
+    <div class="cc-row"><b>Boss</b><span>${un ? esc(ENEMIES[boss].n) : '???'}</span></div>
+    <div class="cc-row"><b>Belohnung</b><span>${rew}${done ? ' · wiederholbar für Beute' : ''}</span></div>
+    <div class="cc-row"><b>Gegnerstufe</b><span>${sideLvl(sd)}–${sideLvl(sd) + 3}</span></div>
+    ${un ? `<button class="btn gold small" data-side="${sd.id}" ${G.queue ? 'disabled' : ''}>${done ? 'Erneut spielen' : 'Nebenquest starten'}</button>` : ''}</div></div>`;
 }
 function openStory(part, sel) {
   if (part === undefined) part = Math.max(0, PARTS.indexOf(STORY[G.story.ch].part));
-  if (sel === undefined || STORY[sel]?.part !== PARTS[part]) sel = STORY[G.story.ch].part === PARTS[part] ? G.story.ch : STORY.findIndex(c => c.part === PARTS[part]);
+  if (typeof sel === 'string') { } else if (sel === undefined || STORY[sel]?.part !== PARTS[part]) sel = STORY[G.story.ch].part === PARTS[part] ? G.story.ch : STORY.findIndex(c => c.part === PARTS[part]);
   const f = towerFloor(), tg = towerGroup(f);
   openSheet('Die Reise', `<div class="ptabs">${PARTS.map((p, i) => `<button class="ptab ${i === part ? 'on' : ''}" data-part="${i}" style="--c:${PART_COL[i]}">${esc(p.split(' · ')[1])}</button>`).join('')}</div>
     <div class="mapwrap"><canvas id="map" class="map"></canvas><div class="maphint">Tippe auf eine Station für Details</div></div>
-    <div id="chDetail">${chapterCard(sel)}</div>
+    <div id="chDetail">${typeof sel === 'string' ? sideCard(SIDE.find(x => 'side:' + x.id === sel)) : chapterCard(sel)}</div>
+    ${activeMods().length ? `<div class="mods"><b>Heldenreise ${G.story.loop + 1}</b> ${activeMods().map(m => `<span>☠ ${esc(m.d)}</span>`).join('')}<span class="good">+${G.story.loop * 25} % Gold & EP, seltenere Beute</span></div>` : ''}
+    <h3 class="sect">Prüfungen der Macht <small>45 Sekunden gegen einen übermächtigen Boss. Je mehr Schaden, desto größer die Belohnung. Beliebig oft spielbar.</small></h3>
+    <div class="raids">${RAIDS.map(R => { const st = G.raid[R.key] || { best: 0, tiers: 0 }; return `<div class="raid"><canvas data-card="${R.key}" data-enemy="1" data-bust="1"></canvas><div><b>${esc(R.n)}</b><small>Bestwert ${Math.round(st.best * 100)} % · Stufe ${st.tiers}/${RAID_TIERS.length}</small><div class="bar"><i style="width:${st.best * 100}%"></i></div></div><button class="btn small gold" data-raid="${R.key}" ${G.queue || G.story.ch < 3 && !G.story.loop ? 'disabled' : ''}>Starten</button></div>`; }).join('')}</div>
     <div class="tower"><div><div class="kicker">Herausforderung</div><b>Orthanc-Turm · Etage ${f}</b><small>Gegnerstufe ${towerLvl(f)} · Belohnung ◆${fmt(towerReward(f).gold)} ✧${towerReward(f).mithril} · Bestwert: Etage ${G.tower.best}</small></div><button class="btn gold" id="tw" ${G.tower.queued ? 'disabled' : ''}>${G.tower.queued ? 'Nach diesem Kampf' : 'Herausfordern'}</button></div>`, s => {
     const cv = s.querySelector('#map');
     requestAnimationFrame(() => drawMap(cv, part, sel));
-    cv.onclick = e => { const rc = cv.getBoundingClientRect(), x = e.clientX - rc.left, y = e.clientY - rc.top; const h = (cv._hits || []).map(h => ({ ...h, d: Math.hypot(h.x - x, h.y - y) })).filter(h => h.d < h.r).sort((a, b) => a.d - b.d)[0]; if (h) { sfx('click'); sel = h.i; drawMap(cv, part, sel); s.querySelector('#chDetail').innerHTML = chapterCard(sel); paintCards(s.querySelector('#chDetail')); } };
+    const wireQ = root => {
+      root.querySelectorAll('[data-rematch]').forEach(b => b.onclick = () => { G.queue = { type: 'boss', ch: +b.dataset.rematch }; save(); toast('Nach diesem Kampf geht es zum Boss.', 'lvl'); openStory(part, sel); });
+      root.querySelectorAll('[data-side]').forEach(b => b.onclick = () => { G.queue = { type: 'side', id: b.dataset.side }; save(); toast('Nach diesem Kampf beginnt die Nebenquest.', 'lvl'); openStory(part, sel); });
+      root.querySelectorAll('[data-raid]').forEach(b => b.onclick = () => { G.queue = { type: 'raid', key: b.dataset.raid }; save(); toast('Nach diesem Kampf beginnt die Prüfung.', 'lvl'); openStory(part, sel); });
+    };
+    wireQ(s);
+    cv.onclick = e => { const rc = cv.getBoundingClientRect(), x = e.clientX - rc.left, y = e.clientY - rc.top; const h = (cv._hits || []).map(h => ({ ...h, d: Math.hypot(h.x - x, h.y - y) })).filter(h => h.d < h.r).sort((a, b) => a.d - b.d)[0]; if (h) { sfx('click'); sel = h.i; drawMap(cv, part, sel); const d = s.querySelector('#chDetail'); d.innerHTML = typeof sel === 'string' ? sideCard(SIDE.find(x => 'side:' + x.id === sel)) : chapterCard(sel); paintCards(d); wireQ(d); } };
     s.querySelectorAll('[data-part]').forEach(b => b.onclick = () => { sfx('click'); openStory(+b.dataset.part); });
     s.querySelector('#tw').onclick = () => { G.tower.queued = true; save(); toast('Die Gruppe zieht nach diesem Kampf zum Orthanc-Turm.', 'lvl'); openStory(part, sel); };
   });
@@ -368,42 +506,48 @@ function introHelp() {
     <li><b>Goldene Leiste</b> unter jedem Helden: Ist sie voll, folgt die Ultimate.</li>
     <li><b>Oben links</b> siehst du Kapitel, Wellen und aktive Bündnisse.</li>
     <li><b>Oben rechts</b> öffnest du Helden, Beutel, die Reise-Karte, Aufträge und Relikte.</li>
-    <li><b>Unten links</b> sammelt die Lagerfeuer-Truhe Belohnungen, auch wenn du nicht spielst.</li></ul><div class="dhint">Tippen zum Starten</div></div>`, 0, 'helpS');
+    <li><b>Unten links</b> füllt sich die Siegestruhe mit jedem gewonnenen Kampf.</li>
+    <li><b>Reise</b> zeigt die Karte mit Nebenquests, erneuten Bosskämpfen und den Prüfungen der Macht.</li></ul><div class="dhint">Tippen zum Starten</div></div>`, 0, 'helpS');
 }
 function openQuests() {
-  const d = ensureDaily();
-  openSheet('Tägliche Aufträge', `<p class="muted">Jeden Tag gibt es vier neue Aufträge. Wer alle abschließt, öffnet die Bonustruhe.</p><div class="achs">${d.ids.map(id => { const st = questState(id); return `<div class="ach ${st.claimed ? 'claimed' : st.done ? 'ready' : ''}"><div><b>${esc(st.q.n)}</b><div class="bar"><i style="width:${Math.min(100, st.v / st.q.goal * 100)}%"></i></div><small>${Math.min(st.v, st.q.goal)} / ${st.q.goal}</small></div><div class="ar"><span>◆ ${fmt(st.r.gold)} ✧ ${st.r.mithril}</span>${st.claimed ? '<small>Erhalten</small>' : `<button class="btn small ${st.done ? 'gold' : ''}" data-q="${id}" ${st.done ? '' : 'disabled'}>Abholen</button>`}</div></div>`; }).join('')}
-    <div class="ach bonus ${d.bonus ? 'claimed' : dailyBonusReady() ? 'ready' : ''}"><div><b>Bonustruhe</b><small>Alle vier Aufträge abholen: ✧ 30 und ein epischer oder legendärer Gegenstand</small></div><div class="ar">${d.bonus ? '<small>Erhalten</small>' : `<button class="btn small ${dailyBonusReady() ? 'gold' : ''}" id="qb" ${dailyBonusReady() ? '' : 'disabled'}>Öffnen</button>`}</div></div></div>`, s => {
-    s.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { if (claimQuest(b.dataset.q)) { sfx('loot'); updateHud(); openQuests(); } });
-    const qb = s.querySelector('#qb'); if (qb) qb.onclick = () => { const it = claimDailyBonus(); if (it) { sfx('join'); lootPop([it], 0); W.pendingParty = 1; updateHud(); openQuests(); } };
+  const b = ensureBoard();
+  openSheet('Auftragstafel', `<p class="muted">Erledigte Aufträge holst du ab, und sofort erscheint ein neuer. Nach je vier abgeholten Aufträgen öffnet sich die Bonustruhe.</p><div class="achs">${b.active.map((a, i) => { const st = questState(i); return `<div class="ach ${st.done ? 'ready' : ''}"><div><b>${esc(st.q.n.replace(/\d+/, st.goal))}</b><div class="bar"><i style="width:${Math.min(100, st.v / st.goal * 100)}%"></i></div><small>${Math.min(st.v, st.goal)} / ${st.goal}</small></div><div class="ar"><span>◆ ${fmt(st.r.gold)} ✧ ${st.r.mithril}</span><button class="btn small ${st.done ? 'gold' : ''}" data-q="${i}" ${st.done ? '' : 'disabled'}>Abholen</button></div></div>`; }).join('')}
+    <div class="ach bonus ${boardBonusReady() ? 'ready' : ''}"><div><b>Bonustruhe</b><small>${Math.min(4, b.bonus)} / 4 Aufträge · ✧ 30 und ein epischer oder legendärer Gegenstand</small><div class="bar"><i style="width:${Math.min(100, b.bonus / 4 * 100)}%"></i></div></div><div class="ar"><button class="btn small ${boardBonusReady() ? 'gold' : ''}" id="qb" ${boardBonusReady() ? '' : 'disabled'}>Öffnen</button></div></div></div>
+    <p class="muted small">Bisher erledigt: ${b.done} Aufträge.</p>`, s => {
+    s.querySelectorAll('[data-q]').forEach(x => x.onclick = () => { if (claimQuest(+x.dataset.q)) { sfx('loot'); updateHud(); openQuests(); } });
+    const qb = s.querySelector('#qb'); if (qb) qb.onclick = () => { const it = claimBoardBonus(); if (it) { sfx('join'); lootPop([it], 0); W.pendingParty = 1; updateHud(); openQuests(); } };
   });
 }
 function openRelics() {
-  const n = Object.keys(G.relics).length, a = partyAura();
+  const n = Object.keys(G.relics).length;
   openSheet('Schatzkammer', `<p class="muted">Jeder Kapitel-Boss hinterlässt beim ersten Sieg ein Relikt. Ihre Boni gelten dauerhaft für alle Helden. ${n} von ${RELICS.length} gefunden.</p>
     <div class="relics">${RELICS.map((r, i) => G.relics[i] ? `<div class="rel" style="--rc:${r.c}"><canvas class="ic" data-ic="${r.ic}" data-c="${r.c}"></canvas><b>${esc(r.n)}</b><small>${esc(r.d)}</small></div>` : `<div class="rel lk"><div class="ic empty"></div><b>???</b><small>Kapitel ${i + 1}: ${esc(STORY[i].n)}</small></div>`).join('')}</div>`);
 }
 function openChest() {
-  const st = idleState();
-  openSheet('Lagerfeuer-Truhe', `<div class="chestbox"><div class="kicker">Während du fort warst</div><p>Die Gefährten sammeln am Lagerfeuer Vorräte, auch wenn du nicht spielst (bis zu ${IDLE_CAP_MIN / 60} Stunden).</p>
+  const st = chestState();
+  openSheet('Siegestruhe', `<div class="chestbox"><div class="kicker">Kriegsbeute</div><p>Jeder Sieg legt Beute in die Truhe, ein Bosssieg dreifach. Ab 5 Siegen kannst du sie öffnen, voll ist sie bei ${CHEST_MAX}.</p>
+    <div class="bar big"><i style="width:${st.n / CHEST_MAX * 100}%"></i></div><p><b>${st.n} / ${CHEST_MAX}</b> Siege gesammelt</p>
     <div class="chest-r"><span>◆ ${fmt(st.gold)} Gold</span><span>★ ${fmt(st.xp)} EP</span><span>✧ ${st.mithril} Mithril</span><span>▣ ${st.items} Gegenstände</span></div>
-    <p class="muted">Gesammelt seit ${st.min >= 60 ? Math.floor(st.min / 60) + ' h ' + Math.floor(st.min % 60) + ' min' : Math.floor(st.min) + ' min'}${st.full ? ' · Truhe voll!' : ''}</p>
-    <button class="btn gold big" id="claimIdle" ${st.min >= 1 ? '' : 'disabled'}>Einsammeln</button></div>`, s => {
-    s.querySelector('#claimIdle').onclick = () => { const r = claimIdle(); if (!r) return; sfx('join'); lootPop(r.rw.items.slice(0, 6), r.rw.gold); if (r.rw.mithril) toast(`+${r.rw.mithril} ✧ Mithril`, 'mini'); toast(`+${fmt(r.rw.xp)} EP für die Gruppe`, 'lvl'); W.pendingParty = 1; updateHud(); closeSheet(); };
-  });
-}
-function openAch() {
-  openSheet('Erfolge', `<div class="achs">${ACHIEVEMENTS.map(a => { const s = achState(a); return `<div class="ach ${s.claimed ? 'claimed' : s.done ? 'ready' : ''}"><div><b>${esc(a.n)}</b><small>${esc(a.d)}</small><div class="bar"><i style="width:${Math.min(100, s.v / a.goal * 100)}%"></i></div></div><div class="ar"><span>${a.r.gold ? '◆ ' + fmt(a.r.gold) : ''}${a.r.mithril ? '✧ ' + a.r.mithril : ''}</span>${s.claimed ? '<small>Erhalten</small>' : `<button class="btn small ${s.done ? 'gold' : ''}" data-a="${a.id}" ${s.done ? '' : 'disabled'}>Abholen</button>`}</div></div>`; }).join('')}</div>`, s => {
-    s.querySelectorAll('[data-a]').forEach(b => b.onclick = () => { if (claimAch(ACHIEVEMENTS.find(x => x.id === b.dataset.a))) { sfx('loot'); updateHud(); openAch(); } });
+    <button class="btn gold big" id="claimIdle" ${st.ready ? '' : 'disabled'}>${st.ready ? 'Öffnen' : 'Noch ' + (5 - st.n) + ' Siege'}</button></div>`, s => {
+    s.querySelector('#claimIdle').onclick = () => { const r = claimChest(); if (!r) return; sfx('join'); lootPop(r.rw.items.slice(0, 6), r.rw.gold); if (r.rw.mithril) toast(`+${r.rw.mithril} ✧ Mithril`, 'mini'); toast(`+${fmt(r.rw.xp)} EP für die Gruppe`, 'lvl'); W.pendingParty = 1; updateHud(); closeSheet(); };
   });
 }
 function openSettings() {
   const S = G.settings;
   const tg = (id, on, label) => `<div class="opt"><span>${label}</span><button class="btn small ${on ? 'on' : ''}" id="${id}">${on ? 'An' : 'Aus'}</button></div>`;
-  openSheet('Optionen', `${tg('o-snd', S.sound, 'Ton')}${tg('o-eq', S.autoEquip, 'Beste Ausrüstung automatisch anlegen')}${tg('o-party', S.autoParty, 'Gruppe automatisch aufstellen')}
+  openSheet('Optionen', `${tg('o-mus', S.music !== false, 'Musik')}${tg('o-snd', S.sound, 'Soundeffekte')}${tg('o-eq', S.autoEquip, 'Beste Ausrüstung automatisch anlegen')}${tg('o-party', S.autoParty, 'Gruppe automatisch aufstellen')}
+    <h3 class="sect">Spielstand sichern</h3>
+    <p class="muted small">Kopiere den Code und bewahre ihn auf. Mit ihm stellst du deinen Fortschritt jederzeit wieder her, auch auf einem anderen Gerät.</p>
+    <div class="opt"><button class="btn small" id="o-exp">Code anzeigen & kopieren</button><button class="btn small" id="o-imp">Code einfügen</button></div>
+    <textarea id="o-code" hidden rows="3" spellcheck="false"></textarea><div id="o-impbox" hidden class="opt"><button class="btn small gold" id="o-imp2">Spielstand laden</button><span id="o-msg" class="muted small"></span></div>
     <div class="opt"><span>Spielstand</span><button class="btn small danger" id="o-del">Neu beginnen</button></div><div id="o-conf" hidden class="opt warn"><span>Der gesamte Fortschritt wird gelöscht.</span><button class="btn small danger" id="o-del2">Ja, löschen</button></div>
     <p class="muted small">Inoffizielles Fan-Spiel nach J.R.R. Tolkien und „Die Ringe der Macht“. Alle Grafiken, Texte und Mechaniken sind eigene Umsetzungen.</p>`, s => {
     s.querySelector('#o-snd').onclick = () => { S.sound = !S.sound; save(); openSettings(); };
+    s.querySelector('#o-mus').onclick = () => { S.music = S.music === false; save(); MUSIC.sync(); openSettings(); };
+    const ta = s.querySelector('#o-code');
+    s.querySelector('#o-exp').onclick = () => { ta.hidden = false; ta.readOnly = true; ta.value = exportSave(); ta.select(); try { navigator.clipboard.writeText(ta.value).then(() => toast('Code kopiert', 'mini'), () => toast('Code markiert. Bitte kopieren.', 'mini')); } catch (e) { toast('Code markiert. Bitte kopieren.', 'mini'); } };
+    s.querySelector('#o-imp').onclick = () => { ta.hidden = false; ta.readOnly = false; ta.value = ''; ta.placeholder = 'Code hier einfügen'; s.querySelector('#o-impbox').hidden = false; ta.focus(); };
+    s.querySelector('#o-imp2').onclick = () => { if (importSave(ta.value)) { s.querySelector('#o-msg').textContent = 'Geladen. Das Spiel startet neu …'; setTimeout(() => location.reload(), 700); } else s.querySelector('#o-msg').textContent = 'Der Code ist ungültig. Bitte vollständig einfügen.'; };
     s.querySelector('#o-eq').onclick = () => { S.autoEquip = !S.autoEquip; if (S.autoEquip) { autoEquip(); W.pendingParty = 1; } save(); openSettings(); };
     s.querySelector('#o-party').onclick = () => { S.autoParty = !S.autoParty; if (S.autoParty) { autoParty(); W.pendingParty = 1; buildHud(); } save(); openSettings(); };
     s.querySelector('#o-del').onclick = () => { s.querySelector('#o-conf').hidden = false; };
@@ -432,7 +576,7 @@ function boot() {
   setInterval(updateHud, 100); updateHud();
   $('#title').hidden = false; document.body.classList.add('titled');
   $('#tContinue').textContent = has ? `Weiterspielen · Kapitel ${G.story.ch + 1}` : 'Reise beginnen';
-  $('#tContinue').onclick = async () => { if (started) return; started = true; ac(); sfx('join'); $('#title').classList.add('out'); document.body.classList.remove('titled'); setTimeout(() => $('#title').hidden = true, 600); W.walking = false; W.heroes.forEach(h => W.setAnim(h, 'idle')); if (!G.seenHelp) { await introHelp(); G.seenHelp = 1; save(); } director(); };
+  $('#tContinue').onclick = async () => { if (started) return; started = true; ac(); MUSIC.sync(); sfx('join'); $('#title').classList.add('out'); document.body.classList.remove('titled'); setTimeout(() => $('#title').hidden = true, 600); W.walking = false; W.heroes.forEach(h => W.setAnim(h, 'idle')); if (!G.seenHelp) { await introHelp(); G.seenHelp = 1; save(); } director(); };
   $('#nHeroes').onclick = () => { sfx('click'); openHeroes(); };
   $('#nBag').onclick = () => { sfx('click'); openBag(); };
   $('#nStory').onclick = () => { sfx('click'); openStory(); };
@@ -442,7 +586,7 @@ function boot() {
   $('#nRelic').onclick = () => { sfx('click'); openRelics(); };
   $('#chest').onclick = () => { sfx('click'); openChest(); };
   $('#syn').onclick = () => { sfx('click'); openHeroes(); };
-  ensureDaily();
+  ensureBoard();
   $('#spd').onclick = () => { G.settings.speed = G.settings.speed >= 3 ? 1 : G.settings.speed + 1; W.speed = G.settings.speed; $('#spd').textContent = G.settings.speed + '×'; save(); };
   $('#spd').textContent = (G.settings.speed || 1) + '×';
   $('#farm').onclick = () => { G.story.farm = false; save(); toast('Der Boss wird erneut herausgefordert!', 'lvl'); updateHud(); };
