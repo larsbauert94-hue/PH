@@ -33,9 +33,12 @@ function newHeroState() { return { lvl: 1, xp: 0, stage: 0, eq: { weapon: null, 
 function save() { if (G) store.set(SAVE_KEY, G); }
 function load() { const g = store.get(SAVE_KEY); if (g && g.v === 4) { G = g; migrate(); return true; } return false; }
 function migrate() {
+  if (!G.team) { const ls = Object.values(G.heroes || {}).map(h => h.lvl || 1); G.team = { lvl: Math.max(1, ...ls), xp: 0 }; }
+  if (!G.bestiary) G.bestiary = {};
   const d = { chest: 0, board: null, side: {}, comps: {}, companion: null, raid: {}, queue: null, relics: {}, tower: { best: 0, queued: false } };
   for (const [k, v] of Object.entries(d)) if (G[k] === undefined) G[k] = v;
   for (const k of ['sides', 'comps', 'fullSet', 'loops', 'relics', 'towerBest', 'maxCombo']) if (G.stats[k] === undefined) G.stats[k] = 0;
+  syncLevels();
   delete G.idle; delete G.daily;
 }
 
@@ -45,7 +48,7 @@ function available() { return owned().filter(k => !G.away[k]); }
 function joinHero(k) {
   if (G.heroes[k]) return false;
   const lv = available().map(x => G.heroes[x].lvl); const avg = lv.length ? Math.round(lv.reduce((a, b) => a + b, 0) / lv.length) : 1;
-  const hs = newHeroState(); hs.lvl = clamp(avg, 1, STAGE_CAP[0]); G.heroes[k] = hs;
+  if (!G.team) G.team = { lvl: 1, xp: 0 }; const hs = newHeroState(); hs.lvl = G.team.lvl; hs.xp = G.team.xp; G.heroes[k] = hs;
   // Startausrüstung passend zur Klasse
   const it = genItem(Math.max(1, hs.lvl), 1, { base: CLASSES[HEROES[k].cls].wcls[0] }); addItem(it); hs.eq.weapon = it.id;
   G.stats.heroes = owned().length;
@@ -111,7 +114,10 @@ function heroStats(key, aura) {
   st.power = Math.round(st.hp * .25 + (st.atk + st.mag) * 2.2 + (st.def + st.res) * 1.6 + st.spd * 4 + st.crit * 2 + (lv >= ACT2_LVL ? 40 : 0) + hs.stage * 60);
   return st;
 }
-function heroLook(key) { const H = HEROES[key], hs = G.heroes[key] || { stage: 0 }; const L = Object.assign({ wpn: H.wpn }, H.look); for (let i = 1; i <= hs.stage; i++) Object.assign(L, H.stageLook[i] || {}); for (const k in L) if (L[k] === null) delete L[k]; return L; }
+function gearOf(key) { const hs = G.heroes[key]; if (!hs || !hs.eq) return null; const f = sl => { const it = hs.eq[sl] && itemById(hs.eq[sl]); return it ? { r: it.r, e: it.enh || 0 } : null; }; return { w: f('weapon'), a: f('armor'), t: f('trinket') }; }
+function heroLook(key) { const H = HEROES[key], hs = G.heroes[key] || { stage: 0 }; const L = Object.assign({ wpn: H.wpn }, H.look); for (let i = 1; i <= hs.stage; i++) Object.assign(L, H.stageLook[i] || {}); for (const k in L) if (L[k] === null) delete L[k];
+  const gr = gearOf(key); if (gr) { L.gear = gr; if (gr.w && gr.w.r >= 3) L.wc = gr.w.r >= 4 ? '#fff0b8' : '#e4d6ff'; }
+  return L; }
 function lookAtStage(key, st) { const H = HEROES[key]; const L = Object.assign({ wpn: H.wpn }, H.look); for (let i = 1; i <= st; i++) Object.assign(L, H.stageLook[i] || {}); for (const k in L) if (L[k] === null) delete L[k]; return L; }
 function heroTitle(key) { const hs = G.heroes[key]; return HEROES[key].stages[hs ? hs.stage : 0]; }
 function heroKit(key) {
@@ -119,6 +125,11 @@ function heroKit(key) {
   const ult = hs.stage >= 2 ? Object.assign({}, H.ult, { n: H.ult.n + ' ✦', dmg: H.ult.dmg ? H.ult.dmg * 1.35 : H.ult.dmg, healPct: H.ult.healPct ? Math.min(1, H.ult.healPct * 1.3) : H.ult.healPct, up: 1 }) : H.ult;
   return { act: H.act, act2: hs.lvl >= ACT2_LVL ? H.act2 : null, ult };
 }
+/* Gemeinsame Gruppenstufe: alle Helden steigen nur durch Kämpfe auf und sind immer gleich stark gelevelt */
+const LVL_MAX = 120;
+function syncLevels() { if (!G.team) return; for (const k of Object.keys(G.heroes)) { G.heroes[k].lvl = G.team.lvl; G.heroes[k].xp = G.team.xp; } G.stats.maxLvl = Math.max(G.stats.maxLvl || 1, G.team.lvl); }
+function teamXp(xp) { const t = G.team; let ups = 0; t.xp += Math.round(xp * 1.35); while (t.lvl < LVL_MAX && t.xp >= xpNeed(t.lvl)) { t.xp -= xpNeed(t.lvl); t.lvl++; ups++; } if (t.lvl >= LVL_MAX) t.xp = 0; syncLevels(); if (ups) track('levels', ups); return ups; }
+function upgradeFor(k, sl) { for (const it of G.inv) { if (it.slot !== sl || !canEquip(k, it) || G.heroes[k].eq[sl] === it.id) continue; const by = equippedBy(it.id); if (by && by !== k && G.party.includes(by)) continue; if (powerDiff(k, it) > 0) return true; } return false; }
 function grantXp(key, xp) {
   const hs = G.heroes[key]; if (!hs) return { ups: 0 };
   const cap = STAGE_CAP[hs.stage]; let ups = 0;
@@ -213,7 +224,7 @@ function battleReward(kind, enemies) {
 function applyReward(rw, partyKeys) {
   G.gold += rw.gold; G.mithril += rw.mithril; rw.items.forEach(addItem); if (rw.items.length) track('items', rw.items.length);
   const res = {};
-  for (const k of owned()) { const share = partyKeys.includes(k) ? 1 : .4; res[k] = grantXp(k, Math.round(rw.xp * share)); if (res[k].ups && partyKeys.includes(k)) track('levels', res[k].ups); }
+  if (!G.team) G.team = { lvl: 1, xp: 0 }; const from = G.team.lvl, ups = teamXp(rw.xp); for (const k of owned()) res[k] = { ups, from };
   if (G.settings.autoEquip) autoEquip();
   return res;
 }

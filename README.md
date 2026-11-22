@@ -12,6 +12,13 @@ Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden 
 
 Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten). Unter **Optionen → Grafik** lässt sich zwischen *Auto*, *Hoch* (Figuren mit Szenenlicht, Kantenlicht und Bodenverdeckung) und *Normal* wählen; *Auto* schaltet bei zu niedriger Bildrate selbst herunter.
 
+## Neu in Version 7
+- **Gemeinsame Gruppenstufe:** Helden steigen nur durch Kämpfe auf, alle haben immer dieselbe Stufe (kein Nachleveln, kein Gold-Training)
+- **Team-Übersicht:** die fünf Eingesetzten mit Ausrüstung, ▲ zeigt bessere Teile, Antippen eines Slots wechselt direkt mit Kampfkraft-Vergleich
+- **Sichtbare Ausrüstung:** seltene Waffen leuchten, epische funkeln, legendäre sprühen Funken; Schulterplatten, Goldbesatz, Amulette und Aura je nach Seltenheit
+- **Chronik** (die Geschichte zum Nachlesen) und **Bestiarium** (alle besiegten Gegner)
+- Bloom, Lichtstrahlen, Horizontdunst, unscharfer Vordergrund, Schockwellen, Gegner zerfallen zu Glut
+
 ## Neu in Version 6
 - **Menschliche Figuren:** realistische Proportionen, Gesichter im Profil, modellierte Gliedmaßen mit Licht und Schatten
 - **Filmischer Look:** Kinobalken und Zeitlupe bei Ultimates, Schwertspuren, Filmkörnung, Laufstaub

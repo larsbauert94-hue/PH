@@ -68,8 +68,8 @@ function paintCards(root = document) {
     root.querySelectorAll('canvas[data-card]').forEach(c => {
       const k = c.dataset.card;
       if (c.dataset.enemy) { const E = ENEMIES[k]; RIG.card(c, E.type, Object.assign({ wpn: E.wpn }, E.look), { col: '#ff5a3a', flip: 1, seed: k, bust: E.type === 'hum' && !!c.dataset.bust, zoom: +(c.dataset.zoom || 1) }); return; }
-      const st = c.dataset.stage !== undefined ? +c.dataset.stage : (G.heroes[k]?.stage || 0);
-      RIG.card(c, 'hum', lookAtStage(k, st), { col: ROLE_COL[CLASSES[HEROES[k].cls].role], bust: !!c.dataset.bust, seed: k, zoom: +(c.dataset.zoom || 1) });
+      const LK = c.dataset.stage !== undefined ? lookAtStage(k, +c.dataset.stage) : G.heroes[k] ? heroLook(k) : lookAtStage(k, 0);
+      RIG.card(c, 'hum', LK, { col: ROLE_COL[CLASSES[HEROES[k].cls].role], bust: !!c.dataset.bust, seed: k, zoom: +(c.dataset.zoom || 1) });
     });
     root.querySelectorAll('canvas[data-ic]').forEach(c => RIG.icon(c, c.dataset.ic, c.dataset.c));
   });
@@ -98,7 +98,7 @@ function updateHud() {
   $('#gold').textContent = fmt(G.gold); $('#mith').textContent = fmt(G.mithril);
   $('#power').textContent = fmt(G.party.reduce((a, k) => a + heroStats(k).power, 0));
   const cc = claimableCount(); $('#achBadge').hidden = !cc; $('#achBadge').textContent = cc;
-  if (!updateHud.t || Date.now() - updateHud.t > 1000) { updateHud.t = Date.now(); const ev = owned().filter(k => canEvolve(k)?.ok).length; $('#hBadge').hidden = !ev; $('#hBadge').textContent = ev; }
+  if (!updateHud.t || Date.now() - updateHud.t > 1000) { updateHud.t = Date.now(); refreshLooks(); const ev = owned().filter(k => canEvolve(k)?.ok).length; $('#hBadge').hidden = !ev; $('#hBadge').textContent = ev; }
   for (const u of W.heroes) {
     const el = document.querySelector(`#party .pc[data-k="${u.key}"]`); if (!el) continue;
     el.querySelector('.ultbar i').style.width = Math.min(100, u.energy) + '%';
@@ -200,14 +200,12 @@ function onResult(r, kind) {
     const lvBefore = Object.fromEntries(owned().map(k => [k, G.heroes[k].lvl]));
     const res = applyReward(rw, party);
     lootPop(rw.items, rw.gold); if (rw.mithril) toast(`+${rw.mithril} ✧ Mithril`, 'mini');
-    for (const k of Object.keys(res)) {
-      if (!res[k].ups) continue; const a = lvBefore[k], b = G.heroes[k].lvl, H = HEROES[k];
-      if (party.includes(k)) toast(`<b>${esc(H.n)}</b> erreicht Stufe ${b}`, 'lvl');
-      if (a < ACT2_LVL && b >= ACT2_LVL) toast(`${esc(H.n)}: neue Fähigkeit <b>${esc(H.act2.n)}</b>`, 'unlock');
-      H.pas.forEach(ps => { if (ps.lvl > 1 && a < ps.lvl && b >= ps.lvl) toast(`${esc(H.n)}: Passiv <b>${esc(ps.n)}</b>`, 'unlock'); });
-      if (res[k].capped && party.includes(k)) toast(`${esc(H.n)} hat die Stufengrenze erreicht. Entwicklung möglich!`, 'unlock');
+    const r0 = Object.values(res)[0];
+    if (r0 && r0.ups) {
+      const a = r0.from, b = G.team.lvl; sfx('level'); toast(`Gruppenstufe <b>${b}</b>! Alle Helden werden stärker.`, 'lvl');
+      for (const k of party) { const H = HEROES[k]; if (a < ACT2_LVL && b >= ACT2_LVL) toast(`${esc(H.n)}: neue Fähigkeit <b>${esc(H.act2.n)}</b>`, 'unlock'); H.pas.forEach(ps => { if (ps.lvl > 1 && a < ps.lvl && b >= ps.lvl) toast(`${esc(H.n)}: Passiv <b>${esc(ps.n)}</b>`, 'unlock'); }); }
+      if (STAGE_CAP.slice(0, 2).some(c2 => a < c2 && b >= c2)) toast('Neue Entwicklungsstufe möglich! Entwickle deine Helden im Heldenmenü.', 'unlock');
     }
-    if (Object.values(res).some(x => x.ups)) sfx('level');
   } else {
     const xp = Math.round(r.enemies.filter(e => !alive(e) && e.xp).reduce((a, e) => a + e.xp, 0) * .4);
     applyReward({ xp, gold: 0, items: [], mithril: 0 }, party);
@@ -393,6 +391,7 @@ function playNow(q, label) {
   if (q.type === 'tower') G.tower.queued = true; else G.queue = q;
   save(); closeSheet(); sfx('join'); toast(`▶ ${esc(label)}`, 'lvl'); W.abort();
 }
+function refreshLooks() { for (const u of W.heroes) { const L = heroLook(u.key), sig = JSON.stringify(L.gear || null); if (u._gsig !== undefined && u._gsig !== sig && alive(u)) W.gearUp(u); u._gsig = sig; u.look = L; } }
 function openSheet(title, html, after, o = {}) {
   cancelAnimationFrame(artRaf);
   const s = $('#sheet');
@@ -415,28 +414,55 @@ function heroCard(k, locked) {
   if (locked) { const ci = STORY.findIndex(c => [...(c.join || []), ...(c.end || []), ...Object.values(c.mid || {}).flat()].includes(k)), sd = SIDE.find(x => x.hero === k); return `<div class="hcard locked" style="--rc:${ROLE_COL[C.role]}"><canvas data-card="${k}" data-bust="1" data-stage="0"></canvas><div class="hc-info"><b>???</b><small>${ci >= 0 ? 'Kapitel ' + (ci + 1) : sd ? 'Nebenquest' : ''}</small></div></div>`; }
   return `<button class="hcard ${G.party.includes(k) ? 'in' : ''} ${G.away[k] ? 'away' : ''}" data-k="${k}" style="--rc:${ROLE_COL[C.role]}"><canvas data-card="${k}" data-bust="1"></canvas><span class="role-dot r-${C.role}"></span>${G.away[k] ? '<span class="tag">Fort</span>' : G.party.includes(k) ? '<span class="tag in">Gruppe</span>' : ''}<div class="hc-info"><b>${esc(H.n)}</b><span class="pw">⚡ ${fmt(heroStats(k).power)}</span><small>St. ${hs.lvl} ${stars(hs.stage)}</small></div></button>`;
 }
-function openHeroes(tab = openHeroes.tab || 'helden', page = openHeroes.page) {
+/* ---------- Team: die fünf Eingesetzten mit ihrer Ausrüstung ---------- */
+function teamView() {
+  const aura = partyAura(), stats = G.party.map(k => [k, heroStats(k, aura)]), total = stats.reduce((a, [, st]) => a + st.power, 0);
+  const facs = activeFactions().filter(f => f.tier >= 0).map(f => `<span class="fchip" style="--fc:${f.F.c}">${f.F.ic} ${esc(f.F.n)}</span>`).join('');
+  const bonds = BONDS.filter(b => G.party.includes(b.a) && G.party.includes(b.b)).map(b => `<span class="fchip bond on">♥ ${esc(b.n)}</span>`).join('');
+  const card = i => { const k = G.party[i]; if (!k) return `<button class="m-tc empty" data-gohero="1"><span>+</span><small>Platz frei</small></button>`;
+    const H = HEROES[k], C = CLASSES[H.cls], hs = G.heroes[k], st = stats[i][1];
+    return `<div class="m-tc" style="--rc:${ROLE_COL[C.role]}"><button class="m-tart" data-hero="${k}"><canvas data-card="${k}" data-zoom="1.08"></canvas><span class="role-dot r-${C.role}"></span><span class="m-tstar">${stars(hs.stage)}</span></button><b>${esc(H.n)}</b><span class="pw">⚡ ${fmt(st.power)}</span>
+      <div class="m-slots">${Object.keys(SLOTS).map(sl => { const it = hs.eq[sl] && itemById(hs.eq[sl]); return `<button class="m-slot ${it ? 'r' + it.r : 'none'}" data-slot="${k}|${sl}" style="--rc:${it ? RARITY[it.r].c : '#3a444e'}" title="${SLOTS[sl]}">${it ? icHtml(it) : '<div class="ic empty"></div>'}${it && it.enh ? `<em>+${it.enh}</em>` : ''}${upgradeFor(k, sl) ? '<i class="up">▲</i>' : ''}</button>`; }).join('')}</div></div>`; };
+  return `<div class="m-team"><div class="m-tsum"><div class="m-tl"><small>Gruppenstufe</small><b>${G.team.lvl}</b><div class="bar"><i style="width:${G.team.xp / xpNeed(G.team.lvl) * 100}%"></i></div></div><div class="m-tp"><small>Kampfkraft</small><b>⚡ ${fmt(total)}</b></div><div class="m-tf">${facs}${bonds}</div></div><div class="m-tcards">${[0, 1, 2, 3, 4].map(card).join('')}</div></div>`;
+}
+function openSlot(k, sl, page = 0) {
+  const H = HEROES[k], cur = G.heroes[k].eq[sl] && itemById(G.heroes[k].eq[sl]);
+  const list = G.inv.filter(it => it.slot === sl && canEquip(k, it) && it.id !== cur?.id).map(it => [it, powerDiff(k, it), equippedBy(it.id)]).sort((a, b) => b[1] - a[1]);
+  const per = 15, np = pages(list.length, per); page = clampPg(page, np);
+  const det = cur ? `<div class="m-idet" style="--rc:${RARITY[cur.r].c}"><small class="muted">Angelegt</small><div class="m-ih">${icHtml(cur)}<div><b style="color:${RARITY[cur.r].c}">${esc(cur.name)}${cur.enh ? ' +' + cur.enh : ''}</b><small>${RARITY[cur.r].n} · St. ${cur.lvl}</small></div></div><ul>${itemLines(cur).map(l => `<li>${esc(l)}</li>`).join('')}</ul>${cur.passive ? `<p class="leg">${esc(cur.passive)}</p>` : ''}<div class="m-ia"><button class="btn small gold" id="slBest">Bestes anlegen</button><button class="btn small ghost" id="slOff">Ablegen</button></div></div>` : `<div class="m-idet"><small class="muted">Angelegt</small><p class="muted">Nichts. Wähle rechts einen Gegenstand.</p><div class="m-ia"><button class="btn small gold" id="slBest">Bestes anlegen</button></div></div>`;
+  openSheet(`${esc(H.n)} · ${SLOTS[sl]}`, `<div class="m-slotv">${det}<div class="m-items">${list.slice(page * per, page * per + per).map(([it, d, by]) => `<button class="m-it" data-eq="${it.id}" style="--rc:${RARITY[it.r].c}">${icHtml(it)}<b>${esc(it.name)}${it.enh ? ' +' + it.enh : ''}</b><span class="m-d ${d > 0 ? 'pos' : d < 0 ? 'neg' : ''}">${d > 0 ? '+' : ''}${fmt(d)} ⚡</span>${by ? `<i>${esc(HEROES[by].n)}</i>` : ''}</button>`).join('') || '<p class="muted">Keine passenden Gegenstände im Beutel. Sie fallen in Kämpfen.</p>'}</div></div>`, s => {
+    const done = (it, d) => { equip(k, it); W.pendingParty = 1; refreshLooks(); sfx(d > 0 ? 'level' : 'click'); toast(`${esc(H.n)}: <b style="color:${RARITY[it.r].c}">${esc(it.name)}</b> angelegt${d ? ` · ${d > 0 ? '+' : ''}${fmt(d)} ⚡` : ''}`, d > 0 ? 'lvl' : 'mini'); openHeroes('team'); };
+    s.querySelectorAll('[data-eq]').forEach(b => b.onclick = () => { const e = list.find(x => x[0].id === +b.dataset.eq); done(e[0], e[1]); });
+    const sb = s.querySelector('#slBest'); if (sb) sb.onclick = () => { const n = autoEquip([k]); refreshLooks(); W.pendingParty = 1; toast(n ? 'Beste Ausrüstung angelegt' : 'Bereits optimal', 'mini'); openHeroes('team'); };
+    const so = s.querySelector('#slOff'); if (so) so.onclick = () => { unequip(k, sl); refreshLooks(); W.pendingParty = 1; openSlot(k, sl); };
+    const bk = s.querySelector('#slBack'); if (bk) bk.onclick = () => openHeroes('team');
+  }, { pages: np, page, onPage: p => openSlot(k, sl, p), extra: '<button class="btn small" id="slBack">‹ Team</button>' });
+}
+function openHeroes(tab = openHeroes.tab || 'team', page = openHeroes.page) {
   openHeroes.tab = tab;
   const own = owned().sort((a, b) => (G.party.includes(b) - G.party.includes(a)) || heroStats(b).power - heroStats(a).power);
   const all = [...own.map(k => [k, 0]), ...Object.keys(HEROES).filter(k => !G.heroes[k]).map(k => [k, 1])];
   const per = 12, np = tab === 'helden' ? pages(all.length, per) : 1; page = openHeroes.page = clampPg(page, np);
   let body = '';
-  if (tab === 'helden') body = `<div class="m-heroes">${all.slice(page * per, page * per + per).map(([k, l]) => heroCard(k, l)).join('')}</div>`;
+  if (tab === 'team') body = teamView();
+  else if (tab === 'helden') body = `<div class="m-heroes">${all.slice(page * per, page * per + per).map(([k, l]) => heroCard(k, l)).join('')}</div>`;
   else if (tab === 'begleiter') body = `<div class="m-comps">${COMPANIONS.map(cp => { const own2 = G.comps[cp.id], src = cp.from.ch !== undefined ? 'Kapitel ' + (cp.from.ch + 1) : 'Nebenquest'; return `<button class="comp ${own2 ? '' : 'lk'} ${G.companion === cp.id ? 'on' : ''}" data-cp="${cp.id}"><canvas data-comp="${cp.id}"></canvas><b>${own2 ? esc(cp.n) : '???'}</b><small>${own2 ? esc(cp.d) : src}</small>${G.companion === cp.id ? '<span class="tag in">Aktiv</span>' : ''}</button>`; }).join('')}</div>`;
   else body = `<div class="m-facs">${activeFactions().map(f => `<div class="fac ${f.tier >= 0 ? 'on' : ''}" style="--fc:${f.F.c}"><span class="fi">${f.F.ic}</span><div><b>${esc(f.F.n)} <em>${f.n}</em></b><small>${f.F.t.map((t, i) => `<i class="${f.tier >= i ? 'act' : ''}">${t[0]}: ${esc(t[2])}</i>`).join('<br>')}</small></div></div>`).join('')}</div>`;
   openSheet('Helden', body, s => {
     s.querySelectorAll('.hcard[data-k]').forEach(b => b.onclick = () => { sfx('click'); openHero(b.dataset.k); });
+    s.querySelectorAll('[data-hero]').forEach(b => b.onclick = () => { sfx('click'); openHero(b.dataset.hero, 'werte'); });
+    s.querySelectorAll('[data-slot]').forEach(b => b.onclick = () => { sfx('click'); const [hk, sl] = b.dataset.slot.split('|'); openSlot(hk, sl); });
+    s.querySelectorAll('[data-gohero]').forEach(b => b.onclick = () => openHeroes('helden', 0));
     s.querySelectorAll('[data-cp]').forEach(b => b.onclick = () => { const id = b.dataset.cp; if (!G.comps[id]) return; G.companion = id; sfx('click'); W.pendingParty = 1; save(); openHeroes(); });
     paintComps(s);
     const oa = s.querySelector('#optAll'); if (oa) oa.onclick = () => {
-      const p0 = G.party.reduce((a, k) => a + heroStats(k).power, 0); if (G.settings.autoParty) autoParty(); const eq = autoEquip(); let tr = 0;
-      for (let guard = 0; guard < 400; guard++) { const k = G.party.filter(x => G.heroes[x].lvl < STAGE_CAP[G.heroes[x].stage] && G.gold >= trainCost(x)).sort((a, b) => G.heroes[a].lvl - G.heroes[b].lvl)[0]; if (!k || !train(k)) break; tr++; }
+      const p0 = G.party.reduce((a, k) => a + heroStats(k).power, 0); if (G.settings.autoParty) autoParty(); const eq = autoEquip(); const tr = 0; refreshLooks();
       save(); W.pendingParty = 1; buildHud(); const p1 = G.party.reduce((a, k) => a + heroStats(k).power, 0);
-      sfx(tr || eq ? 'level' : 'click'); toast(tr || eq ? `Optimiert: ${eq} Ausrüstungswechsel, ${tr} Trainingsstufen · Kampfkraft +${fmt(p1 - p0)}` : 'Schon alles optimal. Sammle mehr Gold für Training.', tr || eq ? 'lvl' : 'mini'); openHeroes();
+      sfx(tr || eq ? 'level' : 'click'); toast(eq ? `Optimiert: ${eq} Ausrüstungswechsel · Kampfkraft +${fmt(p1 - p0)}` : 'Schon optimal ausgerüstet.', eq ? 'lvl' : 'mini'); openHeroes();
     };
     const ap = s.querySelector('#autoP'); if (ap) ap.onclick = () => { G.settings.autoParty = !G.settings.autoParty; if (G.settings.autoParty) { autoParty(); W.pendingParty = 1; buildHud(); } save(); openHeroes(); };
-  }, { tabs: [['helden', `Helden ${own.length}/${Object.keys(HEROES).length}`], ['begleiter', 'Begleiter'], ['buende', 'Bündnisse']], tab, onTab: t => openHeroes(t, 0), pages: np, page, onPage: p => openHeroes(tab, p),
-    extra: tab === 'helden' ? `<button class="btn small gold" id="optAll">⚡ Optimieren</button><button class="btn small ${G.settings.autoParty ? 'on' : ''}" id="autoP" title="Gruppe automatisch aufstellen">Auto</button>` : '' });
+  }, { tabs: [['team', 'Team'], ['helden', `Alle ${own.length}/${Object.keys(HEROES).length}`], ['begleiter', 'Begleiter'], ['buende', 'Bündnisse']], tab, onTab: t => openHeroes(t, 0), pages: np, page, onPage: p => openHeroes(tab, p),
+    extra: tab === 'team' || tab === 'helden' ? `<button class="btn small gold" id="optAll">⚡ Optimieren</button><button class="btn small ${G.settings.autoParty ? 'on' : ''}" id="autoP" title="Gruppe automatisch aufstellen">Auto</button>` : '' });
 }
 function paintComps(root) { root.querySelectorAll('canvas[data-comp]').forEach(c => { const cp = COMPANIONS.find(x => x.id === c.dataset.comp); requestAnimationFrame(() => compArt(c, cp)); }); }
 function compArt(cv, cp) {
@@ -464,16 +490,16 @@ function openHero(k, tab = openHero.tab || 'werte') {
   let right = '';
   if (tab === 'werte') right = `
     <div class="hi-top"><span class="role r-${C.role}">${ROLES[C.role].n}</span><span class="muted">${esc(C.n)} · ${esc(C.sub)}</span></div>
-    <div class="m-pow"><div class="power">⚡ ${fmt(st.power)}<small>Kampfkraft</small></div><div class="lvl"><span>Stufe ${hs.lvl}<small>/${cap}</small></span><div class="bar"><i style="width:${hs.lvl >= cap ? 100 : hs.xp / xpNeed(hs.lvl) * 100}%"></i></div></div></div>
+    <div class="m-pow"><div class="power">⚡ ${fmt(st.power)}<small>Kampfkraft</small></div><div class="lvl"><span>Gruppenstufe ${G.team.lvl}</span><div class="bar"><i style="width:${G.team.xp / xpNeed(G.team.lvl) * 100}%"></i></div></div></div>
     <div class="stats">${[['Leben', st.hp], [magic ? 'Magie' : 'Angriff', magic ? st.mag : st.atk], ['Verteid.', st.def], ['Tempo', st.spd], ['Krit', st.crit + ' %']].map(([n, v]) => `<div><small>${n}</small><b>${typeof v === 'number' ? fmt(v) : v}</b></div>`).join('')}</div>
     <div class="hi-fac">${heroFactions(k)}${BONDS.filter(b => b.a === k || b.b === k).map(b => { const o = b.a === k ? b.b : b.a, on = G.party.includes(k) && G.party.includes(o); return `<span class="fchip bond ${on ? 'on' : ''}">♥ ${G.heroes[o] ? esc(HEROES[o].n) : '???'}${on ? ' · aktiv' : ''}</span>`; }).join('')}</div>
     <div class="acts">
       <button class="btn ${inP ? '' : 'primary'}" id="toggleP" ${G.away[k] ? 'disabled' : ''}>${inP ? 'Aus der Gruppe' : 'In die Gruppe'}</button>
-      <button class="btn" id="train" ${hs.lvl >= cap || G.gold < trainCost(k) ? 'disabled' : ''}>Training +1 <small>◆${fmt(trainCost(k))}</small></button>
-      ${ev ? `<button class="btn ${ev.ok ? 'gold' : ''}" id="evo" ${ev.ok ? '' : 'disabled'}>Entwickeln <small>${ev.lvlOk ? '' : 'ab St. ' + cap + ' · '}✧${ev.cost.mithril}</small></button>` : '<span class="muted small">Höchste Stufe</span>'}
+      <button class="btn" id="toEq">Ausrüstung</button>
+      ${ev ? `<button class="btn ${ev.ok ? 'gold' : ''}" id="evo" ${ev.ok ? '' : 'disabled'}>Entwickeln <small>${ev.lvlOk ? '◆' + fmt(ev.cost.gold) + ' · ' : 'ab Gruppenstufe ' + cap + ' · '}✧${ev.cost.mithril}</small></button>` : '<span class="muted small">Höchste Stufe</span>'}
     </div>`;
   else if (tab === 'faehig') right = `<div class="m-skills">${skillRow('ult', kit.ult, false, 'Leiste voll')}${skillRow('act', H.act, false, `alle ${H.act.cd + 1} Züge`)}${skillRow('act2', H.act2, hs.lvl < ACT2_LVL, hs.lvl < ACT2_LVL ? `ab Stufe ${ACT2_LVL}` : `alle ${H.act2.cd + 1} Züge`)}${H.pas.map(p => skillRow('pas', p, hs.lvl < p.lvl, hs.lvl < p.lvl ? `ab Stufe ${p.lvl}` : '')).join('')}</div>`;
-  else right = `<div class="gear">${Object.entries(SLOTS).map(([slot, n]) => { const it = hs.eq[slot] && itemById(hs.eq[slot]); return `<div class="gs" style="--rc:${it ? RARITY[it.r].c : '#3a444e'}">${it ? icHtml(it) : '<div class="ic empty"></div>'}<div><small>${n}</small><b style="${it ? 'color:' + RARITY[it.r].c : ''}">${it ? esc(it.name) + (it.enh ? ' +' + it.enh : '') : 'Leer'}</b>${it ? `<span>${itemLines(it).slice(0, 3).join(' · ')}</span>` : ''}</div></div>`; }).join('')}</div>${setLines(k)}<div class="acts"><button class="btn gold" id="bestEq">Beste Ausrüstung anlegen</button><button class="btn" id="toBag">Zum Beutel</button></div>`;
+  else right = `<div class="gear">${Object.entries(SLOTS).map(([slot, n]) => { const it = hs.eq[slot] && itemById(hs.eq[slot]); return `<div class="gs" data-slot="${k}|${slot}" style="--rc:${it ? RARITY[it.r].c : '#3a444e'}">${it ? icHtml(it) : '<div class="ic empty"></div>'}<div><small>${n}</small><b style="${it ? 'color:' + RARITY[it.r].c : ''}">${it ? esc(it.name) + (it.enh ? ' +' + it.enh : '') : 'Leer'}</b>${it ? `<span>${itemLines(it).slice(0, 3).join(' · ')}</span>` : ''}</div></div>`; }).join('')}</div>${setLines(k)}<div class="acts"><button class="btn gold" id="bestEq">Beste anlegen</button><button class="btn" id="toTeam">Team-Übersicht</button></div>`;
   openSheet(esc(H.n), `<div class="m-hero"><div class="hero-art" style="--rc:${ROLE_COL[C.role]}"><canvas id="bigArt"></canvas><div class="ha-foot">${stars(hs.stage)}<span>${esc(heroTitle(k))}</span></div></div><div class="m-hr-r">${right}</div></div>`, s => {
     const cv = s.querySelector('#bigArt'); const seq = ['idle', { melee: 'attack', spin: 'attack', cast: 'cast', shoot: 'shoot', throw: 'throw', shout: 'shout' }[H.act.anim] || 'attack', 'idle', 'victory'];
     let si = 0, t0 = performance.now();
@@ -481,8 +507,10 @@ function openHero(k, tab = openHero.tab || 'werte') {
     artRaf = requestAnimationFrame(loop);
     const on = (id, f) => { const e = s.querySelector(id); if (e) e.onclick = f; };
     on('#train', () => { if (train(k)) { sfx('level'); toast(`${esc(H.n)} erreicht Stufe ${G.heroes[k].lvl}`, 'lvl'); W.pendingParty = 1; openHero(k); } });
-    on('#bestEq', () => { const n = autoEquip([k]); toast(n ? 'Ausrüstung verbessert' : 'Bereits optimal ausgerüstet', 'mini'); W.pendingParty = 1; openHero(k); });
+    on('#toTeam', () => openHeroes('team'));
+    on('#bestEq', () => { const n = autoEquip([k]); refreshLooks(); toast(n ? 'Ausrüstung verbessert' : 'Bereits optimal ausgerüstet', 'mini'); W.pendingParty = 1; openHero(k); });
     on('#toBag', () => openBag());
+    on('#toEq', () => openHero(k, 'ausr'));
     on('#toggleP', () => {
       G.settings.autoParty = false;
       if (inP) { if (G.party.length > 1) G.party = G.party.filter(x => x !== k); }
@@ -490,6 +518,7 @@ function openHero(k, tab = openHero.tab || 'werte') {
       else { const same = G.party.filter(x => roleOf(x) === roleOf(k)); const out = (same.length ? same : G.party).reduce((a, b) => heroStats(b).power < heroStats(a).power ? b : a); G.party = G.party.map(x => x === out ? k : x); toast(`${esc(HEROES[out].n)} wurde ersetzt`, 'mini'); }
       save(); W.pendingParty = 1; buildHud(); openHero(k);
     });
+    s.querySelectorAll('[data-slot]').forEach(b => b.onclick = () => { sfx('click'); const [hk, sl] = b.dataset.slot.split('|'); openSlot(hk, sl); });
     on('#evo', () => { if (evolve(k)) { W.pendingParty = 1; closeSheet(); joinSplash(k, 0).then(() => toast(`${esc(HEROES[k].n)} ist jetzt <b>${esc(heroTitle(k))}</b>!`, 'lvl')); } });
     on('#hBack', () => openHeroes());
   }, { tabs: [['werte', 'Werte'], ['faehig', 'Fähigkeiten'], ['ausr', 'Ausrüstung']], tab, onTab: t => openHero(k, t), pages: list.length, page: idx, onPage: p => openHero(list[clampPg(p, list.length)], tab), extra: '<button class="btn small" id="hBack">‹ Alle</button>' });
@@ -568,6 +597,8 @@ function sideCard(sd) {
 function openStory(tab = openStory.tab || 'story', part, sel) {
   openStory.tab = tab;
   if (tab === 'modi') return openModes();
+  if (tab === 'chronik') return openChronik();
+  if (tab === 'best') return openBestiary();
   if (part === undefined) part = Math.max(0, PARTS.indexOf(STORY[G.story.ch].part));
   if (typeof sel === 'string') { } else if (sel === undefined || STORY[sel]?.part !== PARTS[part]) sel = STORY[G.story.ch].part === PARTS[part] ? G.story.ch : STORY.findIndex(c => c.part === PARTS[part]);
   const mods = activeMods();
@@ -582,7 +613,21 @@ function openStory(tab = openStory.tab || 'story', part, sel) {
     wire(s);
     cv.onclick = e => { const rc = cv.getBoundingClientRect(), x = e.clientX - rc.left, y = e.clientY - rc.top; const h = (cv._hits || []).map(h => ({ ...h, d: Math.hypot(h.x - x, h.y - y) })).filter(h => h.d < h.r).sort((a, b) => a.d - b.d)[0]; if (h) { sfx('click'); sel = h.i; drawMap(cv, part, sel); const d = s.querySelector('#chDetail'); d.innerHTML = typeof sel === 'string' ? sideCard(SIDE.find(x => 'side:' + x.id === sel)) : chapterCard(sel); paintCards(d); wire(d); } };
     s.querySelectorAll('[data-part]').forEach(b => b.onclick = () => { sfx('click'); openStory('story', +b.dataset.part); });
-  }, { tabs: [['story', 'Geschichte'], ['modi', 'Modi & Prüfungen']], tab, onTab: t => openStory(t) });
+  }, { tabs: STORY_TABS, tab, onTab: t => openStory(t) });
+}
+const STORY_TABS = [['story', 'Geschichte'], ['modi', 'Modi'], ['chronik', 'Chronik'], ['best', 'Bestiarium']];
+function speaker(id) { if (id === 'narr') return ''; if (id.startsWith('e:')) return ENEMIES[id.slice(2)]?.n || ''; return HEROES[id]?.n || id; }
+function openChronik(page = openChronik.page) {
+  const max = G.story.loop ? STORY.length - 1 : G.story.ch, np = max + 1; page = openChronik.page = clampPg(page ?? max, np);
+  const C = STORY[page], done = chapterStatus(page) === 'done', boss = C.boss.find(k => ENEMIES[k].boss) || C.boss[0];
+  const lines = [...(C.intro || []), ...(done ? (C.outro || []) : [])].filter(l => l && l[1]).slice(0, 9);
+  openSheet('Reise', `<div class="m-chron"><div class="cc-art"><canvas data-card="${boss}" data-enemy="1" data-bust="1"></canvas></div><div class="m-book"><small>${esc(C.part)} · Kapitel ${page + 1}</small><h3>${esc(C.n)}</h3><div class="m-lines">${lines.map(([who, t]) => `<p>${speaker(who) ? `<b>${esc(speaker(who))}:</b> ` : ''}${esc(t)}</p>`).join('')}</div>${done ? '<span class="m-seal">✓ Kapitel abgeschlossen</span>' : '<span class="m-seal cur">▶ Die Geschichte geht weiter …</span>'}</div></div>`, null,
+    { tabs: STORY_TABS, tab: 'chronik', onTab: t => openStory(t), pages: np, page, onPage: p => openChronik(p) });
+}
+function openBestiary(page = openBestiary.page) {
+  const keys = Object.keys(ENEMIES), seen = keys.filter(k => (G.bestiary || {})[k]).length, per = 16, np = pages(keys.length, per); page = openBestiary.page = clampPg(page, np);
+  openSheet('Reise', `<div class="m-best">${keys.slice(page * per, page * per + per).map(k => { const n = (G.bestiary || {})[k] || 0, E = ENEMIES[k]; return `<div class="m-be ${n ? '' : 'lk'} ${E.boss ? 'boss' : ''}"><canvas data-card="${k}" data-enemy="1" data-bust="1" class="${n ? '' : 'sil'}"></canvas><b>${n ? esc(E.n) : '???'}</b><small>${n ? `${E.boss ? 'Boss · ' : ''}${fmt(n)}× besiegt` : 'Noch nicht begegnet'}</small></div>`; }).join('')}</div>`, null,
+    { tabs: STORY_TABS, tab: 'best', onTab: t => openStory(t), pages: np, page, onPage: p => openBestiary(p), extra: `<span class="muted small">${seen}/${keys.length}</span>` });
 }
 function openModes() {
   const ok = modeUnlocked(), f = towerFloor(), tr = towerReward(f);
@@ -596,7 +641,7 @@ function openModes() {
     s.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => playNow({ type: 'mode', id: b.dataset.mode }, MODES.find(m => m.id === b.dataset.mode).n));
     s.querySelectorAll('[data-raid]').forEach(b => b.onclick = () => playNow({ type: 'raid', key: b.dataset.raid }, 'Prüfung: ' + RAIDS.find(r => r.key === b.dataset.raid).n));
     s.querySelector('#tw').onclick = () => playNow({ type: 'tower' }, 'Orthanc-Turm Etage ' + f);
-  }, { tabs: [['story', 'Geschichte'], ['modi', 'Modi & Prüfungen']], tab: 'modi', onTab: t => openStory(t) });
+  }, { tabs: STORY_TABS, tab: 'modi', onTab: t => openStory(t) });
 }
 function introHelp() {
   return splash(`<div class="help"><div class="kicker">So funktioniert Ringfahrt</div><h1>Willkommen, Gefährte</h1><ul>
@@ -674,7 +719,7 @@ function layoutMode() {
 function boot() {
   const has = load();
   if (!has) { newProfile(); for (const k of STORY[0].join) joinHero(k); save(); }
-  W = new World($('#world'), { banner, combo: comboFx, ultUsed: () => track('ults', 1), crit: () => track('crits', 1), kill: u => { if (u.tags?.includes('ork')) track('orcs', 1); if (u.tags?.includes('tier')) track('beasts', 1); } });
+  W = new World($('#world'), { banner, combo: comboFx, ultUsed: () => track('ults', 1), crit: () => track('crits', 1), kill: u => { G.bestiary = G.bestiary || {}; G.bestiary[u.key] = (G.bestiary[u.key] || 0) + 1; if (u.tags?.includes('ork')) track('orcs', 1); if (u.tags?.includes('tier')) track('beasts', 1); } });
   layoutMode();
   W.speed = G.settings.speed || 1;
   W.bgKey = STORY[G.story.ch].bg;

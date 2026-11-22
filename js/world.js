@@ -165,6 +165,7 @@ class World {
   }
   restoreHeroes() { for (const h of this.heroes) { if (!alive(h)) { h.fade = 1; } h.hp = h.maxHp; h.statuses = []; h.cd = {}; h.threat = 0; h.atb = 0; h.usedRevive = 0; h.usedReviveAlly = 0; h.holdAnim = null; h.anim = { n: 'idle', el: 0 }; } }
   /* Laufenden Kampf ohne Folgen beenden (für „Sofort spielen“) */
+  gearUp(u) { this.burst(u.x + u.ox, u.y + u.oy - u.h * .5, 'holy', 14, .9, .7); this.fxs.push({ k: 'pillar', x: u.x + u.ox, y: u.y + u.oy, c: '#ffe080', t: 0, dur: 650 }); this.num(u, 'Neue Ausrüstung', '#ffe39a'); }
   abort() {
     if (!this.fighting) { this.abortNext = true; return; }
     this.fighting = false; this.busy = false; this.enemies.forEach(e => { e.fade = 0; e.hp = 0; });
