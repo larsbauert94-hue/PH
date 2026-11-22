@@ -12,6 +12,12 @@ Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden 
 
 Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten). Unter **Optionen → Grafik** lässt sich zwischen *Auto*, *Hoch* (Figuren mit Szenenlicht, Kantenlicht und Bodenverdeckung) und *Normal* wählen; *Auto* schaltet bei zu niedriger Bildrate selbst herunter.
 
+## Neu in Version 8.1
+- **Neue Symbole:** gemalte Menü-Icons (Helm, Beutel, Karte, Schriftrolle, Kristall, Pokal, Zahnrad) und Münze/Mithril/Blitz in der Leiste
+- **Edleres Menü:** goldene Zierlinie, metallische Knöpfe, leuchtende Tabs, Tiefe für alle Karten
+- **Gerichtete Schatten:** Figuren werfen Schatten passend zur Lichtquelle des Gebiets
+- **Balance geprüft** (Teil I–V): Wellen sicher, Bosse fordernd, Khamûl und Glaurung entschärft
+
 ## Neu in Version 8
 - **Zwei neue Story-Teile (7 Kapitel):** Teil IV „Das Letzte Bündnis“ (Lindon, Dagorlad, Orodruin) und Teil V „Das Erste Zeitalter“ (Jähes Feuer, Beren & Lúthien, Fall von Gondolin, Angband)
 - **8 neue Helden:** Gil-galad, Círdan, Glorfindel, Lúthien, Beren, Fingolfin, Éomer, Haldir (insgesamt 42)
