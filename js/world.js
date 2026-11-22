@@ -367,7 +367,7 @@ class World {
           if (!tgs.length) break;
           this.setAnim(u, 'attack'); await this.wait(RIG.impactTime('attack'));
           sfx(sk.fx === 'stone' ? 'blunt' : 'swing');
-          for (const t of tgs) { this.fxs.push({ k: 'slash', x: t.x + t.ox, y: t.y + t.oy - t.h * .55, r: t.big ? 14 : 7, dir: -dir, t: 0, dur: 180 }); if (sk.fx !== 'slash') this.burst(t.x + t.ox, t.y + t.oy - t.h * .5, sk.fx, 8); doHit(t); }
+          for (const t of tgs) { this.impact(t, -dir, isUlt || (sk.dmg || 0) >= 2); this.fxs.push({ k: 'slash', x: t.x + t.ox, y: t.y + t.oy - t.h * .55, r: t.big ? 14 : 7, dir: -dir, t: 0, dur: 180 }); if (sk.fx !== 'slash') this.burst(t.x + t.ox, t.y + t.oy - t.h * .5, sk.fx, 8); doHit(t); }
           await this.wait(hits > 1 ? 180 : 260);
         }
         if (alive(u)) { this.setAnim(u, 'walk'); await this.moveTo(u, u.x, u.y, 260); this.setAnim(u, 'idle'); }
@@ -549,6 +549,7 @@ class World {
     if (this.walking && this.time - (this._dust || 0) > 220) { this._dust = this.time; for (const h of this.heroes) if (alive(h) && Math.random() < .6) this.burst(h.x + h.ox - 3, h.y + h.oy - 1, 'stone', 2, .35, .15); }
     for (const f of this.fxs) if (f.under) this.drawFx(f);
     this.drawCompanion(ctx, gt);
+    if (this.hq()) for (const u of units) this.drawCastFx(u);
     for (const u of units) this.drawUnit(u, gt);
     for (const u of units) this.drawTrail(u);
     for (const f of this.fxs) if (!f.under) this.drawFx(f);
@@ -646,6 +647,21 @@ class World {
     const k = lm.k, w = lm.w * k, h = lm.h * k, span = this.LW + w + 60; let X = this.LW * .6 - w / 2 - ((this.scroll * .05) % span + span) % span; if (X < -w - 30) X += span;
     const Y = L.HZ + YO - h + lm.base * k + 2; ctx.save(); ctx.translate(X, Y); ctx.scale(k, k); ctx.drawImage(lm.cv, 0, 0, lm.w, lm.h); if (lm.anim) lm.anim(ctx, 0, 0, gt); ctx.restore();
   }
+  impact(t, dir, heavy) {
+    const x = t.x + t.ox, y = t.y + t.oy - t.h * .5, n = heavy ? 16 : 9;
+    for (let i = 0; i < n; i++) { const a = (dir > 0 ? 0 : Math.PI) + rnd(-1.1, 1.1), sp = rnd(1.2, heavy ? 3.4 : 2.4); this.parts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - .4, g: .05, t: 0, life: rnd(180, 360), c: pick(['#fff6d0', '#ffd27a', '#ffffff']), s: 1, streak: 1 }); }
+    this.fxs.push({ k: 'burst', x, y, r: heavy ? 16 : 10, c: '#ffffff', t: 0, dur: 150 });
+    if (heavy) { this.fxs.push({ k: 'crack', x: t.x + t.ox, y: t.y + t.oy, r: t.big ? 30 : 20, t: 0, dur: 1100, seed: Math.random() * 1000 }); this.burst(t.x + t.ox, t.y + t.oy - 1, 'stone', 12, 1.4, .35); this.shake(2.5); }
+  }
+  drawCastFx(u) {
+    if (!alive(u) || u.anim.n !== 'cast') return; const el = u.anim.el, k = Math.min(1, el / 380), out = Math.max(0, (el - 560) / 160); if (out >= 1) return;
+    const ctx = this.ctx, x = u.x + u.ox, y = u.y + u.oy, R = 9 + u.w * .7, col = u.side === 'hero' ? (u.look.glowC || '#ffd070') : '#ff5a3a', rot = this.time / 650;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .8 * k * (1 - out); ctx.translate(x, y); ctx.scale(1, .3);
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, R); g.addColorStop(0, RIG.rgba(col, .4)); g.addColorStop(1, RIG.rgba(col, 0)); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = col; ctx.lineWidth = .9; ctx.beginPath(); ctx.arc(0, 0, R * k, 0, Math.PI * 2); ctx.stroke(); ctx.lineWidth = .45; ctx.beginPath(); ctx.arc(0, 0, R * .72 * k, 0, Math.PI * 2); ctx.stroke();
+    ctx.rotate(rot); for (let i = 0; i < 16; i++) { ctx.rotate(Math.PI / 8); ctx.beginPath(); ctx.moveTo(R * .75, 0); ctx.lineTo(R * .95, i % 2 ? 1.6 : -1.6); ctx.stroke(); }
+    ctx.rotate(-rot * 2.4); ctx.beginPath(); for (let i = 0; i <= 5; i++) { const a = i * 4 * Math.PI / 5 - Math.PI / 2; ctx.lineTo(Math.cos(a) * R * .7 * k, Math.sin(a) * R * .7 * k); } ctx.stroke(); ctx.restore();
+  }
   drawTrail(u) {
     const a = u.anim; if (!alive(u) || a.n !== 'attack' || ['bow', 'staff'].includes(u.look.wpn) || u.type !== 'hum') return;
     const k = (a.el - 150) / 260; if (k < 0 || k > 1) return;
@@ -664,6 +680,8 @@ class World {
     const fly = hasS(u, 'fly') ? 14 + Math.sin(gt / 260) * 3 : 0;
     if (this.hq()) {
       const img = this.litSprite(u, gt);
+      const gp = u._gp || (u._gp = []); if (!gp.length || this.time - gp[gp.length - 1].t > 26) { gp.push({ x, y: y - fly, t: this.time }); if (gp.length > 5) gp.shift(); }
+      if (gp.length > 2 && Math.abs(gp[0].x - x) > 7 && this.time - gp[0].t < 200 && alive(u)) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; for (let i = 0; i < gp.length - 1; i++) { ctx.globalAlpha = (.08 + i * .05) * u.fade; ctx.drawImage(img.cv, gp[i].x - img.ax, gp[i].y - img.ay, img.bw, img.bh); } ctx.restore(); }
       ctx.save(); ctx.globalAlpha = u.fade * (hasS(u, 'invis') ? .38 : 1) * (u.look.ghost ? .62 : 1);
       if (u.look.ghost) { ctx.shadowColor = 'rgba(160,255,210,.9)'; ctx.shadowBlur = 8 * this.s; }
       ctx.drawImage(img.cv, x - img.ax, y - fly - img.ay, img.bw, img.bh);
@@ -730,6 +748,7 @@ class World {
   drawParts(ctx) {
     for (const p of this.parts) {
       const a = p.amb ? .85 : Math.max(0, 1 - p.t / p.life);
+      if (p.streak) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = a; ctx.strokeStyle = p.c; ctx.lineWidth = .55; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * 2.6, p.y - p.vy * 2.6); ctx.stroke(); ctx.globalCompositeOperation = 'source-over'; continue; }
       if (p.amb === 'rain') { ctx.globalAlpha = .5; ctx.strokeStyle = p.c; ctx.lineWidth = .35; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * 1.6, p.y - p.vy * 1.6); ctx.stroke(); continue; }
       const glow = p.glow || p.amb === 'embers' || p.amb === 'fireflies';
       if (glow) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = a * (p.amb === 'fireflies' ? .5 + .5 * Math.sin(p.t / 200) : 1); const r = (p.s || 1) * 2.4; const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r); g.addColorStop(0, p.c); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill(); ctx.globalCompositeOperation = 'source-over'; }
@@ -750,7 +769,9 @@ class World {
   drawFx(f) {
     const ctx = this.ctx, k = f.t / f.dur;
     ctx.save();
-    if (f.k === 'rays') { ctx.globalCompositeOperation = 'lighter'; ctx.translate(f.x, f.y); ctx.rotate(this.time / 1100); const a = Math.sin(Math.min(1, k * 1.4) * Math.PI); for (let i = 0; i < 14; i++) { ctx.rotate(Math.PI / 7); const len = 70 + (i % 3) * 26, g = ctx.createLinearGradient(0, 0, len, 0); g.addColorStop(0, `rgba(255,244,210,${.55 * a})`); g.addColorStop(1, 'rgba(255,244,210,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(len, -3 - (i % 3) * 2.5); ctx.lineTo(len, 3 + (i % 3) * 2.5); ctx.fill(); } const g2 = ctx.createRadialGradient(0, 0, 0, 0, 0, 26); g2.addColorStop(0, `rgba(255,255,240,${.8 * a})`); g2.addColorStop(1, 'rgba(255,240,200,0)'); ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(0, 0, 26, 0, Math.PI * 2); ctx.fill(); }
+    if (f.k === 'crack') { const a = k < .1 ? k / .1 : 1 - Math.max(0, (k - .5) / .5); let sd = f.seed; const R = () => { sd = (sd * 9301 + 49297) % 233280; return sd / 233280; }; ctx.translate(f.x, f.y); ctx.scale(1, .3); ctx.lineCap = 'round';
+      for (let i = 0; i < 7; i++) { const ang = i / 7 * Math.PI * 2 + R() * .5; let px = 0, py = 0; ctx.beginPath(); ctx.moveTo(0, 0); for (let j = 1; j <= 4; j++) { const rr = f.r * j / 4 * (.6 + R() * .5); px = Math.cos(ang + (R() - .5) * .5) * rr; py = Math.sin(ang + (R() - .5) * .5) * rr; ctx.lineTo(px, py); } ctx.globalAlpha = a * .8; ctx.strokeStyle = 'rgba(10,6,4,.9)'; ctx.lineWidth = 1.6; ctx.stroke(); ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = `rgba(255,140,60,${.7 * (1 - k)})`; ctx.lineWidth = .5; ctx.stroke(); ctx.globalCompositeOperation = 'source-over'; } }
+    else if (f.k === 'rays') { ctx.globalCompositeOperation = 'lighter'; ctx.translate(f.x, f.y); ctx.rotate(this.time / 1100); const a = Math.sin(Math.min(1, k * 1.4) * Math.PI); for (let i = 0; i < 14; i++) { ctx.rotate(Math.PI / 7); const len = 70 + (i % 3) * 26, g = ctx.createLinearGradient(0, 0, len, 0); g.addColorStop(0, `rgba(255,244,210,${.55 * a})`); g.addColorStop(1, 'rgba(255,244,210,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(len, -3 - (i % 3) * 2.5); ctx.lineTo(len, 3 + (i % 3) * 2.5); ctx.fill(); } const g2 = ctx.createRadialGradient(0, 0, 0, 0, 0, 26); g2.addColorStop(0, `rgba(255,255,240,${.8 * a})`); g2.addColorStop(1, 'rgba(255,240,200,0)'); ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(0, 0, 26, 0, Math.PI * 2); ctx.fill(); }
     else if (f.k === 'light') { ctx.globalCompositeOperation = 'lighter'; const a = (1 - k) * (1 - k) * (f.a || .25), g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r); g.addColorStop(0, RIG.rgba(f.c, a)); g.addColorStop(.5, RIG.rgba(f.c, a * .35)); g.addColorStop(1, RIG.rgba(f.c, 0)); ctx.fillStyle = g; ctx.fillRect(f.x - f.r, f.y - f.r, f.r * 2, f.r * 2); }
     else if (f.k === 'slash') { ctx.globalCompositeOperation = 'lighter'; ctx.translate(f.x, f.y); ctx.scale(f.dir, 1); const st = -1.6 + k * .9, en = st + 2.2 * Math.min(1, k * 2.2); ctx.lineCap = 'round'; for (const [w, col] of [[3.2, 'rgba(160,200,255,.35)'], [1.4, 'rgba(255,255,255,.95)']]) { ctx.globalAlpha = 1 - k; ctx.strokeStyle = col; ctx.lineWidth = w * (1 - k * .6); ctx.beginPath(); ctx.arc(0, 0, f.r, st, en); ctx.stroke(); } }
     else if (f.k === 'bolt') { ctx.globalCompositeOperation = 'lighter'; ctx.lineJoin = 'round'; const pts = f.pts || (f.pts = Array.from({ length: 9 }, (_, i) => [f.x + (f.tx - f.x) * i / 8 + (i && i < 8 ? rnd(-4, 4) : 0), f.y + (f.ty - f.y) * i / 8 + (i && i < 8 ? rnd(-3, 3) : 0)])); if (Math.random() < .3) f.pts = null; for (const [w, col] of [[3, 'rgba(100,170,255,.4)'], [1, '#ffffff']]) { ctx.globalAlpha = 1 - k * .7; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(...p) : ctx.moveTo(...p)); ctx.stroke(); } }
