@@ -473,6 +473,7 @@ function openHeroes(tab = openHeroes.tab || 'team', page = openHeroes.page) {
   let body = '';
   if (tab === 'team') body = teamView();
   else if (tab === 'helden') body = `<div class="m-heroes">${all.slice(page * per, page * per + per).map(([k, l]) => heroCard(k, l)).join('')}</div>`;
+  else if (tab === 'reittiere') body = `<div class="m-mounts">${MOUNTS.map(m => { const own = (G.mounts || {})[m.id], riders = m.heroes.map(k => G.heroes[k] ? esc(HEROES[k].n) : '???').join(', '), k0 = m.heroes.find(k => G.heroes[k]), on = own && k0 && (G.ride || {})[k0] !== false; return `<div class="m-mt ${own ? '' : 'lk'}"><canvas data-mount="${m.id}"></canvas><b>${own ? esc(m.n) : '???'}</b><small>${own ? esc(m.d) : 'Kapitel ' + (m.ch + 1) + ' abschließen'}</small><small class="m-mb">${riders} · ${esc(m.bd)}</small>${own && k0 ? `<button class="btn small ${on ? 'on' : ''}" data-ridek="${m.heroes.filter(k => G.heroes[k]).join(',')}">${on ? '🐎 Reitet' : 'Zu Fuß'}</button>` : ''}</div>`; }).join('')}</div>`;
   else if (tab === 'begleiter') body = `<div class="m-comps">${COMPANIONS.map(cp => { const own2 = G.comps[cp.id], src = cp.from.ch !== undefined ? 'Kapitel ' + (cp.from.ch + 1) : 'Nebenquest'; return `<button class="comp ${own2 ? '' : 'lk'} ${G.companion === cp.id ? 'on' : ''}" data-cp="${cp.id}"><canvas data-comp="${cp.id}"></canvas><b>${own2 ? esc(cp.n) : '???'}</b><small>${own2 ? esc(cp.d) : src}</small>${G.companion === cp.id ? '<span class="tag in">Aktiv</span>' : ''}</button>`; }).join('')}</div>`;
   else body = `<div class="m-facs">${activeFactions().map(f => `<div class="fac ${f.tier >= 0 ? 'on' : ''}" style="--fc:${f.F.c}"><span class="fi">${f.F.ic}</span><div><b>${esc(f.F.n)} <em>${f.n}</em></b><small>${f.F.t.map((t, i) => `<i class="${f.tier >= i ? 'act' : ''}">${t[0]}: ${esc(t[2])}</i>`).join('<br>')}</small></div></div>`).join('')}</div>`;
   openSheet('Helden', body, s => {
@@ -482,13 +483,14 @@ function openHeroes(tab = openHeroes.tab || 'team', page = openHeroes.page) {
     s.querySelectorAll('[data-gohero]').forEach(b => b.onclick = () => openHeroes('helden', 0));
     s.querySelectorAll('[data-cp]').forEach(b => b.onclick = () => { const id = b.dataset.cp; if (!G.comps[id]) return; G.companion = id; sfx('click'); W.pendingParty = 1; save(); openHeroes(); });
     paintComps(s);
+    s.querySelectorAll('[data-ridek]').forEach(b => b.onclick = () => { G.ride = G.ride || {}; const ks = b.dataset.ridek.split(','), on = G.ride[ks[0]] !== false; ks.forEach(k => G.ride[k] = !on); save(); W.pendingParty = 1; refreshLooks(); sfx('click'); openHeroes('reittiere'); });
     const oa = s.querySelector('#optAll'); if (oa) oa.onclick = () => {
       const p0 = G.party.reduce((a, k) => a + heroStats(k).power, 0); if (G.settings.autoParty) autoParty(); const eq = autoEquip(); const tr = 0; refreshLooks();
       save(); W.pendingParty = 1; buildHud(); const p1 = G.party.reduce((a, k) => a + heroStats(k).power, 0);
       sfx(tr || eq ? 'level' : 'click'); toast(eq ? `Optimiert: ${eq} Ausrüstungswechsel · Kampfkraft +${fmt(p1 - p0)}` : 'Schon optimal ausgerüstet.', eq ? 'lvl' : 'mini'); openHeroes();
     };
     const ap = s.querySelector('#autoP'); if (ap) ap.onclick = () => { G.settings.autoParty = !G.settings.autoParty; if (G.settings.autoParty) { autoParty(); W.pendingParty = 1; buildHud(); } save(); openHeroes(); };
-  }, { tabs: [['team', 'Team'], ['helden', `Alle ${own.length}/${Object.keys(HEROES).length}`], ['begleiter', 'Begleiter'], ['buende', 'Bündnisse']], tab, onTab: t => openHeroes(t, 0), pages: np, page, onPage: p => openHeroes(tab, p),
+  }, { tabs: [['team', 'Team'], ['helden', `Alle ${own.length}/${Object.keys(HEROES).length}`], ['reittiere', 'Reittiere'], ['begleiter', 'Begleiter'], ['buende', 'Bündnisse']], tab, onTab: t => openHeroes(t, 0), pages: np, page, onPage: p => openHeroes(tab, p),
     extra: tab === 'team' || tab === 'helden' ? `<button class="btn small gold" id="optAll">⚡ Optimieren</button><button class="btn small ${G.settings.autoParty ? 'on' : ''}" id="autoP" title="Gruppe automatisch aufstellen">Auto</button>` : '' });
 }
 function footLook(k) { const L = heroLook(k); delete L.mount; return L; }

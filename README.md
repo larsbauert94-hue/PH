@@ -13,7 +13,7 @@ Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden 
 Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten). Unter **Optionen → Grafik** lässt sich zwischen *Auto*, *Hoch* (Figuren mit Szenenlicht, Kantenlicht und Bodenverdeckung) und *Normal* wählen; *Auto* schaltet bei zu niedriger Bildrate selbst herunter.
 
 ## Neu in Version 9
-- **Reittiere:** Schattenfell, Brego, Asfaloth, Schneemähne, Feuerfuß, Arod, Windfola, Stybba – geritten im Kampf, mit Bonus; Feinde auf Wargen, Rappen und Flugbestien
+- **Reittiere** (eigener Tab im Heldenmenü): Schattenfell, Brego, Asfaloth, Schneemähne, Feuerfuß, Arod, Windfola, Stybba – geritten im Kampf, mit Bonus; Feinde auf Wargen, Rappen und Flugbestien
 - **Wahrzeichen:** Minas Tirith, Barad-dûr mit dem Auge, Orodruin, Minas Morgul, Argonath, Ost-in-Edhil
 - **Wuchtigere Angriffe:** Nachbilder, Funkenschlag, Bodenrisse, Runenkreise
 - **Lore-Prüfung:** Aussehen nach Tolkiens Beschreibungen (u. a. Théoden, Kíli, Dwalin, Beorn, Tom Bombadil); neu: Celebrimbor und Gollum (44 Helden)
