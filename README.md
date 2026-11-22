@@ -12,6 +12,12 @@ Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden 
 
 Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten). Unter **Optionen → Grafik** lässt sich zwischen *Auto*, *Hoch* (Figuren mit Szenenlicht, Kantenlicht und Bodenverdeckung) und *Normal* wählen; *Auto* schaltet bei zu niedriger Bildrate selbst herunter.
 
+## Neu in Version 9
+- **Reittiere:** Schattenfell, Brego, Asfaloth, Schneemähne, Feuerfuß, Arod, Windfola, Stybba – geritten im Kampf, mit Bonus; Feinde auf Wargen, Rappen und Flugbestien
+- **Wahrzeichen:** Minas Tirith, Barad-dûr mit dem Auge, Orodruin, Minas Morgul, Argonath, Ost-in-Edhil
+- **Wuchtigere Angriffe:** Nachbilder, Funkenschlag, Bodenrisse, Runenkreise
+- **Lore-Prüfung:** Aussehen nach Tolkiens Beschreibungen (u. a. Théoden, Kíli, Dwalin, Beorn, Tom Bombadil); neu: Celebrimbor und Gollum (44 Helden)
+
 ## Neu in Version 8.2
 - **Boss-Auftritt als Kinoszene:** Kinobalken, Kamerafahrt, Brüllen mit Schockwelle und Staub
 - **Finisher-Zeitlupe:** der letzte Treffer in Zeitlupe mit Zoom und Lichtstrahlen
@@ -57,7 +63,7 @@ Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten).
 - **Vollbild im Querformat:** Die Welt läuft ununterbrochen, Menüs liegen als Glas-Panels darüber
 - **28 Story-Kapitel** in drei Teilen (Der Hobbit, Der Ringkrieg mit Epilog, Die Ringe der Macht), je 8 Wellen + Boss
 - **4 Nebenquests** (Der Alte Wald, Die Hügelgräberhöhen, Die Pfade der Toten, Die Tunnel von Ostirith), wiederholbar
-- **42 Helden** in den Rollen Tank, Schaden und Heiler; je 3 Passive, zwei Aktive und eine Ultimate
+- **44 Helden** in den Rollen Tank, Schaden und Heiler; je 3 Passive, zwei Aktive und eine Ultimate
 - **Mehrphasige Bosse** (Balrog und Smaug fliegen, Sauron ruft die Neun …) und Großangriffe mit Vorwarnung
 - **Bündnisse, 14 Heldenbande, 9 Begleiter, 21 Relikte, 8 Ausrüstungs-Sets** (farmbar durch erneute Bosskämpfe)
 - **Prüfungen der Macht** (Raid-Bosse, beliebig oft), **Orthanc-Turm**, **Heldenreisen** mit Erschwernissen und besserer Beute

@@ -40,7 +40,7 @@ function migrate() {
   for (const [k, v] of Object.entries(d)) if (G[k] === undefined) G[k] = v;
   for (const k of ['sides', 'comps', 'fullSet', 'loops', 'relics', 'towerBest', 'maxCombo']) if (G.stats[k] === undefined) G.stats[k] = 0;
   syncLevels();
-  if (G.heroes && (G.story?.ch > 10 || G.story?.loop > 0)) for (const k of ['eomer', 'haldir']) if (!G.heroes[k] && HEROES[k]) joinHero(k);
+  if (G.heroes && G.story) for (const [k, ch] of [['eomer', 10], ['haldir', 10], ['gollum', 11], ['celebrimbor', 20]]) if (!G.heroes[k] && HEROES[k] && (G.story.ch > ch || G.story.loop > 0)) joinHero(k);
   delete G.idle; delete G.daily;
 }
 
