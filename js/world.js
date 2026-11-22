@@ -538,6 +538,7 @@ class World {
     tile(L.sky, .03, YO, L.HZ + 4);
     this.drawAtmosBack(ctx, gt);
     tile(L.far, .12, YO, L.HZ + 4);
+    this.drawLandmark(ctx, gt, L);
     tile(L.mid, .35, YO, L.HZ + 4);
     tile(L.ground, 1, L.HZ + YO, LH - L.HZ - YO + 4);
     if (this.hq()) this.drawRays(ctx, gt, L);
@@ -639,6 +640,11 @@ class World {
     }
     const w = 512, off = -((this.scroll * 1.45) % w + w) % w;
     ctx.save(); ctx.globalAlpha = .9; for (let x = off - w; x < this.LW + w; x += w) ctx.drawImage(this._fore, x - 20, LH - 30 + 4, w, 30); ctx.restore();
+  }
+  drawLandmark(ctx, gt, L) {
+    const lm = RIG.landmark(this.bgKey, this.s); if (!lm) return;
+    const k = lm.k, w = lm.w * k, h = lm.h * k, span = this.LW + w + 60; let X = this.LW * .6 - w / 2 - ((this.scroll * .05) % span + span) % span; if (X < -w - 30) X += span;
+    const Y = L.HZ + YO - h + lm.base * k + 2; ctx.save(); ctx.translate(X, Y); ctx.scale(k, k); ctx.drawImage(lm.cv, 0, 0, lm.w, lm.h); if (lm.anim) lm.anim(ctx, 0, 0, gt); ctx.restore();
   }
   drawTrail(u) {
     const a = u.anim; if (!alive(u) || a.n !== 'attack' || ['bow', 'staff'].includes(u.look.wpn) || u.type !== 'hum') return;
