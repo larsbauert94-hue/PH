@@ -777,7 +777,8 @@ class World {
       ov = document.createElement('canvas'); ov.width = Math.ceil(W2 / 4); ov.height = Math.ceil(H2 / 4); const o = ov.getContext('2d'), w = ov.width, h = ov.height;
       let g = o.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(255,255,255,.07)'); g.addColorStop(.55, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.34)'); o.fillStyle = g; o.fillRect(0, 0, w, h);
       g = L.from === 'below' ? o.createLinearGradient(0, h, 0, h * .35) : L.from === 'left' ? o.createLinearGradient(w * .25, 0, w * .5, 0) : o.createLinearGradient(w * .75, 0, w * .5, 0);
-      g.addColorStop(0, `rgba(${L.c},${L.a})`); g.addColorStop(1, `rgba(${L.c},0)`); o.fillStyle = g; o.fillRect(0, 0, w, h);
+      g.addColorStop(0, `rgba(${L.c},${L.a * 1.25})`); g.addColorStop(1, `rgba(${L.c},0)`); o.fillStyle = g; o.fillRect(0, 0, w, h);
+      if (L.grade) { const gb = RIG.rgba(L.grade[1], .2), gt2 = RIG.rgba(L.grade[0], .08); g = o.createLinearGradient(0, 0, 0, h); g.addColorStop(0, gt2); g.addColorStop(.5, 'rgba(0,0,0,0)'); g.addColorStop(1, gb); o.fillStyle = g; o.fillRect(0, 0, w, h); }
       this._lit.set(key, ov);
     }
     c.drawImage(ov, 0, 0, W2, H2);

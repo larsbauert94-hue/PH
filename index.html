@@ -597,6 +597,7 @@ body.portrait #sheet{width:100%}
 /* Gedrehte Darstellung (iPhone hochkant): Spiel um 90° gedreht, Notch-Seite wird links */
 body.rot{--sl:env(safe-area-inset-top,0px);--sr:env(safe-area-inset-bottom,0px);--st:env(safe-area-inset-right,0px);--sb:env(safe-area-inset-left,0px)}
 #rotate{z-index:90}
+#world.hq{filter:contrast(1.07) saturate(1.12)}
 /* Münzen */
 .coin{position:absolute;z-index:45;width:14px;height:14px;border-radius:50%;pointer-events:none;background:radial-gradient(circle at 35% 30%,#fffbe0,#ffd24a 45%,#b8761c);box-shadow:0 0 8px rgba(255,200,80,.9),inset 0 -1px 0 rgba(90,50,10,.6)}
 .res .g.bump{animation:bump .35s ease-out} @keyframes bump{40%{transform:scale(1.14);box-shadow:0 0 16px rgba(255,210,90,.8)}}

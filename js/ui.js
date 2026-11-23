@@ -99,7 +99,7 @@ function updateHud() {
   $('#power').textContent = fmt(G.party.reduce((a, k) => a + heroStats(k).power, 0));
   const cc = claimableCount(); $('#achBadge').hidden = !cc; $('#achBadge').textContent = cc; $('#nextP').classList.toggle('dim', $('#toasts').children.length > 0);
   if (G.team) { const el = waveLvl(Math.min(G.story.wave, WAVES)), d = G.team.lvl - el, v = `<span class="${d >= 0 ? 'ok' : d >= -3 ? 'mid' : 'bad'}">Gruppe St. ${G.team.lvl}</span> · Gegner St. ${el}`; if ($('#lvc').dataset.v !== v) { $('#lvc').innerHTML = v; $('#lvc').dataset.v = v; } }
-  if (!updateHud.t || Date.now() - updateHud.t > 1000) { updateHud.t = Date.now(); refreshLooks(); renderNext(); const ev = G.party.filter(k => canEvolve(k)?.lvlOk).length; $('#hBadge').hidden = !ev; $('#hBadge').textContent = ev; }
+  if (!updateHud.t || Date.now() - updateHud.t > 1000) { updateHud.t = Date.now(); refreshLooks(); renderNext(); $('#world').classList.toggle('hq', W.hq()); const ev = G.party.filter(k => canEvolve(k)?.lvlOk).length; $('#hBadge').hidden = !ev; $('#hBadge').textContent = ev; }
   for (const u of W.heroes) {
     const el = document.querySelector(`#party .pc[data-k="${u.key}"]`); if (!el) continue;
     el.querySelector('.ultbar i').style.width = Math.min(100, u.energy) + '%';
