@@ -597,6 +597,15 @@ body.portrait #sheet{width:100%}
 /* Gedrehte Darstellung (iPhone hochkant): Spiel um 90° gedreht, Notch-Seite wird links */
 body.rot{--sl:env(safe-area-inset-top,0px);--sr:env(safe-area-inset-bottom,0px);--st:env(safe-area-inset-right,0px);--sb:env(safe-area-inset-left,0px)}
 #rotate{z-index:90}
+/* Kapitel-Panorama: bildschirmfüllendes Kinobild */
+.splash.panoS{padding:0;background:#05060a;backdrop-filter:none;-webkit-backdrop-filter:none}
+.ctitle.pano{position:absolute;inset:0;animation:none;overflow:hidden}
+.cpano{position:absolute;inset:0;width:100%;height:100%;display:block;animation:panoin 3.2s cubic-bezier(.2,.7,.3,1) both;filter:saturate(1.12) contrast(1.06)}
+.ctitle.pano::after{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 85% 75% at 50% 38%,transparent 45%,rgba(0,0,0,.55)),linear-gradient(rgba(0,0,0,.35),transparent 22%,transparent 52%,rgba(0,0,0,.88))}
+@keyframes panoin{from{transform:scale(1.1);opacity:0}20%{opacity:1}to{transform:scale(1)}}
+.ct-text{position:absolute;z-index:1;left:calc(16px + var(--sl));right:calc(16px + var(--sr));bottom:calc(6% + var(--sb));text-align:center;animation:rise 1.8s .25s cubic-bezier(.2,.8,.2,1) both;text-shadow:0 2px 14px #000}
+.ctitle.pano h1{color:#e8dcc0} .ctitle.pano .kicker{color:var(--gold-2)} .ctitle.pano h2{font-size:clamp(28px,5.4cqw,58px);line-height:1.05}
+@container app (orientation: portrait){ .cpano{height:66%;-webkit-mask-image:linear-gradient(#000 78%,transparent);mask-image:linear-gradient(#000 78%,transparent)} .ct-text{bottom:calc(9% + var(--sb))} .ctitle.pano h2{font-size:clamp(28px,9cqw,46px)} }
 #world.hq{filter:contrast(1.07) saturate(1.12)}
 /* Münzen */
 .coin{position:absolute;z-index:45;width:14px;height:14px;border-radius:50%;pointer-events:none;background:radial-gradient(circle at 35% 30%,#fffbe0,#ffd24a 45%,#b8761c);box-shadow:0 0 8px rgba(255,200,80,.9),inset 0 -1px 0 rgba(90,50,10,.6)}

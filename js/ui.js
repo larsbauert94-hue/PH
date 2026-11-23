@@ -194,7 +194,19 @@ function pickChest(title, mith) {
     });
   });
 }
-function chapterTitle(ch) { return splash(`<div class="ctitle"><div class="kicker">${esc(ch.part)}</div><h1>Kapitel ${G.story.ch + 1}</h1><h2>${esc(ch.n)}</h2></div>`, 2300, 'chap'); }
+function paintPano(cv, key) {
+  if (!cv) return; const dpr = Math.min(2, devicePixelRatio || 1), Wc = cv.clientWidth || 800, Hc = cv.clientHeight || 300; cv.width = Math.round(Wc * dpr); cv.height = Math.round(Hc * dpr);
+  const c = cv.getContext('2d'), s = Math.max(cv.height / 124, cv.width / 270), LWp = cv.width / s, L = RIG.layers(key, s), lm = RIG.landmark(key, s), yo = Math.max(-8, cv.height / s - 128);
+  const B = (BACKGROUNDS[key] || {}), sk = B.sky || ['#1a1e28', '#2a3040', '#3a4050']; let gr = c.createLinearGradient(0, 0, 0, cv.height); gr.addColorStop(0, sk[0]); gr.addColorStop(.6, sk[sk.length - 1]); gr.addColorStop(.61, B.gd || '#1a1a1a'); gr.addColorStop(1, B.gd || '#1a1a1a'); c.fillStyle = gr; c.fillRect(0, 0, cv.width, cv.height);
+  c.setTransform(s, 0, 0, s, 0, 0); c.imageSmoothingEnabled = true;
+  const tile = (img, y, hh) => { for (let x = -20; x < LWp + L.TW; x += L.TW) c.drawImage(img, x, y, L.TW, hh); };
+  const land = (dy) => { const k = lm.k * Math.min(1.2, LWp * .92 / (lm.w * lm.k)), ww = lm.w * k, hh = lm.h * k; c.save(); c.translate(LWp * .5 - ww / 2, L.HZ + yo - hh + lm.base * k + dy); c.scale(k, k); c.drawImage(lm.cv, 0, 0, lm.w, lm.h); if (lm.anim) lm.anim(c, 0, 0, performance.now()); c.restore(); };
+  tile(L.sky, yo, L.HZ + 4); tile(L.far, yo, L.HZ + 4); if (lm && !lm.front) land(2);
+  tile(L.mid, yo, L.HZ + 4); if (lm && lm.front) land(6);
+  tile(L.ground, L.HZ + yo, Math.max(60, cv.height / s - L.HZ - yo + 2));
+}
+function panoSplash(kicker, h1, h2, key, ms) { const pr = splash(`<div class="ctitle pano"><canvas class="cpano"></canvas><div class="ct-text"><div class="kicker">${kicker}</div><h1>${h1}</h1><h2>${h2}</h2></div></div>`, ms, 'chap panoS'); paintPano($('#splash .cpano'), key); return pr; }
+function chapterTitle(ch) { return panoSplash(esc(ch.part), `Kapitel ${G.story.ch + 1}`, esc(ch.n), chBg(ch, 0), 2800); }
 function kitLines(k) { const H = HEROES[k]; return `<li><b class="k-ult">Ultimate</b> ${esc(H.ult.n)}</li><li><b class="k-act">Aktiv</b> ${esc(H.act.n)}</li><li><b class="k-act2">Aktiv II</b> ${esc(H.act2.n)}</li>`; }
 function joinSplash(k, back) {
   sfx('join'); const H = HEROES[k], C = CLASSES[H.cls];
@@ -235,7 +247,7 @@ function onResult(r, kind) {
 }
 async function bossRematch(ch) {
   const C = STORY[ch], prevBg = W.bgKey; G.queue = null; save();
-  W.setBg(chBg(C)); await splash(`<div class="ctitle"><div class="kicker">Erneuter Bosskampf</div><h1>Kapitel ${ch + 1}</h1><h2>${esc(C.n)}</h2></div>`, 1600, 'chap');
+  W.setBg(chBg(C)); await panoSplash('Erneuter Bosskampf', `Kapitel ${ch + 1}`, esc(C.n), chBg(C), 1900);
   applyParty(); await W.walk(1000);
   const lvl = C.lvl + 3 + G.story.loop * LOOP_LVL, r = await W.fight(C.boss, lvl, 'boss'); r.setCh = ch;
   onResult(r, 'boss'); if (r.win) { G.stats.bosses++; track('bosses', 1); } else toast('Der Boss war zu stark. Werdet stärker und versucht es erneut.', 'unlock');
@@ -243,7 +255,7 @@ async function bossRematch(ch) {
 }
 async function sideRun(id) {
   const sd = SIDE.find(x => x.id === id), prevBg = W.bgKey, first = !G.side[id]; G.queue = null; save();
-  W.setBg(sd.bg); await splash(`<div class="ctitle"><div class="kicker">Nebenquest</div><h1>${first ? 'Neu' : 'Wiederholung'}</h1><h2>${esc(sd.n)}</h2></div>`, 1800, 'chap');
+  W.setBg(sd.bg); await panoSplash('Nebenquest', first ? 'Neu' : 'Wiederholung', esc(sd.n), sd.bg, 2200);
   if (first) await dialog(sd.intro);
   const lvl = sideLvl(sd);
   for (let i = 0; i < sd.waves.length; i++) {
@@ -323,7 +335,7 @@ async function modeRun(id) {
 }
 async function raidRun(key) {
   const R = RAIDS.find(x => x.key === key), prevBg = W.bgKey; G.queue = null; save();
-  W.setBg(R.bg); await splash(`<div class="ctitle"><div class="kicker">Prüfung der Macht</div><h1>45 Sekunden</h1><h2>${esc(R.n)}</h2></div>`, 1800, 'chap');
+  W.setBg(R.bg); await panoSplash('Prüfung der Macht', '45 Sekunden', esc(R.n), R.bg, 2000);
   applyParty(); await W.walk(800);
   const r = await W.fight([key], raidLvl(), 'boss', { raid: 1, time: 45000 });
   const st = G.raid[key] || (G.raid[key] = { best: 0, tiers: 0 }), pct = r.dmgPct;
@@ -342,7 +354,7 @@ function companionSplash(cp) {
 async function towerRun() {
   const f = towerFloor(), tg = towerGroup(f), prevBg = W.bgKey;
   G.tower.queued = false; save();
-  W.setBg('helm'); await splash(`<div class="ctitle"><div class="kicker">Orthanc-Turm</div><h1>Etage</h1><h2>${f}</h2></div>`, 1800, 'chap');
+  W.setBg('helm'); await panoSplash('Orthanc-Turm', 'Etage', f, 'helm', 2000);
   applyParty(); await W.walk(1000);
   const r = await W.fight(tg.group, towerLvl(f), tg.kind);
   if (r.win) {
@@ -651,16 +663,48 @@ const PARTS = ['Teil I · Der Hobbit', 'Teil II · Der Ringkrieg', 'Teil III · 
 const PART_COL = ['#2e8a4a', '#b8402a', '#3a5ab8', '#c8902a', '#8a3ac8'];
 const PART_SHORT = ['I · Hobbit', 'II · Ringkrieg', 'III · Ringe', 'IV · Bündnis', 'V · Urzeit'];
 function chapterStatus(i) { if (i < G.story.ch || G.story.loop > 0) return 'done'; if (i === G.story.ch) return 'cur'; return 'locked'; }
+
+/* ---------- Pergamentkarte von Mittelerde (einmal gezeichnet, gecacht) ---------- */
+function mapBase(w, h) {
+  const key = w + 'x' + h; if (mapBase.k === key) return mapBase.cv; const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const c = cv.getContext('2d'), sx = w / 100, sy = h / 75, X = x => x * sx, Y = y => y * sy, r = Math.min(sx, sy); let sd = 7; const R = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+  // Pergament
+  let g = c.createRadialGradient(w * .5, h * .45, 10, w * .5, h * .5, w * .72); g.addColorStop(0, '#f1e3c0'); g.addColorStop(.7, '#dcc49a'); g.addColorStop(1, '#a88a5e'); c.fillStyle = g; c.fillRect(0, 0, w, h);
+  for (let i = 0; i < 26; i++) { const x = R() * w, y = R() * h, rr = (4 + R() * 14) * r; g = c.createRadialGradient(x, y, 0, x, y, rr); g.addColorStop(0, `rgba(140,100,50,${.05 + R() * .07})`); g.addColorStop(1, 'rgba(140,100,50,0)'); c.fillStyle = g; c.fillRect(x - rr, y - rr, rr * 2, rr * 2); }
+  c.strokeStyle = 'rgba(120,90,50,.08)'; c.lineWidth = .6; for (let i = 0; i < 260; i++) { const x = R() * w, y = R() * h, l = (1 + R() * 4) * r; c.beginPath(); c.moveTo(x, y); c.lineTo(x + l, y + (R() - .5) * l * .3); c.stroke(); }
+  // Meer im Westen mit Küstenlinie und Wellen
+  const coast = () => { c.beginPath(); c.moveTo(0, 0); c.lineTo(X(11), 0); c.bezierCurveTo(X(6), Y(14), X(13), Y(26), X(8), Y(38)); c.bezierCurveTo(X(4), Y(48), X(12), Y(60), X(13), Y(75)); c.lineTo(0, Y(75)); c.closePath(); };
+  coast(); c.fillStyle = 'rgba(80,120,150,.28)'; c.fill(); c.save(); coast(); c.clip(); c.strokeStyle = 'rgba(60,90,120,.35)'; c.lineWidth = .7; for (let y = 4; y < 75; y += 4.5) for (let x = 1; x < 12; x += 5) { c.beginPath(); c.moveTo(X(x), Y(y)); c.quadraticCurveTo(X(x + 1.2), Y(y - 1), X(x + 2.4), Y(y)); c.stroke(); } c.restore();
+  c.strokeStyle = 'rgba(70,50,30,.55)'; c.lineWidth = r * .35; c.beginPath(); c.moveTo(X(11), 0); c.bezierCurveTo(X(6), Y(14), X(13), Y(26), X(8), Y(38)); c.bezierCurveTo(X(4), Y(48), X(12), Y(60), X(13), Y(75)); c.stroke();
+  // Flüsse
+  const river = (pts, w0, w1) => { for (let i = 1; i < pts.length; i++) { const t = i / (pts.length - 1); c.strokeStyle = 'rgba(60,100,140,.6)'; c.lineWidth = r * (w0 + (w1 - w0) * t); c.lineCap = 'round'; c.beginPath(); c.moveTo(X(pts[i - 1][0]), Y(pts[i - 1][1])); c.lineTo(X(pts[i][0]), Y(pts[i][1])); c.stroke(); } };
+  river([[56, 10], [55, 20], [57, 30], [55, 40], [58, 48], [60, 56], [61, 64], [63, 75]], .25, .75); river([[27, 18], [26, 28], [28, 38], [25, 48], [22, 58]], .2, .45); river([[78, 14], [79, 24], [82, 34], [86, 40]], .15, .35);
+  // Gebirge in Tusche mit Licht- und Schattenseite
+  const peak = (x, y, s2) => { const px = X(x), py = Y(y), ww = r * 1.9 * s2, hh = r * 2.6 * s2; c.fillStyle = 'rgba(250,240,215,.55)'; c.beginPath(); c.moveTo(px - ww, py + hh * .4); c.lineTo(px, py - hh); c.lineTo(px, py + hh * .4); c.fill(); c.fillStyle = 'rgba(110,80,50,.45)'; c.beginPath(); c.moveTo(px, py - hh); c.lineTo(px + ww, py + hh * .4); c.lineTo(px, py + hh * .4); c.fill();
+    c.strokeStyle = 'rgba(70,46,26,.7)'; c.lineWidth = r * .22; c.beginPath(); c.moveTo(px - ww, py + hh * .4); c.lineTo(px, py - hh); c.lineTo(px + ww, py + hh * .4); c.stroke(); c.lineWidth = r * .12; c.beginPath(); for (let k = 1; k < 3; k++) { c.moveTo(px + ww * k * .25, py - hh + hh * 1.4 * k * .25); c.lineTo(px + ww * k * .25 + ww * .2, py + hh * .2); } c.stroke(); };
+  const range = (x0, y0, x1, y1, n, s2 = 1) => { for (let i = 0; i <= n; i++) { const t = i / n; peak(x0 + (x1 - x0) * t + (R() - .5) * 1.2, y0 + (y1 - y0) * t + (R() - .5) * 1.2, s2 * (.75 + R() * .45)); } };
+  range(42, 8, 44, 44, 15); range(46, 6, 70, 7, 11, .8); range(44, 60, 62, 61, 9, .85); range(64, 51, 84, 51, 9); range(64, 52, 65, 68, 7); range(65, 68, 84, 67, 8, .9); peak(76, 17, 1.7);
+  // Wälder aus Baumzeichen
+  const forest = (cx0, cy0, rx, ry, n, col) => { for (let i = 0; i < n; i++) { const a = R() * Math.PI * 2, d = Math.sqrt(R()); const x = X(cx0 + Math.cos(a) * rx * d), y = Y(cy0 + Math.sin(a) * ry * d); c.fillStyle = col; c.beginPath(); c.arc(x, y - r * .5, r * .75, 0, Math.PI * 2); c.fill(); c.strokeStyle = 'rgba(60,46,26,.55)'; c.lineWidth = r * .14; c.stroke(); c.beginPath(); c.moveTo(x, y + r * .2); c.lineTo(x, y + r * .7); c.stroke(); } };
+  forest(62, 26, 6.5, 11, 70, 'rgba(70,96,56,.55)'); forest(54, 46, 2.6, 2.4, 14, 'rgba(200,170,70,.6)'); forest(47, 52, 2.6, 2.6, 14, 'rgba(70,96,56,.55)'); forest(27, 39, 2, 1.8, 9, 'rgba(70,96,56,.5)');
+  // Schicksalsberg glüht
+  g = c.createRadialGradient(X(77), Y(60), 0, X(77), Y(60), r * 4); g.addColorStop(0, 'rgba(220,70,30,.55)'); g.addColorStop(1, 'rgba(220,70,30,0)'); c.fillStyle = g; c.fillRect(X(77) - r * 4, Y(60) - r * 4, r * 8, r * 8);
+  // Regionsnamen
+  c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = 'rgba(80,50,24,.42)';
+  for (const [n, x, y, fs, rot] of [['ERIADOR', 22, 22, 3.2, -.05], ['RHOVANION', 70, 36, 2.6, 0], ['ROHAN', 49, 57, 2.8, .05], ['GONDOR', 54, 67, 2.8, 0], ['MORDOR', 75, 59, 3.2, 0], ['RHÛN', 90, 30, 2.6, 0], ['HARAD', 80, 72, 2.4, 0], ['FORODWAITH', 30, 4, 2.2, 0], ['LINDON', 7, 30, 2.2, -1.57]]) { c.save(); c.translate(X(x), Y(y)); c.rotate(rot); c.font = `600 ${r * fs}px Cinzel, serif`; c.letterSpacing = r * fs * .35 + 'px'; c.fillText(n, 0, 0); c.restore(); }
+  // Kompassrose
+  { const cx0 = X(93), cy0 = Y(64), rr = r * 4.2; c.save(); c.translate(cx0, cy0); c.strokeStyle = 'rgba(80,50,24,.6)'; c.lineWidth = r * .15; c.beginPath(); c.arc(0, 0, rr * .78, 0, Math.PI * 2); c.stroke();
+    for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4 - Math.PI / 2, L2 = i % 2 ? rr * .55 : rr, wd = rr * .14; c.save(); c.rotate(a + Math.PI / 2); c.fillStyle = i === 0 ? 'rgba(170,40,30,.75)' : 'rgba(80,50,24,.6)'; c.beginPath(); c.moveTo(0, -L2); c.lineTo(wd, 0); c.lineTo(-wd, 0); c.closePath(); c.fill(); c.restore(); }
+    c.fillStyle = 'rgba(80,50,24,.8)'; c.font = `700 ${r * 1.8}px Cinzel, serif`; c.fillText('N', 0, -rr - r * 1.2); c.restore(); }
+  // angesengte, gealterte Ränder
+  g = c.createRadialGradient(w / 2, h / 2, Math.min(w, h) * .38, w / 2, h / 2, Math.max(w, h) * .62); g.addColorStop(0, 'rgba(70,40,15,0)'); g.addColorStop(1, 'rgba(70,40,15,.5)'); c.fillStyle = g; c.fillRect(0, 0, w, h);
+  for (let i = 0; i < 70; i++) { const side = i % 4, t = R(), x = side === 0 ? t * w : side === 1 ? w : side === 2 ? t * w : 0, y = side === 0 ? 0 : side === 1 ? t * h : side === 2 ? h : t * h, rr = (1.5 + R() * 3.5) * r; g = c.createRadialGradient(x, y, 0, x, y, rr); g.addColorStop(0, 'rgba(40,22,8,.55)'); g.addColorStop(1, 'rgba(40,22,8,0)'); c.fillStyle = g; c.fillRect(x - rr, y - rr, rr * 2, rr * 2); }
+  mapBase.k = key; mapBase.cv = cv; return cv;
+}
 function drawMap(cv, part, sel) {
   const dpr = Math.min(2, devicePixelRatio || 1), W0 = cv.clientWidth, H0 = cv.clientHeight; cv.width = W0 * dpr; cv.height = H0 * dpr;
   const c = cv.getContext('2d'), sx = cv.width / 100, sy = cv.height / 75, X = x => x * sx, Y = y => y * sy, r = Math.min(sx, sy);
-  const g = c.createRadialGradient(cv.width * .5, cv.height * .45, 10, cv.width * .5, cv.height * .5, cv.width * .7); g.addColorStop(0, '#ecdcb4'); g.addColorStop(1, '#a8916a'); c.fillStyle = g; c.fillRect(0, 0, cv.width, cv.height);
-  c.fillStyle = 'rgba(70,110,150,.3)'; c.beginPath(); c.moveTo(0, 0); c.lineTo(X(10), 0); c.quadraticCurveTo(X(4), Y(40), X(12), Y(75)); c.lineTo(0, Y(75)); c.fill();
-  c.strokeStyle = 'rgba(70,110,150,.5)'; c.lineWidth = r * .6; c.beginPath(); c.moveTo(X(56), Y(12)); c.bezierCurveTo(X(52), Y(35), X(60), Y(50), X(62), Y(75)); c.stroke();
-  const mtn = (x0, y0, x1, y1, n) => { c.fillStyle = 'rgba(90,70,50,.4)'; for (let i = 0; i <= n; i++) { const x = X(x0 + (x1 - x0) * i / n), y = Y(y0 + (y1 - y0) * i / n); c.beginPath(); c.moveTo(x - r * 1.5, y + r); c.lineTo(x, y - r * 1.5); c.lineTo(x + r * 1.5, y + r); c.fill(); } };
-  mtn(42, 8, 44, 44, 12); mtn(64, 52, 82, 52, 8); mtn(64, 66, 82, 66, 8); mtn(66, 52, 66, 66, 5); mtn(40, 4, 70, 6, 10);
-  const wood = (x, y, rx, ry) => { c.fillStyle = 'rgba(60,90,50,.3)'; c.beginPath(); c.ellipse(X(x), Y(y), rx * sx, ry * sy, 0, 0, Math.PI * 2); c.fill(); };
-  wood(62, 26, 7, 12); wood(47, 48, 3, 3); wood(53, 44, 2.5, 2.5);
+  c.drawImage(mapBase(cv.width, cv.height), 0, 0);
   const idx = STORY.map((ch, i) => i).filter(i => STORY[i].part === PARTS[part]), col = PART_COL[part];
   c.setLineDash([r * 1.4, r * .9]); c.lineWidth = r * .55; c.strokeStyle = col; c.beginPath();
   idx.forEach((i, j) => { const p = STORY[i].map; j ? c.lineTo(X(p[0]), Y(p[1])) : c.moveTo(X(p[0]), Y(p[1])); }); c.stroke(); c.setLineDash([]);

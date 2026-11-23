@@ -300,6 +300,12 @@ const RIG = (() => {
 
       if (p.jaw > .2 && (hunch || big)) { c.fillStyle = '#2a0a0a'; c.fillRect(x0 + HW - 2.6, y0 + HH - 1.8, 2.4, .8 * p.jaw); }
     }
+    if (!L.noface && ['orc', 'goblin', 'uruk', 'troll'].includes(L.body)) {
+      const tk = L.body === 'troll' ? 1.3 : 1; c.fillStyle = '#ece2c4'; c.strokeStyle = 'rgba(40,30,20,.7)'; c.lineWidth = .12;
+      for (const [tx, th] of [[x0 + HW - .35, 1.1], [x0 + HW - 1.25, .8]]) { c.beginPath(); c.moveTo(tx - .22 * tk, y0 + HH * .9); c.lineTo(tx + .05, y0 + HH * .9 - th * tk); c.lineTo(tx + .26 * tk, y0 + HH * .9); c.closePath(); c.fill(); c.stroke(); }
+      c.strokeStyle = rgba(sh(skin, .45), .7); c.lineWidth = .16; c.beginPath(); c.moveTo(x0 + HW * .45, y0 + HH * .28); c.lineTo(x0 + HW * .82, y0 + HH * .62); c.stroke(); c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = .08; c.beginPath(); for (let i = 0; i < 3; i++) { const t = .3 + i * .2; c.moveTo(x0 + HW * (.45 + .37 * t) - .15, y0 + HH * (.28 + .34 * t) + .12); c.lineTo(x0 + HW * (.45 + .37 * t) + .15, y0 + HH * (.28 + .34 * t) - .12); } c.stroke();
+      if (!['helm', 'spikehelm', 'hood'].includes(L.hat)) { g.fill(() => { c.moveTo(x0 + HW * .22, y0 + HH * .34); c.quadraticCurveTo(x0 - .6, y0 + HH * .18, x0 - 1.7, y0 + HH * .1); c.quadraticCurveTo(x0 - .4, y0 + HH * .5, x0 + HW * .46, y0 + HH * .66); c.closePath(); }, g.lin(x0 - 1.6, 0, x0 + HW * .5, 0, [sh(skin, -.35), skin]), owH * .8); c.strokeStyle = rgba(sh(skin, .5), .55); c.lineWidth = .14; c.beginPath(); c.moveTo(x0 + HW * .25, y0 + HH * .48); c.quadraticCurveTo(x0 - .2, y0 + HH * .3, x0 - 1.2, y0 + HH * .16); c.stroke(); }
+    }
     // Haare
     const hs = L.hs || 'short';
     if (hs === 'long' || hs === 'braids' || hs === 'wild' || hs === 'short' || hs === 'curly') {
@@ -379,6 +385,7 @@ const RIG = (() => {
       c.strokeStyle = rgba(sh(skin, -.55), .55); c.lineWidth = .1; c.beginPath(); for (let i = 1; i < 4; i++) { c.moveTo(q * .3, -q * .34 + i * q * .17); c.lineTo(q * .46, -q * .34 + i * q * .17); } c.stroke(); c.restore(); }
     if (L.gear) { const lg = ['w', 'a', 't'].filter(s => L.gear[s] && L.gear[s].r >= 4).length; if (lg) { c.save(); c.globalCompositeOperation = 'lighter'; for (let i = 0; i < 2 + lg * 2; i++) { const t = ((gt / 1400) + i / (2 + lg * 2)) % 1, a = i * 2.39; c.globalAlpha = Math.sin(t * Math.PI) * .8; g.glow(cx + Math.cos(a) * B.tw * .7, hipY + 2 - t * (B.th + B.ll * .6), .9, '#ffc850', .9); } c.restore(); } }
     if (L.ring) { const hx = aF.h[0] + .2, hy = aF.h[1] - .15, one = L.ringOne, pulse = .55 + .25 * Math.sin(gt / 280); c.save(); c.globalCompositeOperation = 'lighter'; g.glow(hx, hy, (one ? 5 : 3.4) * K, L.ring, pulse); if (one) for (let i = 0; i < 6; i++) { const a = gt / 700 + i * TAU / 6; g.glow(hx + Math.cos(a) * 3.2 * K, hy + Math.sin(a) * 1.6 * K, .9, '#ff7a20', .7 * pulse); } c.restore(); c.strokeStyle = one ? '#ffe07a' : L.ring; c.lineWidth = .42; c.beginPath(); c.arc(hx, hy, B.lw * .32, 0, TAU); c.stroke(); }
+    if (L.noface && L.robe && (L.hat === 'hood' || L.hat === 'spikehelm')) { c.save(); for (let i = 0; i < 16; i++) { const t = ((gt / 1900) + i / 16) % 1, hi = i % 4 === 0, bx = cx - B.tw * .3 + (i % 3) * B.tw * .3, by = hi ? -B.ll - B.th * .9 : -.6 - (i % 3) * B.ll * .35, px = bx - t * (7 + i % 5) + Math.sin(gt / 500 + i) * .6, py = by - t * (hi ? 2 + i % 3 : 3 + (i % 4) * 2), rr = .7 + t * 2.6, a = .34 * Math.sin(t * Math.PI), q = c.createRadialGradient(px, py, 0, px, py, rr * 1.4); q.addColorStop(0, `rgba(10,8,14,${a})`); q.addColorStop(.6, `rgba(16,12,22,${a * .5})`); q.addColorStop(1, 'rgba(16,12,22,0)'); c.fillStyle = q; c.beginPath(); c.ellipse(px, py, rr * 1.6, rr, -.4 + t, 0, TAU); c.fill(); } c.restore(); }
     if (L.fire) { c.save(); c.globalCompositeOperation = 'lighter'; for (let i = 0; i < 7; i++) { const fx = cx - B.tw / 2 + ((i * 5.3) % B.tw), fy = top + ((i * 7.1) % B.th); const a = .4 + .4 * Math.sin(gt / 140 + i * 2); g.glow(fx, fy, 2.4, i % 2 ? '#ff7a1a' : '#ffb030', a); } c.restore(); }
   }
   /* Ausrüstung sichtbar: seltene Waffen leuchten, epische funkeln, legendäre brennen förmlich */
@@ -781,6 +788,20 @@ const RIG = (() => {
   }
 
 
+
+  /* Die Hallen von Khazad-dûm: Säulenreihen, die sich im Dunkel verlieren */
+  function hall(c, g, lit) {
+    const stone = lit ? ['#3a4658', '#6a7a8e', '#2a3444'] : ['#16141a', '#3a363c', '#0e0c10'];
+    g.fill(() => { c.rect(0, 112, 200, 12); }, lit ? 'rgba(60,70,86,.8)' : 'rgba(20,18,22,.85)', 0);
+    for (let row = 3; row >= 0; row--) { const sc = .45 + row * .2, gap = 34 * sc, hh = 124 * sc, top = 124 - hh, fade = .25 + row * .25;
+      for (let x = (row % 2) * gap * .5 - 10; x < 210; x += gap) { const pw = 9 * sc; c.globalAlpha = fade; g.rr(x - pw / 2, top, pw, hh, .4, g.lin(x - pw / 2, 0, x + pw / 2, 0, stone), 0); g.rr(x - pw * .8, top, pw * 1.6, 3 * sc, .3, stone[1], 0); g.rr(x - pw * .8, 124 - 3 * sc, pw * 1.6, 3 * sc, .3, stone[2], 0);
+        c.strokeStyle = lit ? 'rgba(200,220,255,.18)' : 'rgba(255,255,255,.06)'; c.lineWidth = .3; c.beginPath(); for (let k2 = 1; k2 < 5; k2++) { c.moveTo(x - pw * .3, top + hh * k2 / 5); c.lineTo(x + pw * .3, top + hh * k2 / 5); } c.stroke(); } }
+    c.globalAlpha = 1;
+    const beam = c.createLinearGradient(0, 0, 0, 124); beam.addColorStop(0, lit ? 'rgba(255,230,180,.35)' : 'rgba(200,220,255,.28)'); beam.addColorStop(1, 'rgba(200,220,255,0)'); c.fillStyle = beam; c.beginPath(); c.moveTo(92, 0); c.lineTo(108, 0); c.lineTo(126, 124); c.lineTo(80, 124); c.closePath(); c.fill();
+    if (lit) { c.fillStyle = 'rgba(255,190,100,.9)'; for (let i = 0; i < 9; i++) c.fillRect(12 + i * 22, 70 + (i % 3) * 8, 1.4, 2.2); }
+  }
+  function hallAnim(ctx, x, y, gt, lit) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; for (let i = 0; i < 10; i++) { const t = ((gt / 6000) + i / 10) % 1, px = x + 92 + (i * 7.3 % 26) + Math.sin(gt / 900 + i) * 2, py = y + t * 120; ctx.fillStyle = `rgba(255,250,230,${.5 * Math.sin(t * Math.PI)})`; ctx.fillRect(px, py, .7, .7); }
+    if (lit) for (let i = 0; i < 9; i++) { const px = x + 12.7 + i * 22, py = y + 71 + (i % 3) * 8, a = .3 + .15 * Math.sin(gt / 300 + i), r = ctx.createRadialGradient(px, py, 0, px, py, 6); r.addColorStop(0, `rgba(255,180,90,${a})`); r.addColorStop(1, 'rgba(255,160,60,0)'); ctx.fillStyle = r; ctx.fillRect(px - 6, py - 6, 12, 12); } ctx.restore(); }
   /* ---------- Wahrzeichen der Lore (Fernsicht, gecacht) ---------- */
   const lmCache = new Map();
   const LANDMARKS = {
@@ -824,6 +845,19 @@ const RIG = (() => {
         c.strokeStyle = 'rgba(0,0,0,.3)'; c.lineWidth = .4; c.beginPath(); for (let i = 0; i < 4; i++) { c.moveTo(-6 + i * 4, -58); c.lineTo(-8 + i * 5, -20); } c.stroke(); c.restore(); };
       king(42, 1); king(118, -1);
     } },
+    moria: { w: 200, h: 124, base: 2, k: .6, paint(c, g, T) { hall(c, g, false); }, anim(ctx, x, y, gt) { hallAnim(ctx, x, y, gt, false); } },
+    khazad: { w: 200, h: 124, base: 2, k: .6, paint(c, g, T) { hall(c, g, true); }, anim(ctx, x, y, gt) { hallAnim(ctx, x, y, gt, true); } },
+    mirkwood: { w: 190, h: 122, base: 2, k: .6, paint(c, g, T) {
+      for (const [tx, tw, lean] of [[20, 10, -4], [70, 13, 3], [128, 11, -2], [178, 12, 5]]) {
+        g.fill(() => { c.moveTo(tx - tw, 122); c.bezierCurveTo(tx - tw * .4, 90, tx + lean - tw * .6, 50, tx + lean - tw * .35, 0); c.lineTo(tx + lean + tw * .35, 0); c.bezierCurveTo(tx + lean + tw * .5, 50, tx + tw * .4, 90, tx + tw, 122); c.closePath(); }, g.lin(tx - tw, 0, tx + tw, 0, ['#0e1210', '#2a3226', '#141a14']), 0);
+        c.strokeStyle = 'rgba(60,70,50,.5)'; c.lineWidth = .5; c.beginPath(); for (let i = 0; i < 4; i++) { c.moveTo(tx - tw * .5 + i * tw * .3, 120); c.bezierCurveTo(tx - tw * .3 + i * tw * .2, 80, tx + lean - tw * .2 + i * tw * .1, 40, tx + lean - tw * .15 + i * tw * .1, 4); } c.stroke();
+        c.strokeStyle = '#141a14'; c.lineWidth = 2.4; c.lineCap = 'round'; c.beginPath(); c.moveTo(tx + lean * .6, 40); c.quadraticCurveTo(tx + 22, 30, tx + 34, 44); c.moveTo(tx + lean * .4, 62); c.quadraticCurveTo(tx - 18, 54, tx - 28, 66); c.stroke(); }
+      c.strokeStyle = 'rgba(230,236,230,.4)'; c.lineWidth = .3;
+      for (const [wx, wy, wr] of [[46, 50, 14], [150, 36, 12], [100, 84, 10]]) { const N = 9, an = i => i / N * Math.PI * 2 + Math.sin(i * 2.7 + wx) * .22, ln = i => wr * (.82 + .25 * Math.abs(Math.sin(i * 1.9 + wy))); for (let i = 0; i < N; i++) { c.beginPath(); c.moveTo(wx, wy); c.lineTo(wx + Math.cos(an(i)) * ln(i), wy + Math.sin(an(i)) * ln(i)); c.stroke(); }
+        for (let k2 = 1; k2 <= 5; k2++) { c.beginPath(); for (let i = 0; i <= N; i++) { const j = i % N, rr = ln(j) * k2 / 5, x = wx + Math.cos(an(j)) * rr, y = wy + Math.sin(an(j)) * rr; if (!i) { c.moveTo(x, y); continue; } const jp = (i - 1) % N, am = (an(jp) + (j ? an(j) : an(j) + Math.PI * 2)) / 2, rm = (ln(jp) + ln(j)) / 2 * k2 / 5 * .78; c.quadraticCurveTo(wx + Math.cos(am) * rm, wy + Math.sin(am) * rm, x, y); } c.stroke(); }
+        c.beginPath(); c.moveTo(wx + Math.cos(an(2)) * ln(2), wy + Math.sin(an(2)) * ln(2)); c.quadraticCurveTo(wx + 2, wy + wr + 8, wx + 4, wy + wr + 16); c.stroke(); }
+      c.fillStyle = 'rgba(200,200,190,.06)'; for (let i = 0; i < 14; i++) { const x = 6 + i * 13.5, l = 10 + (i * 7) % 18; c.fillRect(x, 26 + (i * 11) % 30, .35, l); }
+    }, anim(ctx, x, y, gt) { const ph = (gt % 5200) / 5200, open = ph < .9 ? 1 : Math.abs(Math.sin((ph - .9) * 30)); ctx.save(); ctx.globalCompositeOperation = 'lighter'; for (const [cx0, cy0, sc] of [[100, 70, 1], [159, 92, .8]]) for (const [dx, dy, er] of [[-3.4, 0, 1.6], [3.4, 0, 1.6], [-1.3, -1.6, 1.1], [1.3, -1.6, 1.1], [-5.6, -1.4, .8], [5.6, -1.4, .8], [-2.2, 1.9, .7], [2.2, 1.9, .7]]) { const ex = x + cx0 + dx * sc, ey = y + cy0 + dy * sc, rr = er * 2 * sc, r = ctx.createRadialGradient(ex, ey, 0, ex, ey, rr); r.addColorStop(0, `rgba(230,255,150,${.9 * open})`); r.addColorStop(.35, `rgba(150,230,80,${.45 * open})`); r.addColorStop(1, 'rgba(120,220,60,0)'); ctx.fillStyle = r; ctx.beginPath(); ctx.ellipse(ex, ey, rr, rr * open, 0, 0, Math.PI * 2); ctx.fill(); } ctx.restore(); } },
     rivendell: { w: 200, h: 118, base: 3, k: .56, paint(c, g, T) {
       const rock = g.lin(0, 0, 0, 118, ['#5a6a64', '#3a4a42', '#2a3830']);
       g.fill(() => { c.moveTo(0, 118); c.lineTo(0, 10); c.quadraticCurveTo(18, 4, 34, 16); c.lineTo(48, 60); c.quadraticCurveTo(56, 92, 60, 118); c.closePath(); }, rock, 0);

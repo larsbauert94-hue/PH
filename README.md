@@ -12,6 +12,12 @@ Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden 
 
 Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten). Unter **Optionen → Grafik** lässt sich zwischen *Auto*, *Hoch* (Figuren mit Szenenlicht, Kantenlicht und Bodenverdeckung) und *Normal* wählen; *Auto* schaltet bei zu niedriger Bildrate selbst herunter.
 
+## Neu in Version 12.2
+- **Reisekarte als echte Mittelerde-Karte:** gealtertes Pergament mit Flecken und angesengten Rändern, schattierte Gebirgszüge (Nebelgebirge, Weiße Berge, Schattengebirge, Erebor), Wälder aus Baumzeichen (Düsterwald, Lórien, Fangorn), Flüsse mit Verlauf, Küste mit Wellen, Regionsnamen (Eriador, Rhovanion, Rohan, Gondor, Mordor …) und Kompassrose; glühender Schicksalsberg
+- **Kapitel-Einblendung als Kinomoment:** bildschirmfüllendes, gemaltes Panorama des Schauplatzes mit seinem Wahrzeichen und langsamem Kamerazoom; auch bei Nebenquests, Bossrevanchen, Prüfungen und Orthanc-Etagen
+- **Gegner mit mehr Charakter:** Orks, Uruks und Trolle mit Hauern, Narben und spitzen Ohren; Ringgeister ziehen wabernde Schattenschleier hinter sich her
+- **Neue Wahrzeichen:** die Hallen von Moria und Khazad-dûm mit Säulenreihen, Lichtschacht und Staub, Zwergenlampen; der Düsterwald mit knorrigen Stämmen, durchhängenden Spinnennetzen und glimmenden Spinnenaugen
+
 ## Neu in Version 12.1
 - **Wappen mittig als Wappenschild** auf der Brust (heraldischer Grund in Lore-Farbe, Metallrand); bei langen Bärten tiefer, bei Zwergen als Gürtelschnalle; Schilde mit schlichtem Buckel
 - **Ausdrucksstärkere Gesichter:** Augenhöhlen, Wangenknochen, Lippen, Nasenrücken, Falten bei Älteren (Gandalf, Théoden, Balin, Círdan …), zornige Brauen im Kampf, geschlossene Augen bei Gefallenen
