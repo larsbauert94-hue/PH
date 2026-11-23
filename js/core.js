@@ -92,6 +92,7 @@ function partyAura(keys = G.party) {
   for (const k of keys) { if (!G.heroes[k]) continue; for (const ps of HEROES[k].pas) if (ps.lvl <= G.heroes[k].lvl) for (const [key, v] of Object.entries(ps.e)) { if (key === 'auraAtk') a.atk += v; if (key === 'auraDef') a.def += v; if (key === 'auraHp') a.hp += v; if (key === 'auraSpd') a.spd += v; if (key === 'auraCrit') a.crit += v; } }
   for (const f of activeFactions(keys)) if (f.tier >= 0) add(f.F.t[f.tier][1]);
   for (const id of Object.keys(G.trophies || {})) { const H = HUNTS.find(h => h.id === id); if (H) add(H.tr.e); }
+  if (G.tempBuff && G.tempBuff.fights > 0) add(G.tempBuff.e);
   { const BN = G.banner && BANNERS.find(b => b.id === G.banner); if (BN) add(BN.e); }
   add(bookAura());
   for (const i of Object.keys(G.relics || {})) if (RELICS[i]) add(RELICS[i].e);
@@ -107,6 +108,7 @@ function heroStats(key, aura) {
   aura = Object.assign(AURA0(), aura || {});
   if (!aura._party) for (const i of Object.keys(G.relics || {})) if (RELICS[i]) for (const [k, v] of Object.entries(RELICS[i].e)) aura[k] += v;
   if (!aura._party) for (const [k, v] of Object.entries(bookAura())) aura[k] = (aura[k] || 0) + v;
+  if (!aura._party && G.tempBuff && G.tempBuff.fights > 0) for (const [k, v] of Object.entries(G.tempBuff.e)) aura[k] = (aura[k] || 0) + v;
   if (!aura._party) { const BN = G.banner && BANNERS.find(b => b.id === G.banner); if (BN) for (const [k, v] of Object.entries(BN.e)) aura[k] = (aura[k] || 0) + v; }
   if (!aura._party) for (const id of Object.keys(G.trophies || {})) { const H = HUNTS.find(h => h.id === id); if (H) for (const [k, v] of Object.entries(H.tr.e)) aura[k] = (aura[k] || 0) + v; }
   if (aura._party) for (const b of activeBonds()) if (b.a === key || b.b === key) for (const [k, v] of Object.entries(b.e)) aura[k] = (aura[k] || 0) + v;

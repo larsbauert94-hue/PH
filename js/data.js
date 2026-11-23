@@ -1210,3 +1210,13 @@ const SAGAS = [
   { id: 'ungoliant', foe: 'ungoliant', sn: 'Ungoliant', bg: 'dolguldur', after: 25, adds: ['spiderling', 'spiderling'], lore: 'Die Lichtfresserin, die die Zwei Bäume von Valinor vergiftete.' },
   { id: 'draugluin', foe: 'draugluin', sn: 'Draugluin', bg: 'mirkwood', after: 24, adds: ['werwolf', 'werwolf'], lore: 'Vater der Werwölfe, Diener Saurons auf Tol-in-Gaurhoth.' }
 ];
+
+/* ---------- Begegnungen unterwegs: zwei Wege, kaum Text ---------- */
+const ENCOUNTERS = [
+  { id: 'bombadil', who: 'tom', n: 'Tom Bombadil', a: { ic: '♪', n: 'Bei Tom rasten', d: '+20 % LP für 3 Kämpfe', buff: { hp: 20 } }, b: { ic: '❀', n: 'Goldbeeres Lieder', d: '+15 % Heilung für 3 Kämpfe', buff: { healPct: 15 } } },
+  { id: 'feuerwerk', who: 'gandalf', n: 'Gandalfs Feuerwerk', a: { ic: '✷', n: 'Zuschauen', d: '+15 % Angriff für 3 Kämpfe', buff: { atk: 15 } }, b: { ic: '◈', n: 'Funken sammeln', d: '2 Ringfragmente', frags: 2 } },
+  { id: 'beorn', who: 'beorn', n: 'Beorns Halle', a: { ic: '❦', n: 'Honigkuchen', d: '+20 % LP für 3 Kämpfe', buff: { hp: 20 } }, b: { ic: '⛉', n: 'Bärenkraft', d: '+15 % Verteidigung für 3 Kämpfe', buff: { def: 15 } } },
+  { id: 'elben', who: 'haldir', n: 'Wandernde Elben', a: { ic: '✦', n: 'Segen der Eldar', d: '+10 % Krit für 3 Kämpfe', buff: { crit: 10 } }, b: { ic: '◆', n: 'Elbengaben', d: 'Ein epischer Gegenstand', item: 3 } },
+  { id: 'truhe', ic: '⛁', n: 'Verlassene Truhe', a: { ic: '⛁', n: 'Öffnen', d: 'Ein Schatz – oder eine Falle', gamble: 1 }, b: { ic: '◆', n: 'Vorsichtig prüfen', d: 'Sicheres Gold', gold: 1 } },
+  { id: 'hinterhalt', ic: '⚔', n: 'Frische Orkspuren', a: { ic: '⚔', n: 'Hinterhalt legen', d: 'Elite-Kampf, Chance auf Legendäres', ambush: 1 }, b: { ic: '➜', n: 'Umgehen', d: 'Sicher weiterziehen' } }
+];

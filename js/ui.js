@@ -256,6 +256,31 @@ const CINE = {
     const sx = 112 - t * 74, sc = 1 - t * .55, sy2 = 57; c.save(); c.translate(sx, sy2); c.scale(sc, sc); c.fillStyle = '#f4f0e8'; c.beginPath(); c.moveTo(-8, 0); c.quadraticCurveTo(0, 3, 9, 0); c.lineTo(7, -1.5); c.lineTo(-6, -1.5); c.closePath(); c.fill(); c.fillRect(-.3, -14, .6, 13); c.beginPath(); c.moveTo(.4, -13); c.quadraticCurveTo(6, -8, .4, -2); c.fill(); c.beginPath(); c.moveTo(-.4, -11); c.quadraticCurveTo(-4.5, -7, -.4, -3); c.fill(); c.beginPath(); c.moveTo(9, 0); c.quadraticCurveTo(11, -3, 10, -5); c.lineTo(9, -4.4); c.quadraticCurveTo(9.6, -2.6, 8, -.6); c.fill(); c.restore(); cGlow(c, sx, sy2 - 6 * sc, 12 * sc, '#ffffff', .4);
     for (let i = 0; i < 24; i++) { c.fillStyle = `rgba(255,255,255,${Math.max(0, t - .5) * (.6 + .4 * Math.sin(now / 400 + i))})`; c.fillRect((i * 41) % 160, (i * 17) % 30, .5, .5); } }
 };
+/* ---------- Rast am Lagerfeuer nach jedem Kapitel ---------- */
+function campScene() {
+  const pr = splash(`<div class="cine"><canvas class="cinecv"></canvas><div class="cine-bar t"></div><div class="cine-bar b"></div></div>`, 0, 'cineS'), cv = $('#splash .cinecv'), s0 = $('#splash'), close = s0.onclick, t0 = performance.now(), DUR = 3800; let done = false;
+  setTimeout(() => { if (!done && s0.onclick === close) close && close(); }, DUR); pr.then(() => { done = true; });
+  const party = G.party.slice(0, 5), spots = [[46, 73, 1], [60, 77, 1], [102, 77, -1], [116, 73, -1], [130, 70, -1]], cp = COMPANIONS.find(c => c.id === G.companion && G.comps[c.id]), dpr = Math.min(2, devicePixelRatio || 1);
+  const looks = party.map(k => { const L = heroLook(k); delete L.mount; return L; });
+  const frame = now => { if (done || !cv.isConnected) return; const w = cv.clientWidth * dpr, h = cv.clientHeight * dpr; if (cv.width !== Math.round(w)) { cv.width = Math.round(w); cv.height = Math.round(h); }
+    const c = cv.getContext('2d'), t = (now - t0) / DUR, S = Math.min(cv.width / 160, cv.height / 90), fl = .85 + Math.sin(now / 90) * .08 + Math.sin(now / 37) * .06;
+    c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = '#000'; c.fillRect(0, 0, cv.width, cv.height); c.setTransform(S, 0, 0, S, (cv.width - 160 * S) / 2, (cv.height - 90 * S) / 2);
+    cSky(c, ['#04060e', '#0c1430', '#1a1e34']); for (let i = 0; i < 60; i++) { c.fillStyle = `rgba(255,255,255,${.25 + .35 * Math.abs(Math.sin(now / 700 + i))})`; c.fillRect((i * 53) % 160, (i * 29) % 46, .4, .4); }
+    cGlow(c, 128, 16, 16, '#dfe8ff', .3); c.fillStyle = '#eef2ff'; c.beginPath(); c.arc(128, 16, 3.4, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#0a0e18'; c.beginPath(); c.moveTo(-10, 56); c.quadraticCurveTo(30, 40, 60, 52); c.quadraticCurveTo(100, 38, 170, 54); c.lineTo(170, 100); c.lineTo(-10, 100); c.fill();
+    for (const x of [8, 18, 142, 152]) { c.fillStyle = '#05070c'; c.beginPath(); c.moveTo(x, 66); c.lineTo(x + 5, 38); c.lineTo(x + 10, 66); c.fill(); }
+    c.fillStyle = '#0e1008'; c.fillRect(-10, 66, 180, 40);
+    cGlow(c, 80, 68, 60 * fl, '#ff9a40', .32);
+    if (cp && cp.kind === 'pony') { c.save(); c.translate(26, 74); c.scale(.55, .55); RIG.draw(c, 'quad', Object.assign({ horse: 1, pony: 1 }, cp.look), 'idle', 0, now); c.restore(); }
+    party.forEach((k, i) => { const [x, y, d] = spots[i]; c.save(); c.translate(x, y); c.scale(.62 * d, .62); RIG.draw(c, 'hum', looks[i], 'idle', 0, now + i * 400); c.restore(); });
+    c.fillStyle = '#3a2416'; c.save(); c.translate(80, 71); for (const a of [-.4, .4, 0]) { c.save(); c.rotate(a); c.fillRect(-7, -1, 14, 2); c.restore(); } c.restore();
+    c.globalCompositeOperation = 'lighter'; for (let i = 0; i < 6; i++) { const ph = now / (140 + i * 23) + i, hh = 7 + Math.sin(ph) * 2 + (i % 3), xx = 80 + (i - 2.5) * 1.6; const g = c.createLinearGradient(xx, 71, xx, 71 - hh); g.addColorStop(0, 'rgba(255,120,30,.9)'); g.addColorStop(.6, 'rgba(255,200,80,.6)'); g.addColorStop(1, 'rgba(255,240,180,0)'); c.fillStyle = g; c.beginPath(); c.moveTo(xx - 2.2, 71); c.quadraticCurveTo(xx - 1, 71 - hh * .6, xx + Math.sin(ph * 2) * 1.2, 71 - hh); c.quadraticCurveTo(xx + 1.2, 71 - hh * .5, xx + 2.2, 71); c.fill(); }
+    for (let i = 0; i < 14; i++) { const k2 = ((now / 1300) + i / 14) % 1; c.fillStyle = `rgba(255,${170 + i * 5},80,${1 - k2})`; c.fillRect(80 + Math.sin(i * 2.7 + now / 400) * 4 * k2, 68 - k2 * 30, .6, .6); }
+    for (let i = 0; i < 5; i++) { const [x, y] = spots[i] || [0, 0]; if (i < party.length) cGlow(c, x + (x < 80 ? 3 : -3), y - 9, 9, '#ffb060', .18 * fl); }
+    c.globalCompositeOperation = 'source-over';
+    const fade = Math.min(1, t * 6, (1 - t) * 6); c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = `rgba(0,0,0,${1 - Math.max(0, fade)})`; c.fillRect(0, 0, cv.width, cv.height); requestAnimationFrame(frame); };
+  requestAnimationFrame(frame); return pr;
+}
 function travelSplash(from, to) {
   const A = STORY[from], B = STORY[to]; if (!A || !B || !A.map || !B.map) return Promise.resolve();
   const part = PARTS.indexOf(B.part), same = A.part === B.part, pr = splash(`<div class="travel"><canvas class="trmap"></canvas></div>`, 2600, 'chap trS');
@@ -288,6 +313,7 @@ function applyParty() {
 }
 function onResult(r, kind) {
   if (r.aborted) return; lastWin = !!r.win;
+  if (G.tempBuff && --G.tempBuff.fights <= 0) { G.tempBuff = null; W.pendingParty = 1; }
   const party = G.party.slice();
   if (r.win) {
     G.stats.wins++; addChest(kind === 'boss' ? 3 : 1);
@@ -296,6 +322,7 @@ function onResult(r, kind) {
     if (kind === 'boss' && r.setCh !== undefined) { const S2 = chapterSet(r.setCh); if (S2 && Math.random() < .6) rw.items.push(genSetItem(S2, r.enemies.reduce((a, e) => Math.max(a, e.lvl), 1))); }
     const lvBefore = Object.fromEntries(owned().map(k => [k, G.heroes[k].lvl]));
     autoEquip.last = []; const res = applyReward(rw, party); suggestGear(rw.items); autoClean();
+    { const top = rw.items.reduce((m, it) => Math.max(m, it.r), 0), src = r.enemies.find(e => e.boss) || r.enemies[r.enemies.length - 1]; if (top >= 4 && src) { W.fxs.push({ k: 'beam', x: src.x + src.ox, y: src.y + src.oy, c: RARITY[top].c, t: 0, dur: 2200, under: 0 }); sfx('loot'); W.flash(RARITY[top].c, 260); } }
     lootPop(rw.items, rw.gold);
     const r0 = Object.values(res)[0];
     if (r0 && r0.ups) {
@@ -474,7 +501,7 @@ async function director() {
     await announceUnlocks();
     const ch = STORY[G.story.ch]; W.setBg(chBg(ch, G.story.wave));
     if (!G.story.intro) {
-      await W.wait(400); if (G.story.ch > 0) await travelSplash(G.story.ch - 1, G.story.ch); await chapterTitle(ch);
+      await W.wait(400); if (G.story.ch > 0) { await campScene(); await travelSplash(G.story.ch - 1, G.story.ch); } await chapterTitle(ch);
       if (ch.back) for (const k of ch.back) { delete G.away[k]; const hs = G.heroes[k]; if (hs) { hs.stage = Math.max(hs.stage, 2); hs.lvl = Math.max(hs.lvl, ...G.party.map(x => G.heroes[x].lvl)); } }
       await dialog(ch.intro);
       for (const k of ch.join || []) { joinHero(k); applyParty(); await joinSplash(k); }
@@ -490,6 +517,7 @@ async function director() {
         await dialog(ch.midLine?.[w]); for (const k of ch.mid?.[w] || []) { joinHero(k); applyParty(); await joinSplash(k); }
         G.story.mids[mk] = 1; save();
       }
+      const ek = G.story.ch + '-' + G.story.loop; if ([2, 4, 5].includes(w) && G.encCh !== ek && isUnl('quests') && Math.random() < .35) { G.encCh = ek; save(); await encounter(w); }
       applyParty(); await W.walk(1500);
       const kind = isEliteWave(w) ? 'elite' : 'normal'; if (kind === 'elite') waveCard(w, kind);
       const grp = chapterWaves()[w], r = await W.fight(grp, waveLvl(w), kind, { aff: storyAfx(grp, kind) });
@@ -625,6 +653,7 @@ function sumEff(list) { const o = {}; for (const e of list) for (const [k, v] of
 function boonList() {
   const out = [], cp = COMPANIONS.find(c => c.id === G.companion && G.comps[c.id]);
   if (cp) out.push({ id: 'comp', ic: '❀', c: '#9fd08a', n: 'Begleiter: ' + cp.n, d: cp.d });
+  if (G.tempBuff && G.tempBuff.fights > 0) out.push({ id: 'temp', ic: '✧', c: '#9fe6ff', n: 'Segen unterwegs', d: `${effTxt(G.tempBuff.e)} · noch ${G.tempBuff.fights} Kämpfe`, cnt: G.tempBuff.fights });
   for (const d of activeDuos(G.party)) out.push({ id: 'duo', ic: '⚯', c: d.c, n: `Duo: ${d.n}`, d: `${HEROES[d.a].n} & ${HEROES[d.b].n} – ${d.d} (nach einem Ultimate, einmal pro Kampf)` });
   const BN = isUnl('banner') && G.banner && BANNERS.find(b => b.id === G.banner); if (BN) out.push({ id: 'banner', ic: '⚐', c: BN.emCol === '#141010' ? '#e8c860' : BN.emCol, bg: BN.cloth, n: BN.n, d: BN.d });
   for (const f of activeFactions(G.party).filter(f => f.tier >= 0)) out.push({ id: 'bond', ic: f.F.ic, c: f.F.c, n: `Bündnis: ${f.F.n} (${f.n})`, d: f.F.t[f.tier][2] });
@@ -644,6 +673,7 @@ function renderBoons() {
     const a = act[0], cnt = id === 'bond' ? act.length : a.cnt || 0; const lbl = id === 'comp' ? a.n.replace('Begleiter: ', '').split(' ')[0] : id === 'banner' ? a.n.replace(/^Banner (von |der )?/, '') : id === 'bond' ? (act.length > 1 ? act.length + ' Bündnisse' : a.n.replace(/^Bündnis: /, '').replace(/ \(\d+\)$/, '')) : n;
     return { st: 'on', ic: a.ic, lbl, c: a.c, bg: a.bg, cnt }; });
   { const du = L.filter(b => b.id === 'duo'); if (du.length) chips.splice(1, 0, { st: 'on', ic: '⚯', lbl: du.length > 1 ? du.length + ' Duos' : 'Duo', c: du[0].c, cnt: du.length }); }
+  { const tb = L.find(b => b.id === 'temp'); if (tb) chips.unshift({ st: 'on', ic: '✧', lbl: 'Segen', c: tb.c, cnt: tb.cnt }); }
   for (const b of L) if (b.id === 'pfad' || b.id === 'mods') chips.push({ st: 'on', ic: b.ic, lbl: b.id === 'pfad' ? 'Segen' : 'Erschwernis', c: b.c, cnt: b.cnt || 0 });
   const sig = JSON.stringify(chips); if (renderBoons.sig === sig) return; renderBoons.sig = sig;
   const html = chips.map(b => `<button class="bo ${b.st}" ${b.st === 'lk' ? `data-lock="${b.u}"` : ''} style="--bc:${b.c};${b.bg ? `--bb:${b.bg}` : ''}" title="${esc(b.lbl)}"><span>${b.ic}</span>${b.cnt > 1 ? `<i>${b.cnt}</i>` : ''}<em class="bo-l">${esc(b.lbl)}</em></button>`).join('');
@@ -1129,6 +1159,22 @@ async function helmRun() {
   W.setBg(prevBg); updateHud();
 }
 /* ---------- Pfad der Verzweiflung ---------- */
+async function encounter(w) {
+  const E = ENCOUNTERS[Math.floor(Math.random() * ENCOUNTERS.length)]; let ch2 = E.a;
+  const card = (o, i) => `<button class="bl-c" data-o="${i}"><span class="bl-ic">${o.ic}</span><b>${esc(o.n)}</b><small>${esc(o.d)}</small></button>`;
+  const art = E.who ? `<canvas class="enc-art" data-card="${E.who}" data-bust="1"></canvas>` : `<div class="enc-art enc-ic">${E.ic}</div>`;
+  sfx('join');
+  const pr = splash(`<div class="pfad enc"><div class="kicker">Begegnung unterwegs</div>${art}<h1>${esc(E.n)}</h1><div class="bl-row two">${card(E.a, 0)}${card(E.b, 1)}</div></div>`, 0, 'pfadS');
+  const s = $('#splash'), close = s.onclick; s.onclick = null; s.querySelectorAll('[data-o]').forEach(bt => bt.onclick = ev => { ev.stopPropagation(); ch2 = bt.dataset.o === '1' ? E.b : E.a; sfx('buff'); close && close(); });
+  await pr; const o = ch2, lvl = waveLvl(w);
+  if (o.buff) { G.tempBuff = { e: o.buff, fights: 3 }; W.pendingParty = 1; toast(`✧ ${esc(o.n)}: ${esc(o.d)}`, 'lvl'); }
+  if (o.frags) grantFragments(o.frags);
+  if (o.item) { const it = genItem(lvl + 1, o.item); addItem(it); lootPop([it], 0); if (G.settings.autoEquip) autoEquip(); }
+  if (o.gold) { const gd = 150 + lvl * 20; G.gold += gd; lootPop([], gd); }
+  let ambush = !!o.ambush; if (o.gamble) { if (Math.random() < .65) { const it = genItem(lvl + 2, topRarity(.03, .35)); addItem(it); lootPop([it], 0); if (G.settings.autoEquip) autoEquip(); } else { ambush = true; toast('Eine Falle! Orks greifen an!', 'unlock'); } }
+  if (ambush) { applyParty(); await W.walk(700); const grp = chapterWaves()[3], r = await W.fight(grp, lvl + 2, 'elite', { aff: afxPlan(grp, { one: 1, elite: 1 }) }); if (!r.aborted) { onResult(r, 'elite'); if (r.win && o.ambush) { const it = genItem(lvl + 2, topRarity(.05, .5)); addItem(it); lootPop([it], 0); if (G.settings.autoEquip) autoEquip(); } } }
+  save(); updateHud();
+}
 function pickBlessing(n, B) {
   const dead = W.heroes.some(h => !alive(h)), pool = BLESSINGS.filter(b => !(b.needDead && !dead) && !(b.once !== false && !b.now && B.taken.includes(b.id) && !b.e && !b.p)); const opts = [];
   while (opts.length < 3 && pool.length) opts.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);

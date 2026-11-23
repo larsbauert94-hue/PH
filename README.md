@@ -12,6 +12,12 @@ Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden 
 
 Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten). Unter **Optionen → Grafik** lässt sich zwischen *Auto*, *Hoch* (Figuren mit Szenenlicht, Kantenlicht und Bodenverdeckung) und *Normal* wählen; *Auto* schaltet bei zu niedriger Bildrate selbst herunter.
 
+## Neu in Version 16
+- **Siegesposen je Waffe:** Zauberer reißen den leuchtenden Stab empor, Schwertkämpfer recken die Klinge, Zwerge jubeln mit Axt und Hammer, Bogenschützen präsentieren den Bogen
+- **Lichtsäule für große Beute:** fällt Legendäres oder Mythisches, steigt an der Stelle des Gegners eine Lichtsäule in der Farbe der Seltenheit auf
+- **Rast am Lagerfeuer:** nach jedem Kapitel sitzt die Gruppe unter dem Sternenhimmel am Feuer, mit Funkenflug, Mondlicht und dem Begleiter
+- **Begegnungen unterwegs:** Tom Bombadil, Gandalfs Feuerwerk, Beorns Halle, wandernde Elben, eine verlassene Truhe oder frische Orkspuren – zwei Wege zur Wahl, Segen für drei Kämpfe, Fragmente, Gegenstände oder ein Hinterhalt mit legendärer Chance
+
 ## Neu in Version 15
 - **Ziele:** neuer erster Reiter im Reise-Menü mit allem, was sich gerade lohnt – Story, Sagen, Nebenquests, Kopfgeld, offene Sterne, Turm – jeweils mit ▶ und ↻5
 - **Auto-Wiederholen:** Nebenquests, Kopfgeld, Prüfungen und Sagen 5× hintereinander; „Nächster Schritt“ zeigt den Stand und stoppt auf Tipp; endet automatisch nach einer Niederlage

@@ -68,7 +68,13 @@ const RIG = (() => {
       b.stride = Math.sin(ph) * 3; b.bob = Math.abs(Math.cos(ph)) * .9 - .4; b.aB = 1.45 + Math.sin(ph) * .5; b.aF += -Math.sin(ph) * .15; b.cape = 2; b.walkPh = ph; b.lean = .6; return b;
     }
     if (anim === 'victory') {
-      const ph = el / 900 * TAU; Object.assign(b, { bob: -Math.abs(Math.sin(ph)) * 3, aF: -1.6 + Math.sin(ph) * .1, wa: -1.57, aB: 1.4 - Math.abs(Math.sin(ph)) * 2.6, cape: 1.4 }); return b;
+      const ph = el / 900 * TAU, s = Math.sin(ph), as = Math.abs(s);
+      if (w === 'staff') Object.assign(b, { bob: -as * .8, aF: -1.75 + s * .05, wa: -1.57, aB: 1.15, glow: 1, cape: 1.2, lean: -.05 });
+      else if (w === 'bow') Object.assign(b, { bob: -as * .6, aF: -.55 + s * .08, aB: .35, cape: 1, lean: -.04 });
+      else if (['axe', 'hammer', 'mace', 'club'].includes(w)) Object.assign(b, { bob: -as * 3.4, aF: -1.9 + as * .5, wa: -2.4, aB: 1.6 - as * 2.8, cape: 1.5, jaw: as * .6 });
+      else if (['sword', 'dagger', 'spear'].includes(w)) Object.assign(b, { bob: -as * 1.4, aF: -2.1 + s * .12, wa: -1.95, aB: .9 + s * .3, glow: 1, cape: 1.4, lean: -.06 });
+      else Object.assign(b, { bob: -as * 3, aF: -1.6 + s * .1, wa: -1.57, aB: 1.4 - as * 2.6, cape: 1.4 });
+      return b;
     }
     if (anim === 'hurt') { const k = clamp01(el / 300); const h = key('hurt', 0, w); return mixP(h, b, ease(clamp01((k - .25) / .75))); }
     if (anim === 'dead') { const p = key('dead', 0, w); p.fall = ease(clamp01(el / 600)); return p; }
