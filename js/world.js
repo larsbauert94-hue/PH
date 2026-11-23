@@ -47,6 +47,14 @@ class World {
     this.layoutHeroes(); this.layoutEnemies(true);
   }
   get cx() { return this.LW / 2; }
+  /* Antippen in der Welt: Bildschirmpunkt → Weltkoordinaten → Figur */
+  unitAt(clientX, clientY) {
+    const r = this.cv.getBoundingClientRect(), px = (clientX - r.left) * this.cv.width / r.width, py = (clientY - r.top) * this.cv.height / r.height;
+    const z = this.cam.z, s = this.s, sc = s * z, tx = this.ox0 + (-(this.LW / 2) * (z - 1) - (this.cam.x - this.LW / 2) * (z - 1)) * s, ty = (-(LH / 2) * (z - 1) - (this.cam.y - LH / 2) * (z - 1)) * s;
+    const wx = (px - tx) / sc, wy = (py - ty) / sc; let best = null, bd = 1e9;
+    for (const u of this.all()) { if (!alive(u) || u.fade <= 0) continue; const ux = u.x + u.ox + u.kb, uy = u.y + u.oy - (hasS(u, 'fly') ? 14 : 0); if (Math.abs(wx - ux) > u.w * .7 + 7 || wy < uy - u.h - 8 || wy > uy + 5) continue; const d = Math.abs(wx - ux) + Math.abs(wy - (uy - u.h / 2)) * .5; if (d < bd) { bd = d; best = u; } }
+    return best;
+  }
   spread() { return clamp(this.LW / 256, 1, 1.35); }
   setBg(key) {
     if (key === this.bgKey) return;
@@ -607,6 +615,10 @@ class World {
   }
   drawAtmos(ctx, gt) {
     const T = BACKGROUNDS[this.bgKey] || {};
+    if (this.hq() && ['mirkwood', 'dolguldur', 'weather', 'cirith', 'helm', 'moria', 'khazad', 'doom', 'snow'].includes(this.bgKey)) {
+      const col = { doom: '60,30,26', moria: '40,30,30', khazad: '70,90,110', snow: '230,240,255', cirith: '90,70,120', dolguldur: '80,110,90' }[this.bgKey] || '150,160,170';
+      ctx.save(); for (let i = 0; i < 3; i++) { const y = 82 + i * 14, off = ((gt * (.006 + i * .003) - this.scroll * (.3 + i * .15)) % 260 + 260) % 260; ctx.globalAlpha = .1 + i * .03; for (let x = -off - 130; x < this.LW + 130; x += 260) { const g = ctx.createRadialGradient(x + 130, y, 0, x + 130, y, 130); g.addColorStop(0, `rgba(${col},.9)`); g.addColorStop(1, `rgba(${col},0)`); ctx.fillStyle = g; ctx.save(); ctx.translate(x + 130, y); ctx.scale(1, .14); ctx.translate(-(x + 130), -y); ctx.fillRect(x, y - 130, 260, 260); ctx.restore(); } } ctx.restore();
+    }
     ctx.save(); ctx.globalAlpha = .14;
     for (let i = 0; i < 5; i++) { const x = ((gt * .004 * (i + 1) - this.scroll * .5 + i * 90) % (this.LW + 120) + this.LW + 120) % (this.LW + 120) - 60, y = 72 + i * 6; const g = ctx.createRadialGradient(x, y, 0, x, y, 50); g.addColorStop(0, T.sky ? T.sky[T.sky.length - 1] : '#fff'); g.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y, 60, 9, 0, 0, Math.PI * 2); ctx.fill(); }
     ctx.restore();

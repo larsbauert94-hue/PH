@@ -78,7 +78,7 @@ const icHtml = it => `<canvas class="ic r${it.r}" data-ic="${it.icon}" data-c="$
 
 /* ---------- HUD ---------- */
 function buildHud() {
-  $('#party').innerHTML = G.party.map(k => `<div class="pc" data-k="${k}" style="--rc:${heroCol(k)}"><canvas data-card="${k}" data-bust="1"></canvas><div class="hpv"></div><span class="pl">${G.heroes[k].lvl}</span><div class="ultbar"><i></i></div></div>`).join('');
+  $('#party').innerHTML = G.party.map(k => `<div class="pc" data-k="${k}" style="--rc:${heroCol(k)}"><canvas data-card="${k}" data-bust="1"></canvas><div class="hpv"></div><span class="pl">${G.heroes[k].lvl}</span><div class="hpb"><i class="tr"></i><i class="hp"></i></div><div class="ultbar"><i></i></div></div>`).join('');
   $$('#party .pc').forEach(el => el.onclick = () => { if (W.manualUlt(el.dataset.k)) { sfx('ult'); return; } sfx('click'); openHero(el.dataset.k); });
   paintCards($('#party'));
 }
@@ -97,19 +97,20 @@ function updateHud() {
   const qc = questsClaimable(); $('#qBadge').hidden = !qc; $('#qBadge').textContent = qc;
   $('#gold').textContent = fmt(G.gold); $('#mith').textContent = fmt(fragTotal()); const fc = forgeableCount(); $('#fBadge').hidden = !fc; $('#fBadge').textContent = fc;
   $('#power').textContent = fmt(G.party.reduce((a, k) => a + heroStats(k).power, 0));
-  const cc = claimableCount(); $('#achBadge').hidden = !cc; $('#achBadge').textContent = cc;
+  const cc = claimableCount(); $('#achBadge').hidden = !cc; $('#achBadge').textContent = cc; $('#nextP').classList.toggle('dim', $('#toasts').children.length > 0);
   if (G.team) { const el = waveLvl(Math.min(G.story.wave, WAVES)), d = G.team.lvl - el, v = `<span class="${d >= 0 ? 'ok' : d >= -3 ? 'mid' : 'bad'}">Gruppe St. ${G.team.lvl}</span> · Gegner St. ${el}`; if ($('#lvc').dataset.v !== v) { $('#lvc').innerHTML = v; $('#lvc').dataset.v = v; } }
-  if (!updateHud.t || Date.now() - updateHud.t > 1000) { updateHud.t = Date.now(); refreshLooks(); const ev = owned().filter(k => canEvolve(k)?.lvlOk).length; $('#hBadge').hidden = !ev; $('#hBadge').textContent = ev; }
+  if (!updateHud.t || Date.now() - updateHud.t > 1000) { updateHud.t = Date.now(); refreshLooks(); renderNext(); const ev = G.party.filter(k => canEvolve(k)?.lvlOk).length; $('#hBadge').hidden = !ev; $('#hBadge').textContent = ev; }
   for (const u of W.heroes) {
     const el = document.querySelector(`#party .pc[data-k="${u.key}"]`); if (!el) continue;
     el.querySelector('.ultbar i').style.width = Math.min(100, u.energy) + '%';
     el.classList.toggle('ready', u.energy >= 100 && alive(u)); el.classList.toggle('dead', !alive(u)); el.classList.toggle('act', W.active === u);
-    el.querySelector('.hpv').style.height = (100 - u.hp / u.maxHp * 100) + '%';
+    const f = Math.max(0, u.hp / u.maxHp); el.querySelector('.hpv').style.height = (100 - f * 100) + '%'; el.querySelector('.hpb .hp').style.width = f * 100 + '%'; el.querySelector('.hpb .tr').style.width = f * 100 + '%'; el.classList.toggle('low', f > 0 && f < .3);
+    if (el._f !== undefined && W.fighting) { if (f < el._f - .01) { el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit'); } else if (f > el._f + .01) { el.classList.remove('heal'); void el.offsetWidth; el.classList.add('heal'); } } el._f = f;
     el.querySelector('.pl').textContent = G.heroes[u.key]?.lvl || '';
   }
   const boss = W.enemies.find(e => e.boss && alive(e)), bb = $('#bossbar');
   bb.hidden = !boss || !W.fighting;
-  if (boss) { $('#bossName').textContent = boss.name; $('#bossFill').style.width = (boss.hp / boss.maxHp * 100) + '%'; }
+  if (boss) { const bf = boss.hp / boss.maxHp * 100; $('#bossName').textContent = boss.name; $('#bossFill').style.width = bf + '%'; $('#bossTrail').style.width = bf + '%'; $('#bossPct').textContent = Math.ceil(bf) + ' %'; $('#bossMark').hidden = !!boss.phased || !(PHASE2[boss.key] || boss.transform) || bf <= 50; }
 }
 let bannerT = 0;
 function comboFx(n) { const c = $('#combo'); c.innerHTML = `<small>Gemeinschafts-Kombo</small>×${n}`; c.className = 'show'; clearTimeout(comboFx.t); comboFx.t = setTimeout(() => c.className = '', 1600); G.stats.maxCombo = Math.max(G.stats.maxCombo, n); if (n === 2) track('combos', 1); sfx('ult'); }
@@ -416,6 +417,35 @@ function playNow(q, label) {
   if (q.type === 'tower') G.tower.queued = true; else G.queue = q;
   save(); closeSheet(); sfx('join'); toast(`▶ ${esc(label)}`, 'lvl'); W.abort();
 }
+/* Empfehlung „Nächster Schritt“: die sinnvollste Aktion mit einem Tipp */
+function nextStep() {
+  const fr = RINGS.find(r => canForge(r.id)); if (fr) return { ic: '◍', t: (G.rings?.[fr.id]?.stars ? fr.n + ' veredeln' : fr.n + ' schmieden'), c: fr.c, go: () => openForge(Math.floor(RINGS.indexOf(fr) / 4)) };
+  const fo = RINGS.find(R => (G.rings?.[R.id]?.stars || 0) > 0 && !(G.rings[R.id].owner && G.party.includes(G.rings[R.id].owner)) && G.party.some(k => !ringOf(k))); if (fo) return { ic: '◍', t: fo.n + ' anlegen', c: fo.c, go: () => openRingOwner(fo.id) };
+  const cs = chestState(); if (cs.ready && (G.chest || 0) >= CHEST_MAX * .6) return { ic: '⛁', t: 'Siegestruhe öffnen', c: '#e8bd5c', go: openChest };
+  const q = questsClaimable(); if (q) return { ic: '✎', t: q > 1 ? q + ' Aufträge abholen' : 'Auftrag abholen', c: '#e8bd5c', go: openQuests };
+  const a = claimableCount(); if (a) return { ic: '♛', t: a > 1 ? a + ' Erfolge abholen' : 'Erfolg abholen', c: '#e8bd5c', go: () => openAch() };
+  const ev = G.party.find(k => canEvolve(k)?.lvlOk); if (ev) return { ic: '★', t: HEROES[ev].n + ' entwickeln', c: '#ffd760', go: () => openHero(ev, 'werte') };
+  if (!G.settings.autoEquip && G.party.some(k => Object.keys(SLOTS).some(sl => upgradeFor(k, sl)))) return { ic: '⚡', t: 'Bessere Ausrüstung', c: '#7dff8a', go: () => openHeroes('team') };
+  return null;
+}
+function renderNext() {
+  const n = nextStep(), sig = n ? n.t : '';
+  for (const el of [$('#next'), $('#nextP')]) { if (!el) continue; el.hidden = !n; if (!n) continue; if (el.dataset.v !== sig) { el.dataset.v = sig; el.style.setProperty('--nc', n.c); el.innerHTML = `<span class="nx-ic">${n.ic}</span><span class="nx-t"><small>Nächster Schritt</small><b>${esc(n.t)}</b></span>`; } el.onclick = () => { sfx('click'); n.go(); }; }
+}
+/* Info-Karte beim Antippen einer Figur */
+function unitInfo(u, cx, cy) {
+  const box = $('#uinfo'); if (!u) { box.hidden = true; return; }
+  const E = u.side === 'enemy' ? ENEMIES[u.key] : null, H = u.side === 'hero' ? HEROES[u.key] : null, f = Math.max(0, u.hp / u.maxHp);
+  const tag = E ? (E.boss ? 'Boss' : u.elite ? 'Elite' : 'Gegner') : ROLES[CLASSES[H.cls].role].n;
+  const skills = E ? [...new Set((u.skills || []).map(s => s.n))].slice(0, 4).join(' · ') : [H.act.n, H.act2.n, H.ult.n].join(' · ');
+  const extra = E ? `Bestiarium: ${fmt((G.bestiary || {})[u.key] || 0)}× besiegt` : `Ultimate ${Math.min(100, Math.round(u.energy))} %${ringOf(u.key) ? ' · ◍ ' + esc(ringOf(u.key).R.n) : ''}`;
+  box.className = 'uinfo ' + (E ? 'foe' : 'hero');
+  box.innerHTML = `<div class="ui-h"><b>${esc(u.name)}</b><span>${tag} · St. ${u.lvl || G.team.lvl}</span></div><div class="ui-hp"><i style="width:${f * 100}%"></i></div><small class="ui-n">${fmt(u.hp)} / ${fmt(u.maxHp)} LP${u.statuses.length ? ' · ' + u.statuses.slice(0, 4).map(st => `<span style="color:${STATUS[st.id].c}">●</span>`).join('') : ''}</small><small class="ui-s">${esc(skills)}</small><small class="ui-x">${extra}</small>`;
+  box.hidden = false;
+  const app = $('#app').getBoundingClientRect(), bw = box.offsetWidth, bh = box.offsetHeight;
+  box.style.left = Math.max(8, Math.min(app.width - bw - 8, cx - app.left - bw / 2)) + 'px'; box.style.top = Math.max(8, Math.min(app.height - bh - 8, cy - app.top - bh - 18)) + 'px';
+  clearTimeout(unitInfo.t); unitInfo.t = setTimeout(() => { box.hidden = true; }, 4200);
+}
 function refreshLooks() { for (const u of W.heroes) { const L = heroLook(u.key), sig = JSON.stringify(L.gear || null); if (u._gsig !== undefined && u._gsig !== sig && alive(u)) W.gearUp(u); u._gsig = sig; u.look = L; } }
 function openSheet(title, html, after, o = {}) {
   cancelAnimationFrame(artRaf);
@@ -429,8 +459,8 @@ function openSheet(title, html, after, o = {}) {
   if (o.onPage) s.querySelectorAll('[data-pg]').forEach(b => b.onclick = () => { sfx('click'); o.onPage(o.page + +b.dataset.pg); });
   paintCards(s); after && after(s);
   if (!s._swipe) { s._swipe = 1; let x0 = 0, y0 = 0, t0 = 0;
-    s.addEventListener('pointerdown', e => { x0 = e.clientX; y0 = e.clientY; t0 = Date.now(); });
-    s.addEventListener('pointerup', e => { const [dx, dy] = appDelta(e.clientX - x0, e.clientY - y0); if (Date.now() - t0 < 600 && Math.abs(dx) > 70 && Math.abs(dy) < 45 && !e.target.closest('canvas#map')) { const b = s.querySelector(`.m-pb[data-pg="${dx < 0 ? 1 : -1}"]:not(:disabled)`); if (b) b.click(); } });
+    s.addEventListener('pointerdown', e => { x0 = e.clientX; y0 = e.clientY; t0 = Date.now(); s._head = !!e.target.closest('.sh-head'); });
+    s.addEventListener('pointerup', e => { const [dx, dy] = appDelta(e.clientX - x0, e.clientY - y0); const portrait = innerHeight > innerWidth, inHead = !!s._head; if (Date.now() - t0 < 900 && ((portrait && inHead && dy > 80 && Math.abs(dx) < 60) || (!portrait && dx > 110 && Math.abs(dy) < 45 && !s.querySelector('.m-pb[data-pg="-1"]:not(:disabled)')))) { closeSheet(); return; } if (Date.now() - t0 < 900 && Math.abs(dx) > 70 && Math.abs(dy) < 45 && !e.target.closest('canvas#map')) { const b = s.querySelector(`.m-pb[data-pg="${dx < 0 ? 1 : -1}"]:not(:disabled)`); if (b) b.click(); } });
   }
 }
 function closeSheet() { cancelAnimationFrame(artRaf); const s = $('#sheet'); s.classList.remove('open'); document.body.classList.remove('sheet-open'); setTimeout(() => { if (!s.classList.contains('open')) s.hidden = true; }, 260); }
@@ -847,7 +877,8 @@ function boot() {
   $('#farm').onclick = () => { G.story.farm = false; save(); toast('Der Boss wird erneut herausgefordert!', 'lvl'); updateHud(); };
   $('#rotOk').onclick = () => { layoutMode.dismissed = 1; $('#rotate').hidden = true; };
   addEventListener('resize', layoutMode);
-  $('#world').addEventListener('click', () => { if ($('#sheet').classList.contains('open')) closeSheet(); });
+  $('#world').addEventListener('click', e => { if ($('#sheet').classList.contains('open')) { closeSheet(); return; } const u = W.unitAt(e.clientX, e.clientY); if (u) sfx('click'); unitInfo(u, e.clientX, e.clientY); });
+  $('#uinfo').addEventListener('click', () => { $('#uinfo').hidden = true; });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
 }
 boot();

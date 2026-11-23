@@ -12,6 +12,13 @@ Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden 
 
 Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten). Unter **Optionen → Grafik** lässt sich zwischen *Auto*, *Hoch* (Figuren mit Szenenlicht, Kantenlicht und Bodenverdeckung) und *Normal* wählen; *Auto* schaltet bei zu niedriger Bildrate selbst herunter.
 
+## Neu in Version 11.1
+- **Nächster Schritt:** leuchtender Knopf mit der sinnvollsten Aktion (Ring schmieden, Truhe öffnen, Aufträge/Erfolge abholen, Held entwickeln) – ein Tipp führt hin
+- **Figuren antippen:** Info-Karte mit Stufe, Leben, Zuständen, Fähigkeiten und Bestiarium
+- **Wischen schließt Menüs** (hochkant: Kopfzeile nach unten, quer: nach rechts)
+- **Heldenkarten** mit Lebensbalken, Schadensspur, Treffer-Blitz und Heil-Leuchten; **Bossleiste** mit Schadensspur, Prozent und Phasenmarke
+- **Nebelbänke** in Düsterwald, Dol Guldur, Moria, Mordor u. a.
+
 ## Neu in Version 11
 - **Ringe der Macht schmieden** (neuer Menüpunkt „Schmiede“): Barahirs Ring, Durins Ring, Vilya, Nenya, Narya, ein Ring der Neun und der Eine Ring – die mächtigsten Gegenstände des Spiels, mit Gruppen-Aura, veredelbar bis ★5, sichtbar leuchtend an der Hand des Trägers
 - **Ringfragmente** findet man bei Bossen, in Truhen, Nebenquests, Erfolgen, im Orthanc-Turm, in Spezialmodi und Prüfungen

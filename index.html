@@ -198,7 +198,7 @@ body.sheet-open #gsug{display:none}
 .sh-head{display:flex;align-items:center;justify-content:space-between;padding:calc(10px + var(--st)) 16px 10px 18px;border-bottom:1px solid var(--line)}
 .sh-head h2{font-size:22px;background:linear-gradient(#fff3cf,#e0b552);-webkit-background-clip:text;background-clip:text;color:transparent}
 .x{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:rgba(255,255,255,.06);font-size:16px}
-.sh-body{flex:1;overflow:auto;padding:14px 18px calc(18px + var(--sb));-webkit-overflow-scrolling:touch;-webkit-user-select:text;user-select:text}
+.sh-body{flex:1;overflow:auto;padding:14px 18px calc(18px + var(--sb));-webkit-overflow-scrolling:touch;-webkit-user-select:none;user-select:none} .sh-body textarea{-webkit-user-select:text;user-select:text}
 .btn{border:1px solid rgba(255,255,255,.16);background:linear-gradient(#2a333e,#1a2028);border-radius:10px;padding:9px 14px;font-weight:800;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.1);transition:transform .12s,border-color .15s}
 .btn:active:not(:disabled){transform:scale(.96)}
 .btn:disabled{opacity:.4;cursor:not-allowed}
@@ -564,7 +564,7 @@ body.portrait #sheet{width:100%}
   #bossbar{width:min(22cqw,260px);font-size:11px} #bossbar .bar{height:6px}
   .pc{width:46px!important} #party{gap:5px!important;bottom:calc(3px + var(--sb))!important} .pc .pl{font-size:9.5px}
   #chest{width:42px;height:46px}
-  #toasts{top:calc(50px + var(--st))} .toast{max-width:32cqw;white-space:normal;font-size:11.5px;padding:4px 10px;line-height:1.25}
+  #toasts{top:calc(58px + var(--st))} .toast{max-width:32cqw;white-space:normal;font-size:11.5px;padding:4px 10px;line-height:1.25}
   #banner{top:40%;white-space:normal;max-width:66cqw;line-height:1.15;font-size:clamp(13px,2.2cqw,19px)!important} #banner.ult{font-size:clamp(15px,2.6cqw,22px)!important}
   #loot{bottom:calc(64px + var(--sb))!important} #loot .lp{padding:2px 8px 2px 3px;font-size:11px} #loot .lp .ic{width:20px;height:20px}
   #gsug{width:auto} .gsg{width:min(220px,24cqw);padding:5px 20px 5px 5px;grid-template-columns:32px minmax(0,1fr)} .gsg-h{width:32px;height:32px} .gsg-t small{font-size:9.5px} .gsg-i b{font-size:11px} .gsg .btn{padding:4px 6px;font-size:12px} .pos{font-size:10.5px}
@@ -597,6 +597,30 @@ body.portrait #sheet{width:100%}
 /* Gedrehte Darstellung (iPhone hochkant): Spiel um 90° gedreht, Notch-Seite wird links */
 body.rot{--sl:env(safe-area-inset-top,0px);--sr:env(safe-area-inset-bottom,0px);--st:env(safe-area-inset-right,0px);--sb:env(safe-area-inset-left,0px)}
 #rotate{z-index:90}
+/* Heldenkarten: LP-Balken, Treffer- und Heil-Feedback */
+.pc .hpb{position:absolute;left:4px;right:4px;bottom:12px;height:4px;border-radius:4px;background:rgba(0,0,0,.72);overflow:hidden}
+.pc .hpb i{position:absolute;left:0;top:0;bottom:0;border-radius:4px} .pc .hpb .tr{background:#f4e8c8;transition:width .6s ease .35s} .pc .hpb .hp{background:linear-gradient(90deg,#3a9a3a,#9ff08a);transition:width .15s}
+.pc.low .hpb .hp{background:linear-gradient(90deg,#c8302a,#ff7a6a)} .pc.low{box-shadow:0 0 0 1px rgba(255,80,60,.6),0 6px 16px rgba(0,0,0,.6)}
+.pc.hit{animation:pchit .38s ease-out} .pc.heal{animation:pcheal .55s ease-out}
+@keyframes pchit{0%{transform:translateX(0);filter:brightness(1)}15%{transform:translateX(-3px);filter:brightness(1.6) saturate(1.4) hue-rotate(-20deg);box-shadow:inset 0 0 22px rgba(255,40,20,.9),0 0 14px rgba(255,60,40,.7)}35%{transform:translateX(3px)}55%{transform:translateX(-2px)}100%{transform:none;filter:none}}
+@keyframes pcheal{0%{box-shadow:inset 0 0 0 rgba(120,255,140,0)}30%{box-shadow:inset 0 0 22px rgba(120,255,140,.85),0 0 16px rgba(120,255,140,.6)}100%{box-shadow:inset 0 0 0 rgba(120,255,140,0)}}
+/* Bossleiste */
+.bb{position:relative} .bb i{position:absolute;left:0;top:0;bottom:0} #bossTrail{background:#f4e8c8!important;transition:width .7s ease .4s!important} #bossFill{box-shadow:0 0 10px rgba(255,90,60,.7)}
+#bossMark{position:absolute;left:50%;top:-2px;bottom:-2px;width:2px;background:#fff6d0;box-shadow:0 0 6px #fff} #bossPct{display:block;font-family:var(--body);font-size:10.5px;font-weight:800;color:#ffd0c0;margin-top:1px}
+/* Nächster Schritt */
+.next{display:flex;align-items:center;gap:8px;border:1px solid color-mix(in srgb,var(--nc,#e8bd5c) 70%,transparent);border-radius:12px;padding:5px 12px 5px 6px;background:linear-gradient(90deg,color-mix(in srgb,var(--nc,#e8bd5c) 26%,rgba(12,16,22,.94)),rgba(12,16,22,.9));box-shadow:0 0 14px color-mix(in srgb,var(--nc,#e8bd5c) 35%,transparent),0 6px 16px rgba(0,0,0,.5);color:var(--fg);text-align:left;max-width:min(240px,24cqw);animation:nxpulse 1.6s ease-in-out infinite alternate;pointer-events:auto}
+.next .nx-ic{width:26px;height:26px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:15px;color:#1a1206;background:radial-gradient(circle at 40% 35%,#fff6d0,var(--nc,#e8bd5c));box-shadow:0 0 10px var(--nc,#e8bd5c)}
+.next .nx-t{min-width:0;display:flex;flex-direction:column;line-height:1.15} .next small{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)} .next b{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@keyframes nxpulse{from{box-shadow:0 0 8px color-mix(in srgb,var(--nc,#e8bd5c) 25%,transparent),0 6px 16px rgba(0,0,0,.5)}to{box-shadow:0 0 18px color-mix(in srgb,var(--nc,#e8bd5c) 55%,transparent),0 6px 16px rgba(0,0,0,.5)}}
+@container app (orientation: landscape){ #banner{max-width:36cqw!important;white-space:normal!important;line-height:1.12} #loot{max-width:min(220px,24cqw)!important} }
+#nextP{display:none!important} .next.dim{opacity:0;pointer-events:none;transition:opacity .2s}
+/* Info-Karte */
+.uinfo{position:absolute;z-index:35;width:min(230px,60cqw);border-radius:14px;padding:8px 10px;background:linear-gradient(160deg,rgba(24,30,40,.96),rgba(10,12,16,.97));border:1px solid rgba(255,214,140,.4);box-shadow:0 10px 30px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:3px;animation:tin .2s ease-out;pointer-events:auto}
+.uinfo.foe{border-color:rgba(255,110,80,.55)} .ui-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px} .ui-h b{font-family:var(--display);font-size:14px} .ui-h span{font-size:10.5px;color:var(--muted);white-space:nowrap}
+.ui-hp{height:6px;border-radius:6px;background:rgba(0,0,0,.6);overflow:hidden} .ui-hp i{display:block;height:100%;background:linear-gradient(90deg,#3a9a3a,#9ff08a)} .uinfo.foe .ui-hp i{background:linear-gradient(90deg,#b8281e,#ff8a6a)}
+.uinfo small{font-size:11px;color:#d8d2c2;line-height:1.3} .uinfo .ui-x{color:var(--gold)}
+@container app (max-height:390px){ .next{padding:3px 10px 3px 4px} .next .nx-ic{width:22px;height:22px;font-size:13px} .next b{font-size:11.5px} .next small{font-size:8.5px} }
+@container app (orientation: portrait){ #next{display:none!important} #nextP{display:flex!important;position:absolute;left:calc(74px + var(--sl));top:calc(var(--z4) + 8px);max-width:calc(100cqw - 90px - var(--sl) - var(--sr))} #nextP[hidden]{display:none!important} }
 /* Schmiede */
 .m-forge{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:minmax(0,1fr);gap:10px}
 .m-ring{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px;border-radius:14px;border:1px solid color-mix(in srgb,var(--rc) 45%,transparent);background:radial-gradient(120% 70% at 50% 0%,color-mix(in srgb,var(--rc) 22%,transparent),rgba(10,12,16,.6));padding:6px 7px;min-height:0;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 6px 18px rgba(0,0,0,.35)}
@@ -615,7 +639,7 @@ body.rot{--sl:env(safe-area-inset-top,0px);--sr:env(safe-area-inset-bottom,0px);
 .forge .ringbig{width:min(30cqw,30cqh,170px);height:min(30cqw,30cqh,170px);display:block;margin:4px auto;border-radius:50%;filter:drop-shadow(0 0 24px var(--rc))}
 .forge .lore{font-style:italic;max-width:560px;margin:4px auto;color:#e8dcc0}
 .m-ia2.one{grid-template-columns:1fr}
-@container app (orientation: portrait) and (max-width:390px){ #banner{top:calc(var(--top) + 38px)!important;font-size:13px!important;line-height:1.08;padding:2px 20px} #banner.ult{font-size:16px!important} }
+@container app (orientation: portrait) and (max-width:390px){ #banner{top:calc(var(--top) + 50px)!important;font-size:13px!important;line-height:1.08;padding:2px 20px} #banner.ult{font-size:16px!important} }
 @container app (orientation: portrait){ .m-forge{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr))} .m-ring canvas{max-height:80px} }
 @container app (max-height:390px){ .m-ring{padding:4px 5px} .m-ring canvas{max-height:44px} .m-ring b{font-size:11px} .m-ring small{font-size:9px} .m-ring .m-pas{-webkit-line-clamp:1} .m-ra .btn{padding:3px 4px;font-size:10.5px} }
 /* ===================== HOCHFORMAT-LAYOUT ===================== */
@@ -633,7 +657,7 @@ body.rot{--sl:env(safe-area-inset-top,0px);--sr:env(safe-area-inset-bottom,0px);
   .nb{width:auto!important;height:var(--nh)!important;border-radius:12px!important} .nb svg{width:22px!important;height:22px!important} .nb em{font-size:9px!important}
   /* Szene */
   #bossbar{top:calc(var(--top) + 6px);width:74cqw}
-  #banner{top:calc(var(--top) + 44px);max-width:92cqw;white-space:normal;line-height:1.15;font-size:clamp(15px,4.6cqw,22px)!important} #banner.ult{font-size:clamp(17px,5.4cqw,26px)!important}
+  #banner{top:calc(var(--top) + 54px);max-width:92cqw;white-space:normal;line-height:1.15;font-size:clamp(15px,4.6cqw,22px)!important} #banner.ult{font-size:clamp(17px,5.4cqw,26px)!important}
   #combo{top:calc(var(--top) + 34px);right:calc(14px + var(--sr))}
   #loot{left:calc(10px + var(--sl))!important;top:auto;bottom:calc(100cqh - var(--top) - var(--sh) + 8px)!important;max-width:58cqw} #loot .lp{font-size:11.5px;padding:2px 9px 2px 3px} #loot .lp .ic{width:22px;height:22px}
   /* Heldenkarten */
@@ -703,7 +727,7 @@ body.rot{--sl:env(safe-area-inset-top,0px);--sr:env(safe-area-inset-bottom,0px);
   <canvas id="world"></canvas>
   <div id="hud">
     <div class="tl">
-      <div class="tlc"><div class="chap"><small id="chapPart"></small><b id="chapName"></b><div id="pips"></div><div id="lvc"></div></div><div id="syn"></div></div>
+      <div class="tlc"><div class="chap"><small id="chapPart"></small><b id="chapName"></b><div id="pips"></div><div id="lvc"></div></div><div id="syn"></div><button id="next" class="next" hidden></button></div>
       <button id="farm" hidden>Boss herausfordern</button>
     </div>
     <div class="tr">
@@ -719,7 +743,9 @@ body.rot{--sl:env(safe-area-inset-top,0px);--sr:env(safe-area-inset-bottom,0px);
         <button class="nb txt" id="spd" title="Geschwindigkeit" aria-label="Geschwindigkeit">1×</button>
       </nav>
     </div>
-    <div id="bossbar" hidden><span id="bossName"></span><div class="bb"><i id="bossFill"></i></div></div>
+    <div id="bossbar" hidden><span id="bossName"></span><div class="bb"><i id="bossTrail"></i><i id="bossFill"></i><span id="bossMark" title="Phasenwechsel"></span></div><small id="bossPct"></small></div>
+    <button id="nextP" class="next" hidden></button>
+    <div id="uinfo" class="uinfo" hidden></div>
     <div id="banner"></div>
     <div id="combo"></div>
     <button id="chest" title="Siegestruhe" aria-label="Siegestruhe"><span class="cf"><i id="chestFill"></i></span><svg viewBox="0 0 24 24"><path d="M4 10h16v9H4z"/><path d="M4 10c0-4 3-6 8-6s8 2 8 6"/><path d="M11 12h2v3h-2z"/></svg><small id="chestT"></small></button>
