@@ -24,7 +24,8 @@ Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten).
 - **Freischaltplan:** alles wird Schritt für Schritt freigeschaltet, gesperrte Dinge sind grau mit Hinweis, Neues wird angekündigt und mit NEU markiert
 - **Bonusleiste** mit Begleiter, Banner, Bündnissen, Relikten, Trophäen, Ringen und Sets – oben links im Querformat, unter den Helden im Hochformat
 - **Neue Grafik:** anatomisch gezeichnete Pferde und Ponys mit Mähne, Schweif und Sattelzeug, echte Wölfe und Warge, Radagasts Kaninchenschlitten, Gwaihir mit Federschwingen
-- **Weniger Text im Kampf:** keine Fähigkeitsnamen mehr, Story-Dialoge optional (Optionen)
+- **Weniger Text im Kampf:** keine Fähigkeitsnamen mehr, Story-Dialoge optional (Optionen: Aus / An / Auto)
+- **Neue Gegnergrafik:** Spinnen mit haarigem Hinterleib, Augenkranz, Giftklauen und gegliederten Beinen; Mûmakil mit Kriegsturm, Schabracke, Stoßzähnen und gegliedertem Rüssel; Drachen mit glatten Schwänzen und Hälsen, Rückenstacheln, Bauchplatten, Schuppen und Membranflügeln
 
 ## Neu in Version 12.3
 - **Fehlerprüfung über das ganze Spiel:** alle Spezialmodi, Prüfungen der Macht, Orthanc-Turm, Nebenquests, Bossrevanchen, Ringschmiede, alle 44 Helden in allen Stufen und alle 20 Kulissen automatisch durchgespielt – ohne Fehler

@@ -649,32 +649,42 @@ const RIG = (() => {
 
   /* ---------- Spinnen ---------- */
   function drawSpider(c, L, anim, el, gt) {
-    const g = P(c), k = L.size ? 2.2 : 1;
-    let lean = 0, bob = (Math.sin(gt / 500) + 1) * .3 * k, gait = 0, ph = 0, raise = 0, fall = 0;
-    if (anim === 'walk') { gait = 1; ph = el / 300 * TAU; }
-    if (anim === 'attack' || anim === 'shoot' || anim === 'throw') { const q = clamp01(el / animTime('attack')); lean = (Math.sin(q * Math.PI) * 4 - (q < .25 ? q * 4 : 0)) * k * .6; raise = Math.sin(q * Math.PI); }
-    if (anim === 'hurt') lean = -2 * (1 - clamp01(el / 300));
+    const g = P(c), k = L.size ? 2.2 : 1, col = L.body, legC = sh(col, -.1), hair = sh(col, .35);
+    let lean = 0, bob = Math.sin(gt / 520) * .25 * k, gait = 0, ph = 0, raise = 0, fall = 0, fang = .15 + Math.max(0, Math.sin(gt / 380)) * .15;
+    if (anim === 'walk') { gait = 1; ph = el / 320 * TAU; bob = Math.sin(ph * 2) * .3 * k; }
+    if (anim === 'attack' || anim === 'shoot' || anim === 'throw') { const q = clamp01(el / animTime('attack')); lean = (Math.sin(q * Math.PI) * 4.5 - (q < .25 ? q * 5 : 0)) * k * .6; raise = Math.sin(q * Math.PI); fang = .2 + raise * .8; }
+    if (anim === 'hurt') lean = -2 * k * (1 - clamp01(el / 300));
     if (anim === 'dead') fall = ease(clamp01(el / 600));
-    if (fall) { c.save(); c.translate(0, -8 * k); c.scale(1, 1 - 2 * fall); c.translate(0, 8 * k); }
-    const col = L.body, legC = sh(col, -.15);
-    const legs = (far) => {
-      for (let i = 0; i < 4; i++) {
-        const ox = lean + (i - 1.5) * 2.2 * k, oy = -7 * k + bob, off = i * 1.3 + (far ? Math.PI : 0);
-        const sw = gait ? Math.sin(ph + off) * 1.6 * k : Math.sin(gt / 700 + i) * .3 * k;
-        const up = !far && i === 3 ? raise * 7 * k : 0;
-        const knee = [ox + (i - 1.5) * 3.2 * k + (far ? -1 : 1), oy - 6 * k - up];
-        const foot = [ox + (i - 1.5) * 5.8 * k + sw + up * .8, up ? oy - 8 * k : -.4 - (gait ? Math.max(0, Math.cos(ph + off)) * 1.2 * k : 0)];
-        g.limb([[ox, oy], knee, foot], (L.size ? 1.6 : .8), far ? sh(legC, -.35) : legC, L.size ? .6 : .35);
-      }
-    };
-    legs(true);
-    g.ell(lean - 5 * k, -10 * k + bob, 7 * k, 5.6 * k, g.rad(lean - 6 * k, -12 * k + bob, 8 * k, [sh(col, .25), col, sh(col, -.3)]), L.size ? .8 : .45);
-    g.ell(lean - 5 * k, -11 * k + bob, 3 * k, 2 * k, L.mark, 0);
-    g.ell(lean + 3 * k, -8 * k + bob, 4 * k, 3 * k, g.rad(lean + 3 * k, -9 * k, 4 * k, [sh(col, .2), col]), L.size ? .8 : .45);
-    for (let i = 0; i < (L.size ? 6 : 3); i++) { const ex = lean + 5.4 * k + (i % 3) * .9 * k, ey = -9 * k + bob + Math.floor(i / 3) * 1.2 * k - .6; g.glow(ex, ey, 1.4 * k, L.eye, .6); g.ell(ex, ey, .35 * k, .35 * k, L.eye, 0); }
-    if (raise > .5) { c.fillStyle = '#fff'; c.fillRect(lean + 6.8 * k, -6 * k, .5 * k, 1.2 * k); }
-    legs(false);
-    if (fall) c.restore();
+    c.save(); if (fall) { c.translate(0, -6 * k); c.scale(1, 1 - 1.7 * fall); c.translate(0, 6 * k); }
+    c.lineJoin = 'round'; c.lineCap = 'round';
+    const cx = lean, cy = -8 * k + bob, DIR = [-1.3, -.55, .6, 1.35];
+    const leg = (i, far) => { const d = DIR[i], base = [cx + (.4 + i * 1.05) * k, cy + .3 * k], sw = gait ? Math.sin(ph + i * 1.6 + (far ? Math.PI : 0)) * 1.6 * k : Math.sin(gt / 900 + i) * .2 * k, lift = gait ? Math.max(0, Math.cos(ph + i * 1.6 + (far ? Math.PI : 0))) * 1.4 * k : 0;
+      const up = !far && i === 3 ? raise : 0, reach = (8.8 + Math.abs(d) * 1.4) * k * (far ? .88 : 1);
+      const knee = [base[0] + d * reach * .42 + sw * .4, cy - (6.6 + (i === 1 || i === 2 ? 1.6 : 0)) * k - up * 4 * k - lift * .5], ank = [base[0] + d * reach * .78 + sw * .8, cy - 1.2 * k - up * 6 * k], foot = [base[0] + d * reach + sw + up * 2 * k, up ? cy - 6 * k : -.3 - lift];
+      const lc = far ? sh(legC, -.35) : legC, w = (L.size ? 1.25 : .72);
+      g.limb([base, knee], w * 1.25, lc, .3); g.limb([knee, ank], w, lc, .3); g.limb([ank, foot], w * .65, lc, .25);
+      c.fillStyle = rgba(hair, far ? .15 : .35); for (const p of [knee, ank]) { c.beginPath(); c.arc(p[0], p[1], w * .62, 0, TAU); c.fill(); }
+      if (!far) { c.strokeStyle = rgba(hair, .35); c.lineWidth = .14 * k; c.beginPath(); for (let j = 1; j < 5; j++) { const t = j / 5, x = base[0] + (knee[0] - base[0]) * t, y = base[1] + (knee[1] - base[1]) * t; c.moveTo(x, y); c.lineTo(x - d * .5 * k, y - .7 * k); } c.stroke(); } };
+    for (let i = 0; i < 4; i++) leg(i, 1);
+    // Hinterleib mit Haaren und Zeichnung
+    const ax = cx - 5.4 * k, ay = cy - 1.6 * k, arx = 6.8 * k, ary = 5.6 * k;
+    c.save(); c.translate(ax, ay); c.rotate(-.18);
+    c.strokeStyle = rgba(sh(col, -.2), .9); c.lineWidth = .3 * k; c.beginPath(); for (let i = 0; i < 40; i++) { const a = i / 40 * TAU, r1x = arx * .98, r1y = ary * .98; c.moveTo(Math.cos(a) * r1x, Math.sin(a) * r1y); c.lineTo(Math.cos(a) * (r1x + .7 * k), Math.sin(a) * (r1y + .7 * k)); } c.stroke();
+    g.ell(0, 0, arx, ary, g.rad(-arx * .3, -ary * .45, arx * 1.3, [sh(col, .32), col, sh(col, -.4)]), L.size ? .8 : .45);
+    c.fillStyle = L.mark; c.globalAlpha = .85; c.beginPath(); c.moveTo(-arx * .55, -ary * .15); c.quadraticCurveTo(0, -ary * .55, arx * .45, -ary * .2); c.quadraticCurveTo(0, -ary * .25, -arx * .55, -ary * .15); c.fill();
+    for (let i = 0; i < 3; i++) { c.beginPath(); const x = -arx * .35 + i * arx * .3; c.moveTo(x - .9 * k, ary * .05); c.lineTo(x, ary * .35); c.lineTo(x + .9 * k, ary * .05); c.lineTo(x, ary * .2); c.closePath(); c.fill(); }
+    c.globalAlpha = 1; c.fillStyle = 'rgba(255,255,255,.12)'; c.beginPath(); c.ellipse(-arx * .25, -ary * .5, arx * .45, ary * .18, -.2, 0, TAU); c.fill();
+    c.restore();
+    // Kopfbrust
+    g.ell(cx + 2 * k, cy - .3 * k, 3.9 * k, 3.1 * k, g.rad(cx + 1.4 * k, cy - 1.6 * k, 4.6 * k, [sh(col, .35), col, sh(col, -.35)]), L.size ? .8 : .45);
+    c.strokeStyle = rgba(sh(col, -.5), .6); c.lineWidth = .2 * k; c.beginPath(); c.moveTo(cx + .4 * k, cy - 2.4 * k); c.quadraticCurveTo(cx + 2.6 * k, cy - 1.2 * k, cx + 5 * k, cy - 1.8 * k); c.stroke();
+    // Giftklauen
+    for (const s2 of [0, 1]) { const fx = cx + (5.2 + s2 * .5) * k, fy = cy + .8 * k; g.fill(() => { c.moveTo(fx - .7 * k, fy - .6 * k); c.quadraticCurveTo(fx + .9 * k, fy, fx + .5 * k, fy + 1.4 * k); c.lineTo(fx + (.2 + fang) * k, fy + (2.4 + fang * .6) * k); c.lineTo(fx - .1 * k, fy + 1.3 * k); c.quadraticCurveTo(fx - .6 * k, fy + .4 * k, fx - .9 * k, fy); c.closePath(); }, s2 ? sh(col, -.1) : sh(col, -.3), .3); }
+    // Augenkranz
+    const eyes = [[5.3, -1.5, .62], [4.7, -1.2, .55], [5.9, -.9, .4], [4.3, -2, .4], [5, -2.4, .34], [5.8, -2.1, .3], [3.9, -1.4, .28], [6.1, -1.5, .26]];
+    for (let i = 0; i < (L.size ? 8 : 6); i++) { const [ex, ey, er] = eyes[i], x = cx + ex * k, y = cy + ey * k; g.glow(x, y, er * 2.6 * k, L.eye, .55); g.ell(x, y, er * k, er * k, '#0a0608', 0); c.fillStyle = L.eye; c.beginPath(); c.arc(x + er * .2 * k, y - er * .2 * k, er * .5 * k, 0, TAU); c.fill(); c.fillStyle = 'rgba(255,255,255,.8)'; c.beginPath(); c.arc(x + er * .35 * k, y - er * .35 * k, er * .18 * k, 0, TAU); c.fill(); }
+    for (let i = 0; i < 4; i++) leg(i, 0);
+    c.restore();
   }
 
   /* ---------- Seewurm ---------- */
@@ -700,35 +710,64 @@ const RIG = (() => {
 
   /* ---------- Olifant ---------- */
   function drawOlifant(c, L, anim, el, gt) {
-    const g = P(c), sk = L.skin;
+    const g = P(c), sk = L.skin, dk = sh(sk, -.35), red = '#8a1e1a', gold = '#e0b84a';
     let lean = 0, bob = (Math.sin(gt / 900) + 1) * .4, ph = 0, gait = 0, rear = 0, trunk = 0, fall = 0;
     if (anim === 'walk') { gait = 1; ph = el / 600 * TAU; bob = Math.abs(Math.sin(ph)) * 1; }
     if (anim === 'attack' || anim === 'throw') { const q = clamp01(el / animTime('attack')); rear = -Math.sin(Math.min(1, q * 2) * Math.PI) * 4; lean = q > .4 ? Math.sin((q - .4) / .6 * Math.PI) * 7 : -q * 4; trunk = Math.sin(q * Math.PI); }
     if (anim === 'hurt') lean = -3 * (1 - clamp01(el / 300));
     if (anim === 'dead') fall = ease(clamp01(el / 700));
     if (fall) { c.save(); c.rotate(-fall * .5); c.translate(-fall * 6, fall * 6); }
-    const leg = (x, off, far) => { const a = gait ? Math.sin(ph + off) * 2.6 : 0; g.limb([[x + lean, -22 + bob], [x + lean + a * .5, -10], [x + lean + a, -1]], 5, far ? sh(sk, -.3) : sk, .7); g.ell(x + lean + a, -.8, 2.8, 1.2, sh(sk, -.4), .5); };
+    c.lineJoin = 'round'; c.lineCap = 'round';
+    const leg = (x, off, far) => { const a = gait ? Math.sin(ph + off) * 2.6 : 0, col = far ? sh(sk, -.3) : sk, top = [x + lean, -24 + bob], kn = [x + lean + a * .5, -11], ft = [x + lean + a, -2];
+      g.taper([top, kn], [10, 7.4], col, .7); g.taper([kn, ft], [7.4, 7.8], col, .7); g.ell(kn[0], kn[1], 3.8, 1.8, col, 0);
+      c.strokeStyle = rgba(dk, .5); c.lineWidth = .4; c.beginPath(); for (let i = 0; i < 3; i++) { c.moveTo(kn[0] - 3, kn[1] - 1 + i * 1.2); c.quadraticCurveTo(kn[0], kn[1] + i * 1.2, kn[0] + 3, kn[1] - 1 + i * 1.2); } c.stroke();
+      g.ell(ft[0], ft[1] + .4, 4.4, 2, g.lin(0, ft[1] - 2, 0, ft[1] + 2, [col, sh(col, -.25)]), .6); for (let i = -1; i <= 1; i++) g.ell(ft[0] + i * 2 + 1, ft[1] + 1.4, .9, .55, '#e8dcc0', .3); };
     leg(-18, Math.PI, 1); leg(10, 0, 1);
-    g.ell(-4 + lean, -28 + bob + rear * .5, 24, 14, g.rad(-8 + lean, -34, 30, [sh(sk, .2), sk, sh(sk, -.35)]), .8);
+    const by = bob + rear * .5;
+    const body = () => { c.moveTo(16 + lean, -36 + by); c.bezierCurveTo(10 + lean, -44 + by, -4 + lean, -44 + by, -16 + lean, -40 + by); c.bezierCurveTo(-26 + lean, -37 + by, -30 + lean, -28 + by, -27 + lean, -20 + by); c.bezierCurveTo(-24 + lean, -14 + by, -14 + lean, -13 + by, -2 + lean, -14 + by); c.bezierCurveTo(8 + lean, -14 + by, 16 + lean, -16 + by, 19 + lean, -24 + by); c.closePath(); };
+    g.fill(body, g.rad(-6 + lean, -38 + by, 32, [sh(sk, .22), sk, dk]), .8);
+    c.save(); c.beginPath(); body(); c.clip(); c.strokeStyle = rgba(dk, .4); c.lineWidth = .35;
+    c.beginPath(); for (let i = 0; i < 26; i++) { const x = -26 + (i * 37 % 44) + lean, y = -38 + (i * 23 % 22) + by; c.moveTo(x, y); c.quadraticCurveTo(x + 1.4, y + .6, x + 2.8, y); } c.stroke();
+    c.fillStyle = rgba('#a02a1a', .55); for (let i = 0; i < 3; i++) { c.beginPath(); c.moveTo(-20 + i * 4 + lean, -36 + by); c.lineTo(-17 + i * 4 + lean, -36 + by); c.lineTo(-19 + i * 4 + lean, -18 + by); c.lineTo(-22 + i * 4 + lean, -18 + by); c.fill(); }
+    c.restore();
     leg(-12, 0, 0); leg(16, Math.PI, 0);
-    g.rr(-18 + lean, -50 + bob + rear, 20, 9, 1.5, g.lin(0, -50, 0, -41, ['#a83a32', '#7a2420']), .6);
-    g.rr(-18 + lean, -50 + bob + rear, 20, 1.3, .5, '#e0b84a', 0); g.rr(-18 + lean, -42.6 + bob + rear, 20, 1.3, .5, '#e0b84a', 0);
-    g.limb([[-17 + lean, -50 + bob + rear], [-17 + lean, -58 + bob + rear]], .8, '#5a3a2a', .3); g.limb([[1 + lean, -50 + bob + rear], [1 + lean, -58 + bob + rear]], .8, '#5a3a2a', .3);
-    g.fill(() => { c.moveTo(-19 + lean, -58 + bob + rear); c.quadraticCurveTo(-8 + lean, -63 + bob + rear, 3 + lean, -58 + bob + rear); c.closePath(); }, '#c8a040', .5);
-    const hx = 20 + lean * 1.1, hy = -34 + bob + rear;
-    g.ell(hx - 6, hy, 8, 9.5, g.rad(hx - 6, hy, 10, [sh(sk, .05), sh(sk, -.25)]), .7);
-    g.ell(hx, hy, 9, 9, g.rad(hx + 2, hy - 3, 11, [sh(sk, .25), sk, sh(sk, -.3)]), .8);
-    g.ell(hx + 3.4, hy - 3, .9, .7, '#1a0a0a', 0);
-    c.lineCap = 'round'; const tsw = Math.sin(gt / 600) * 2;
-    c.strokeStyle = OL; c.lineWidth = 4.6; c.beginPath(); c.moveTo(hx + 6, hy + 3); c.quadraticCurveTo(hx + 12 + trunk * 6 + tsw, hy + 12 - trunk * 14, hx + 8 + trunk * 12 + tsw, hy + 22 - trunk * 26); c.stroke();
-    c.strokeStyle = sk; c.lineWidth = 3.4; c.stroke();
-    c.strokeStyle = OL; c.lineWidth = 2.2; c.beginPath(); c.moveTo(hx + 4, hy + 5); c.quadraticCurveTo(hx + 12, hy + 10, hx + 15, hy + 4); c.stroke(); c.strokeStyle = '#f0ece0'; c.lineWidth = 1.4; c.stroke();
+    // Schabracke mit Goldfransen
+    const ty = -42 + bob + rear;
+    g.fill(() => { c.moveTo(-17 + lean, ty + 1); c.quadraticCurveTo(-5 + lean, ty - 2, 8 + lean, ty + 1); c.lineTo(9 + lean, ty + 15); c.lineTo(-18 + lean, ty + 15); c.closePath(); }, g.lin(0, ty, 0, ty + 15, ['#b8322a', red, '#5a1210']), .6);
+    c.strokeStyle = gold; c.lineWidth = .7; c.beginPath(); c.moveTo(-18 + lean, ty + 13.6); c.lineTo(9 + lean, ty + 13.6); c.moveTo(-17 + lean, ty + 3); c.quadraticCurveTo(-5 + lean, ty, 8 + lean, ty + 3); c.stroke();
+    c.strokeStyle = rgba(gold, .9); c.lineWidth = .35; c.beginPath(); for (let x = -17.6; x < 9; x += 1.1) { c.moveTo(x + lean, ty + 15); c.lineTo(x + lean + .2, ty + 16.8 + Math.sin(gt / 300 + x) * .3); } c.stroke();
+    g.fill(() => { c.moveTo(-6 + lean, ty + 6); c.lineTo(-3 + lean, ty + 9); c.lineTo(-6 + lean, ty + 12); c.lineTo(-9 + lean, ty + 9); c.closePath(); }, gold, .3);
+    // Kriegsturm
+    const tb = ty - 1;
+    g.rr(-15 + lean, tb - 11, 20, 11, .8, g.lin(-15, 0, 5, 0, ['#5a3a22', '#7a5230', '#4a2e1a']), .6);
+    for (let i = 0; i < 5; i++) g.rr(-15 + lean + i * 4.2, tb - 13.4, 2.6, 2.6, .3, '#6a4428', .4);
+    c.strokeStyle = 'rgba(30,18,8,.6)'; c.lineWidth = .3; c.beginPath(); for (let i = 1; i < 4; i++) { c.moveTo(-15 + lean, tb - 11 + i * 2.75); c.lineTo(5 + lean, tb - 11 + i * 2.75); } c.stroke();
+    for (const sx of [-11, -4]) { g.ell(sx + lean, tb - 5.5, 2.6, 2.6, g.rad(sx + lean - .8, tb - 6.4, 3, ['#d8a040', '#8a2a1a']), .5); g.ell(sx + lean, tb - 5.5, .7, .7, '#e8c060', .2); }
+    g.limb([[3 + lean, tb - 13], [3 + lean, tb - 26]], .7, '#3a2414', .3);
+    const fw = Math.sin(gt / 260) * 1.2; g.fill(() => { c.moveTo(3.4 + lean, tb - 26); c.quadraticCurveTo(8 + lean, tb - 25 + fw, 12 + lean, tb - 24.4 - fw); c.lineTo(10 + lean, tb - 22); c.lineTo(12 + lean, tb - 20); c.quadraticCurveTo(8 + lean, tb - 20.6 + fw, 3.4 + lean, tb - 21); c.closePath(); }, red, .4);
+    c.strokeStyle = '#140e0c'; c.lineWidth = .7; c.beginPath(); c.moveTo(6 + lean, tb - 22); c.bezierCurveTo(8 + lean, tb - 25 + fw, 6.4 + lean, tb - 24 + fw, 8.4 + lean, tb - 25.2); c.stroke();
+    // Kopf, Ohr, Stoßzähne, Rüssel
+    const hx = 20 + lean * 1.1, hy = -34 + bob + rear, flap = Math.sin(gt / 700) * .12;
+    c.save(); c.translate(hx - 7, hy - 4); c.rotate(flap); g.fill(() => { c.moveTo(0, -6); c.bezierCurveTo(-9, -9, -11, 4, -6, 10); c.bezierCurveTo(-3, 13, 2, 9, 2, 4); c.closePath(); }, g.rad(-4, 0, 11, [sh(sk, .08), sh(sk, -.25)]), .7); c.strokeStyle = rgba(dk, .5); c.lineWidth = .35; c.beginPath(); c.moveTo(-1, -3); c.quadraticCurveTo(-6, 0, -5, 7); c.moveTo(-2, 1); c.quadraticCurveTo(-7, 4, -7, 8); c.stroke(); c.restore();
+    g.ell(hx, hy, 9, 9.6, g.rad(hx + 2, hy - 4, 12, [sh(sk, .26), sk, dk]), .8);
+    g.fill(() => { c.moveTo(hx - 3, hy - 8.6); c.quadraticCurveTo(hx + 3, hy - 11, hx + 7, hy - 6); c.lineTo(hx + 5, hy - 4); c.quadraticCurveTo(hx + 1, hy - 7.6, hx - 3, hy - 6); c.closePath(); }, red, .4); c.strokeStyle = gold; c.lineWidth = .4; c.beginPath(); c.moveTo(hx - 3, hy - 6.2); c.quadraticCurveTo(hx + 1, hy - 7.8, hx + 5, hy - 4.2); c.stroke();
+    g.ell(hx + 3.6, hy - 2.6, 1, .75, '#140806', .2); c.fillStyle = 'rgba(255,220,160,.6)'; c.beginPath(); c.arc(hx + 3.9, hy - 2.85, .25, 0, TAU); c.fill(); c.strokeStyle = rgba(dk, .6); c.lineWidth = .3; c.beginPath(); c.arc(hx + 3.6, hy - 2.6, 1.8, 3.4, 5.6); c.stroke();
+    const tusk = (dx, dy, len, w) => { g.fill(() => { c.moveTo(hx + 4 + dx, hy + 4 + dy); c.bezierCurveTo(hx + 10 + dx + len * .2, hy + 10 + dy - trunk * 2, hx + 14 + dx + len * .6, hy + 6 + dy - trunk * 4, hx + 15 + dx + len, hy - 1 + dy - trunk * 5); c.bezierCurveTo(hx + 12 + dx + len * .5, hy + 4 + dy - trunk * 3, hx + 8 + dx, hy + 6 + dy + w, hx + 4 + dx, hy + 6.4 + dy + w); c.closePath(); }, g.lin(hx, hy, hx + 16, hy, ['#d8ccb0', '#f8f2e4', '#e8dcc0']), .5); };
+    tusk(-2, 1.4, 4, .6);
+    c.lineCap = 'round'; const tsw = Math.sin(gt / 600) * 2, tp = t => { const u = 1 - t, x0 = hx + 6, y0 = hy + 3, x1 = hx + 12 + trunk * 6 + tsw, y1 = hy + 12 - trunk * 14, x2 = hx + 8 + trunk * 12 + tsw, y2 = hy + 22 - trunk * 26; return [u * u * x0 + 2 * u * t * x1 + t * t * x2, u * u * y0 + 2 * u * t * y1 + t * t * y2]; };
+    for (let i = 0; i < 12; i++) { const a = tp(i / 12), b2 = tp((i + 1) / 12), w = 4.4 - i * .22; g.limb([a, b2], w, i % 2 ? sk : sh(sk, -.06), .45); }
+    c.strokeStyle = rgba(dk, .55); c.lineWidth = .3; c.beginPath(); for (let i = 1; i < 12; i++) { const a = tp(i / 12), w = 2.1 - i * .1; c.moveTo(a[0] - w, a[1] - .3); c.lineTo(a[0] + w, a[1] + .3); } c.stroke();
+    tusk(0, 0, 7, 1); c.strokeStyle = gold; c.lineWidth = .9; c.beginPath(); c.moveTo(hx + 10.6, hy + 6); c.lineTo(hx + 11.4, hy + 8.4); c.stroke();
     if (fall) c.restore();
   }
-
-  /* ---------- Drache ---------- */
   function drawDragon(c, L, anim, el, gt) {
     const g = P(c), sk = L.skin, bl = L.belly;
+    const smooth = (pts, ws, col, spikes, belly) => { const N = pts.length, side = (i, sgn, ex) => { const a = pts[Math.max(0, i - 1)], b = pts[Math.min(N - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], Ln = Math.hypot(dx, dy) || 1, r = ws[i] / 2 + ex; return [pts[i][0] - dy / Ln * r * sgn, pts[i][1] + dx / Ln * r * sgn]; };
+      const path = ex => { c.beginPath(); c.moveTo(...side(0, 1, ex)); for (let i = 1; i < N; i++) c.lineTo(...side(i, 1, ex)); for (let i = N - 1; i >= 0; i--) c.lineTo(...side(i, -1, ex)); c.closePath(); };
+      if (spikes) for (let i = 1; i < N - 1; i += 1) { const p0 = side(i, -1, 0), a = pts[i - 1], b = pts[i + 1], dx = b[0] - a[0], dy = b[1] - a[1], Ln = Math.hypot(dx, dy) || 1, h = ws[i] * .45 + .8; g.fill(() => { c.moveTo(p0[0] - dx / Ln * 1.4, p0[1] - dy / Ln * 1.4); c.lineTo(p0[0] + dy / Ln * h, p0[1] - dx / Ln * h); c.lineTo(p0[0] + dx / Ln * 1.4, p0[1] + dy / Ln * 1.4); c.closePath(); }, sh(sk, -.35), .3); }
+      c.fillStyle = OL; path(.6); c.fill(); const A = pts[0], Z = pts[N - 1]; c.fillStyle = g.lin(A[0], A[1] - ws[0], A[0], A[1] + ws[0], [sh(col, .25), col, sh(col, -.35)]); path(0); c.fill();
+      if (belly) { c.save(); path(0); c.clip(); c.strokeStyle = rgba(bl, .85); c.lineWidth = Math.max(...ws) * .28; c.beginPath(); for (let i = 0; i < N; i++) { const q = side(i, 1, -ws[i] * .16); i ? c.lineTo(...q) : c.moveTo(...q); } c.stroke(); c.strokeStyle = rgba(sh(bl, -.45), .5); c.lineWidth = .3; c.beginPath(); for (let i = 1; i < N; i++) { const q = side(i, 1, -ws[i] * .05), q2 = side(i, 1, -ws[i] * .3); c.moveTo(...q); c.lineTo(...q2); } c.stroke(); c.restore(); } };
+    const bez = (P0, P1, P2, P3, n) => { const out = []; for (let i = 0; i <= n; i++) { const t = i / n, u = 1 - t; out.push([u * u * u * P0[0] + 3 * u * u * t * P1[0] + 3 * u * t * t * P2[0] + t * t * t * P3[0], u * u * u * P0[1] + 3 * u * u * t * P1[1] + 3 * u * t * t * P2[1] + t * t * t * P3[1]]); } return out; };
     let lean = 0, jaw = .12, rear = 0, fall = 0; const flap = Math.sin(gt / 320);
     if (anim === 'attack' || anim === 'throw') { const q = clamp01(el / animTime('attack')); lean = Math.sin(q * Math.PI) * 9 - (q < .25 ? q * 8 : 0); jaw = Math.sin(q * Math.PI); }
     if (anim === 'cast' || anim === 'shoot' || anim === 'shout') { const q = clamp01(el / animTime(anim)); rear = -Math.sin(q * Math.PI) * 7; jaw = clamp01(Math.sin(q * Math.PI) * 1.5); }
@@ -736,15 +775,18 @@ const RIG = (() => {
     if (anim === 'dead') fall = ease(clamp01(el / 800));
     if (fall) { c.save(); c.translate(0, -6); c.rotate(fall * .35); c.translate(0, 6 + fall * 6); }
     const wing = (near) => {
-      const sx = -4 + lean * .5, sy = -30 + rear * .6, f = flap * (near ? 10 : 7);
-      const tips = [[sx - 34, sy - 26 - f], [sx - 24, sy - 30 - f * 1.2], [sx - 12, sy - 28 - f], [sx + 4, sy - 22 - f * .6]];
-      g.fill(() => { c.moveTo(sx, sy); c.lineTo(...tips[0]); c.quadraticCurveTo(sx - 30, sy - 6, sx - 26, sy + 8 - f * .2); c.quadraticCurveTo(sx - 14, sy - 2, sx - 8, sy + 10); c.quadraticCurveTo(sx - 2, sy + 2, sx + 6, sy + 6); c.lineTo(...tips[3]); c.closePath(); }, g.lin(sx, sy - 30, sx - 20, sy + 10, [sh(L.wing, near ? .15 : -.1), L.wing, sh(L.wing, -.45)]), .7);
-      c.strokeStyle = rgba('#000000', .45); c.lineWidth = .7; tips.forEach(t => { c.beginPath(); c.moveTo(sx, sy); c.lineTo(...t); c.stroke(); });
+      const sx = -4 + lean * .5, sy = -30 + rear * .6, f = flap * (near ? 10 : 7), col = near ? sh(sk, -.08) : sh(sk, -.3);
+      const tips = [[sx - 36, sy - 24 - f], [sx - 25, sy - 31 - f * 1.2], [sx - 12, sy - 29 - f], [sx + 4, sy - 22 - f * .6]], wr = [sx - 6, sy - 20 - f * .7];
+      g.fill(() => { c.moveTo(sx, sy); c.lineTo(...wr); c.lineTo(...tips[0]); c.quadraticCurveTo(sx - 31, sy - 8, sx - 27, sy + 6 - f * .2); c.quadraticCurveTo(sx - 23, sy - 6 - f * .5, ...[tips[1][0] + 2, tips[1][1] + 26]); c.quadraticCurveTo(sx - 16, sy - 2, sx - 10, sy + 9); c.quadraticCurveTo(sx - 9, sy - 6 - f * .4, tips[2][0] + 4, tips[2][1] + 24); c.quadraticCurveTo(sx - 2, sy + 1, sx + 6, sy + 5); c.lineTo(...tips[3]); c.lineTo(...wr); c.closePath(); }, g.lin(sx - 30, sy - 30 - f, sx, sy + 8, [rgba(sh(col, .25), .96), rgba(col, .94), rgba(sh(col, -.3), .96)]), .6);
+      c.strokeStyle = rgba(sh(col, .35), .25); c.lineWidth = .3; c.beginPath(); for (let i = 0; i < 6; i++) { const t = (i + .5) / 6; c.moveTo(wr[0], wr[1]); c.quadraticCurveTo(wr[0] - 10 * t, wr[1] + 12, sx - 28 + t * 30, sy + 4 - t * 4); } c.stroke();
+      c.lineCap = 'round'; for (const t of tips) { c.strokeStyle = OL; c.lineWidth = 1.5; c.beginPath(); c.moveTo(...wr); c.lineTo(...t); c.stroke(); c.strokeStyle = sh(sk, -.15); c.lineWidth = .9; c.stroke(); }
+      c.strokeStyle = OL; c.lineWidth = 2.2; c.beginPath(); c.moveTo(sx, sy); c.lineTo(...wr); c.stroke(); c.strokeStyle = sh(sk, -.05); c.lineWidth = 1.5; c.stroke();
+      g.fill(() => { c.moveTo(wr[0] - .5, wr[1]); c.lineTo(wr[0] + 1.2, wr[1] - 2.6); c.lineTo(wr[0] + 1.2, wr[1] + .2); c.closePath(); }, '#e8dcc0', .3);
     };
     // Schwanz
     const tw = Math.sin(gt / 500) * 4;
     const tail = [[-18 + lean * .3, -16], [-34, -12 + tw * .4], [-48, -8 + tw], [-58, -14 + tw * 1.4], [-64, -22 + tw * 1.2]];
-    for (let i = 0; i < tail.length - 1; i++) g.limb([tail[i], tail[i + 1]], 9 - i * 2, sk, .6);
+    { const tp = bez(tail[0], [-38, -10 + tw * .5], [-56, -6 + tw * 1.2], tail[4], 14).reverse(); smooth(tp, tp.map((_, i) => 1.1 + i * .6), sk, 1, 1); }
     g.fill(() => { const t = tail[tail.length - 1]; c.moveTo(t[0] - 2, t[1] + 2); c.lineTo(t[0] - 6, t[1] - 4); c.lineTo(t[0] + 2, t[1] - 3); c.closePath(); }, sh(sk, -.2), .4);
     wing(false);
     const leg = (x, far, off) => { const a = Math.sin(off) * 0; g.limb([[x + lean, -16], [x + lean - 2, -8], [x + lean + 1, -1]], far ? 5 : 6, far ? sh(sk, -.3) : sh(sk, -.05), .6); for (let i = 0; i < 3; i++) g.limb([[x + lean + i * 1.2, -1], [x + lean + 1.6 + i * 1.2, .6]], .7, L.horn, .2); };
@@ -752,13 +794,13 @@ const RIG = (() => {
     g.ell(-4 + lean, -20 + rear * .3, 24, 11, g.rad(-6 + lean, -26, 26, [sh(sk, .25), sk, sh(sk, -.4)]), .8);
     g.ell(-2 + lean, -14 + rear * .3, 18, 5, g.lin(0, -18, 0, -9, [sh(bl, .2), bl]), .4);
     c.strokeStyle = rgba(sh(bl, -.4), .6); c.lineWidth = .4; for (let i = 0; i < 8; i++) { c.beginPath(); c.moveTo(-16 + lean + i * 4, -18); c.lineTo(-15 + lean + i * 4, -10); c.stroke(); }
+    c.save(); c.beginPath(); c.ellipse(-4 + lean, -20 + rear * .3, 24, 11, 0, 0, TAU); c.clip(); c.strokeStyle = rgba(sh(sk, -.45), .35); c.lineWidth = .3; c.beginPath(); for (let r2 = 0; r2 < 5; r2++) for (let i = 0; i < 12; i++) { const x = -26 + lean + i * 4 + (r2 % 2) * 2, y = -29 + r2 * 2.6 + rear * .3; c.moveTo(x, y); c.arc(x + 1.6, y, 1.6, Math.PI, 0, true); } c.stroke(); c.restore();
     for (let i = 0; i < 7; i++) g.fill(() => { const x = -22 + lean + i * 5; c.moveTo(x, -29 + rear * .3); c.lineTo(x + 1.5, -34 - (i % 2) + rear * .3); c.lineTo(x + 3, -29 + rear * .3); }, sh(sk, -.3), .3);
     leg(-10, 0, 2); leg(12, 0, 3);
     // Hals & Kopf
     const hx = 30 + lean * 1.2, hy = -42 + rear;
     const neck = [[12 + lean, -24 + rear * .3], [20 + lean, -34 + rear * .6], [hx - 4, hy + 2]];
-    for (let i = 0; i < 2; i++) g.limb([neck[i], neck[i + 1]], 10 - i * 2, sk, .7);
-    g.limb([[14 + lean, -22 + rear * .3], [hx - 4, hy + 5]], 4, bl, 0);
+    { const np = bez(neck[0], [16 + lean, -30 + rear * .5], [22 + lean, -40 + rear * .8], neck[2], 10); smooth(np, np.map((_, i) => 11 - i * .45), sk, 1, 1); }
     for (const s2 of [0, 1]) g.fill(() => { c.moveTo(hx - 3 + s2 * 2, hy - 3); c.quadraticCurveTo(hx - 10 + s2 * 3, hy - 10, hx - 14 + s2 * 4, hy - 8); c.quadraticCurveTo(hx - 8 + s2 * 3, hy - 6, hx - 1 + s2 * 2, hy - 1); }, g.lin(0, hy - 10, 0, hy, [L.horn, sh(L.horn, -.3)]), .4);
     g.ell(hx, hy, 7, 5, g.rad(hx, hy - 2, 8, [sh(sk, .25), sk, sh(sk, -.3)]), .7);
     g.fill(() => { c.moveTo(hx + 3, hy - 3); c.lineTo(hx + 14, hy - 1.5); c.lineTo(hx + 14, hy + 1); c.lineTo(hx + 3, hy + 2); c.closePath(); }, g.lin(0, hy - 3, 0, hy + 2, [sh(sk, .2), sk]), .6);
