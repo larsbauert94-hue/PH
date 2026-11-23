@@ -12,6 +12,12 @@ Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden 
 
 Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten). Unter **Optionen → Grafik** lässt sich zwischen *Auto*, *Hoch* (Figuren mit Szenenlicht, Kantenlicht und Bodenverdeckung) und *Normal* wählen; *Auto* schaltet bei zu niedriger Bildrate selbst herunter.
 
+## Neu in Version 11
+- **Ringe der Macht schmieden** (neuer Menüpunkt „Schmiede“): Barahirs Ring, Durins Ring, Vilya, Nenya, Narya, ein Ring der Neun und der Eine Ring – die mächtigsten Gegenstände des Spiels, mit Gruppen-Aura, veredelbar bis ★5, sichtbar leuchtend an der Hand des Trägers
+- **Ringfragmente** findet man bei Bossen, in Truhen, Nebenquests, Erfolgen, im Orthanc-Turm, in Spezialmodi und Prüfungen
+- **Kein Aufwerten mit Ressourcen mehr:** Verstärken und Mithril entfernt; Gold dient nur dazu, Dinge früher freizuschalten (Entwicklung vor der Stufengrenze, Reittiere, Spezialmodi, Nebenquests). Entwicklung ab der Stufengrenze ist kostenlos
+- Relikte jetzt als Tab im Erfolge-Menü; bestehende Spielstände werden automatisch umgestellt
+
 ## Neu in Version 10
 - **Hochformat-Layout:** eigene Anordnung für das iPhone hochkant – Kopfbereich, Kampfszene als Band, große Heldenkarten, Bereich für Truhe/Hinweise/Vorschläge, Tab-Leiste unten; alle Menüs bildschirmfüllend mit Hochkant-Rastern
 - **Querformat mit Browserleisten:** Kompaktstufe für Safari und die Claude-App (z. B. 800 × 364), keine abgeschnittenen Knöpfe mehr

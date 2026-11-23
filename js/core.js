@@ -17,12 +17,12 @@ let G = null;
 
 const STAGE_CAP = [25, 50, 80];
 const STAGE_MULT = [1, 1.25, 1.55];
-const EVOLVE_COST = [{ gold: 800, mithril: 40 }, { gold: 4000, mithril: 150 }];
+const EVOLVE_COST = [{ gold: 900 }, { gold: 4500 }];
 const xpNeed = l => Math.round(30 + l * 26 + l * l * 2.6);
 const PCT_KEYS = ['crit', 'critDmg', 'lifesteal', 'healPct', 'dodge', 'threat'];
 
 function newProfile() {
-  G = { v: 4, gold: 100, mithril: 20, heroes: {}, party: [], inv: [], nextId: 1, away: {}, relics: {}, tower: { best: 0, queued: false },
+  G = { v: 4, gold: 100, frags: {}, rings: {}, unl: {}, heroes: {}, party: [], inv: [], nextId: 1, away: {}, relics: {}, tower: { best: 0, queued: false },
     chest: 0, board: null, side: {}, comps: {}, companion: null, raid: {}, queue: null,
     story: { ch: 0, wave: 0, loop: 0, intro: false, farm: false, bossSeen: false, mids: {} },
     stats: { wins: 0, bosses: 0, epics: 0, legends: 0, heroes: 0, evolutions: 0, maxLvl: 1, maxEnh: 0, chapters: 0, relics: 0, towerBest: 0, maxCombo: 0 },
@@ -33,6 +33,8 @@ function newHeroState() { return { lvl: 1, xp: 0, stage: 0, eq: { weapon: null, 
 function save() { if (G) store.set(SAVE_KEY, G); }
 function load() { const g = store.get(SAVE_KEY); if (g && g.v === 4) { G = g; migrate(); return true; } return false; }
 function migrate() {
+  if (!G.frags) { G.frags = {}; G.rings = {}; G.unl = G.unl || {}; G.gold += (G.mithril || 0) * 25; delete G.mithril; const n = (G.story?.ch || 0) + (G.story?.loop || 0) * 20; grantFragments(Math.round(n * 1.4), true); }
+  if (!G.unl) G.unl = {};
   if (!G.team) { const ls = Object.values(G.heroes || {}).map(h => h.lvl || 1); G.team = { lvl: Math.max(1, ...ls), xp: 0 }; }
   if (!G.bestiary) G.bestiary = {};
   if (!G.ride) G.ride = {}; if (!G.mounts) { G.mounts = {}; if (G.story) grantMounts(); }
@@ -81,6 +83,7 @@ function partyAura(keys = G.party) {
   for (const k of keys) { if (!G.heroes[k]) continue; for (const ps of HEROES[k].pas) if (ps.lvl <= G.heroes[k].lvl) for (const [key, v] of Object.entries(ps.e)) { if (key === 'auraAtk') a.atk += v; if (key === 'auraDef') a.def += v; if (key === 'auraHp') a.hp += v; if (key === 'auraSpd') a.spd += v; if (key === 'auraCrit') a.crit += v; } }
   for (const f of activeFactions(keys)) if (f.tier >= 0) add(f.F.t[f.tier][1]);
   for (const i of Object.keys(G.relics || {})) if (RELICS[i]) add(RELICS[i].e);
+  for (const R of RINGS) { const r = G.rings?.[R.id]; if (r && r.stars > 0 && r.owner && keys.includes(r.owner) && R.aura) { const m = RING_STARS[r.stars] || 1; for (const [k, v] of Object.entries(R.aura)) a[k] = (a[k] || 0) + Math.round(v * m); } }
   const cp = COMPANIONS.find(c => c.id === G.companion); if (cp && G.comps[cp.id]) add(cp.e);
   return a;
 }
@@ -97,6 +100,7 @@ function heroStats(key, aura) {
   const add = (k, v) => { if (k in flat) flat[k] += v; else p[k] = (p[k] || 0) + v; };
   for (const slot of Object.keys(SLOTS)) { const it = hs.eq[slot] && itemById(hs.eq[slot]); if (!it) continue; for (const [k, v] of Object.entries(itemStats(it))) add(k, v); if (it.bonus) for (const [k, v] of Object.entries(it.bonus)) add(k, v); if (it.fav === key) { add('atkPct', 10); add('magPct', 10); } }
   const mt = mountOf(key); if (mt) for (const [k, v] of Object.entries(mt.b)) add(k, v);
+  const rg = ringOf(key); if (rg) { for (const [k, v] of Object.entries(ringBonus(rg.R, rg.stars))) add(k, v); for (const [k, v] of Object.entries(rg.R.p)) add(k, v); }
   for (const ps of H.pas) if (ps.lvl <= lv) for (const [k, v] of Object.entries(ps.e)) if (!k.startsWith('aura')) add(k, v);
   const setN = {}; for (const slot of Object.keys(SLOTS)) { const it = hs.eq[slot] && itemById(hs.eq[slot]); if (it?.set) setN[it.set] = (setN[it.set] || 0) + 1; }
   for (const [id, n] of Object.entries(setN)) { const S2 = SETS.find(x => x.id === id); if (!S2) continue; if (n >= 2) for (const [k, v] of Object.entries(S2.b2)) add(k, v); if (n >= 3) for (const [k, v] of Object.entries(S2.b3)) add(k, v); }
@@ -120,9 +124,28 @@ function heroStats(key, aura) {
 function mountOf(key) { if (!G.heroes[key] || !G.mounts || (G.ride || {})[key] === false) return null; return MOUNTS.find(m => m.heroes.includes(key) && G.mounts[m.id]) || null; }
 function mountFor(key) { return MOUNTS.find(m => m.heroes.includes(key)) || null; }
 function grantMounts() { G.mounts = G.mounts || {}; const got = []; for (const m of MOUNTS) if (!G.mounts[m.id] && (G.story.ch > m.ch || G.story.loop > 0)) { G.mounts[m.id] = 1; got.push(m); } return got; }
+/* ---------- Ringe der Macht ---------- */
+const RING_STARS = [0, 1, 1.25, 1.55, 1.9, 2.3];
+function ringProg() { return (G.story?.loop || 0) > 0 ? 999 : (G.story?.ch || 0); }
+function ringEligible() { return RINGS.filter(r => r.from <= ringProg() && ((G.rings?.[r.id]?.stars || 0) < 5)); }
+function grantFragments(n, silent) {
+  G.frags = G.frags || {}; G.rings = G.rings || {}; const got = [];
+  for (let i = 0; i < n; i++) { const el = ringEligible(); if (!el.length) break; let x = Math.random() * el.reduce((a, r) => a + 1 / r.need, 0), pr = el[0]; for (const r of el) { x -= 1 / r.need; if (x <= 0) { pr = r; break; } } G.frags[pr.id] = (G.frags[pr.id] || 0) + 1; got.push(pr); }
+  if (got.length && !silent && typeof onFragments === 'function') onFragments(got); return got;
+}
+function ringCost(id) { const R = RINGS.find(r => r.id === id), st = G.rings?.[id]?.stars || 0; return st === 0 ? R.need : Math.ceil(R.need * (.5 + st * .25)); }
+function canForge(id) { const st = G.rings?.[id]?.stars || 0; return st < 5 && (G.frags?.[id] || 0) >= ringCost(id); }
+function forgeableCount() { return RINGS.filter(r => canForge(r.id)).length; }
+function fragTotal() { return Object.values(G.frags || {}).reduce((a, b) => a + b, 0); }
+function ringOf(key) { for (const R of RINGS) { const r = G.rings?.[R.id]; if (r && r.stars > 0 && r.owner === key) return { R, stars: r.stars }; } return null; }
+function ringBonus(R, stars) { const m = RING_STARS[stars] || 1, o = {}; for (const [k, v] of Object.entries(R.e)) o[k] = Math.round(v * m * 10) / 10; return o; }
+function setRingOwner(id, key) { for (const R of RINGS) { const r = G.rings[R.id]; if (r && r.owner === key) r.owner = null; } if (G.rings[id]) G.rings[id].owner = key; save(); }
+function autoRings() { let n = 0; const order = RINGS.slice().reverse(); for (const R of order) { const r = G.rings[R.id]; if (!r || r.stars < 1 || (r.owner && G.party.includes(r.owner))) continue; const free = G.party.filter(k => !ringOf(k)).sort((a, b) => heroStats(b).power - heroStats(a).power); if (free.length) { r.owner = free[0]; n++; } } if (n) save(); return n; }
+function forgeRing(id) { if (!canForge(id)) return false; G.frags[id] -= ringCost(id); const r = G.rings[id] || (G.rings[id] = { stars: 0, owner: null }); r.stars++; G.stats.rings = RINGS.filter(x => (G.rings[x.id]?.stars || 0) > 0).length; if (!r.owner) autoRings(); save(); return true; }
 function gearOf(key) { const hs = G.heroes[key]; if (!hs || !hs.eq) return null; const f = sl => { const it = hs.eq[sl] && itemById(hs.eq[sl]); return it ? { r: it.r, e: it.enh || 0 } : null; }; return { w: f('weapon'), a: f('armor'), t: f('trinket') }; }
 function heroLook(key) { const H = HEROES[key], hs = G.heroes[key] || { stage: 0 }; const L = Object.assign({ wpn: H.wpn }, H.look); for (let i = 1; i <= hs.stage; i++) Object.assign(L, H.stageLook[i] || {}); for (const k in L) if (L[k] === null) delete L[k];
   const mt = mountOf(key); if (mt) L.mount = { kind: mt.kind, look: mt.look };
+  const rg = ringOf(key); if (rg) { L.ring = rg.R.c; L.ringOne = rg.R.id === 'einer' ? 1 : 0; }
   const gr = gearOf(key); if (gr) { L.gear = gr; if (gr.w && gr.w.r >= 3) L.wc = gr.w.r >= 4 ? '#fff0b8' : '#e4d6ff'; }
   return L; }
 function lookAtStage(key, st) { const H = HEROES[key]; const L = Object.assign({ wpn: H.wpn }, H.look); for (let i = 1; i <= st; i++) Object.assign(L, H.stageLook[i] || {}); for (const k in L) if (L[k] === null) delete L[k]; return L; }
@@ -148,8 +171,8 @@ function grantXp(key, xp) {
   G.stats.maxLvl = Math.max(G.stats.maxLvl, hs.lvl);
   return { ups, capped: hs.lvl >= cap };
 }
-function canEvolve(key) { const hs = G.heroes[key]; if (hs.stage >= 2) return null; const c = EVOLVE_COST[hs.stage]; return { cost: c, lvlOk: hs.lvl >= STAGE_CAP[hs.stage], ok: hs.lvl >= STAGE_CAP[hs.stage] && G.gold >= c.gold && G.mithril >= c.mithril }; }
-function evolve(key) { const e = canEvolve(key); if (!e || !e.ok) return false; G.gold -= e.cost.gold; G.mithril -= e.cost.mithril; G.heroes[key].stage++; G.stats.evolutions++; save(); return true; }
+function canEvolve(key) { const hs = G.heroes[key]; if (hs.stage >= 2) return null; const cap = STAGE_CAP[hs.stage], lvlOk = hs.lvl >= cap, gold = lvlOk ? 0 : Math.round(EVOLVE_COST[hs.stage].gold * (1 + (cap - hs.lvl) / 6)); return { cost: { gold }, lvlOk, ok: lvlOk || G.gold >= gold }; }
+function evolve(key) { const e = canEvolve(key); if (!e || !e.ok) return false; G.gold -= e.cost.gold; G.heroes[key].stage++; G.stats.evolutions++; save(); return true; }
 
 /* ---------- Gegenstände ---------- */
 function rollRarity(kind) {
@@ -226,11 +249,11 @@ function battleReward(kind, enemies) {
   const items = [];
   const n = kind === 'boss' ? ri(2, 3) : kind === 'elite' ? 1 : (Math.random() < .3 ? 1 : 0);
   for (let i = 0; i < n; i++) items.push(genItem(lvl + ri(-1, 1), rollRarity(kind)));
-  const mithril = kind === 'boss' ? ri(10, 16) : kind === 'elite' ? ri(1, 3) : (Math.random() < .12 ? 1 : 0);
-  return { xp, gold, items, mithril };
+  const frags = kind === 'boss' ? 1 + (Math.random() < .3 ? 1 : 0) : kind === 'elite' ? (Math.random() < .15 ? 1 : 0) : (Math.random() < .025 ? 1 : 0);
+  return { xp, gold, items, frags };
 }
 function applyReward(rw, partyKeys) {
-  G.gold += rw.gold; G.mithril += rw.mithril; rw.items.forEach(addItem); if (rw.items.length) track('items', rw.items.length);
+  G.gold += rw.gold; if (rw.frags) grantFragments(rw.frags); rw.items.forEach(addItem); if (rw.items.length) track('items', rw.items.length);
   const res = {};
   if (!G.team) G.team = { lvl: 1, xp: 0 }; const from = G.team.lvl, ups = teamXp(rw.xp); for (const k of owned()) res[k] = { ups, from };
   if (G.settings.autoEquip) autoEquip();
@@ -239,7 +262,7 @@ function applyReward(rw, partyKeys) {
 
 /* ---------- Erfolge ---------- */
 function achState(a) { const v = G.stats[a.stat] || 0; return { v, done: v >= a.goal, claimed: !!G.ach[a.id] }; }
-function claimAch(a) { const s = achState(a); if (!s.done || s.claimed) return false; G.ach[a.id] = 1; if (a.r.gold) G.gold += a.r.gold; if (a.r.mithril) G.mithril += a.r.mithril; save(); return true; }
+function claimAch(a) { const s = achState(a); if (!s.done || s.claimed) return false; G.ach[a.id] = 1; if (a.r.gold) G.gold += a.r.gold; if (a.r.frags) grantFragments(a.r.frags); save(); return true; }
 function claimableCount() { return ACHIEVEMENTS.filter(a => { const s = achState(a); return s.done && !s.claimed; }).length; }
 
 /* ---------- Training ---------- */
@@ -249,11 +272,11 @@ function train(k) { const hs = G.heroes[k], c = trainCost(k); if (hs.lvl >= STAG
 /* ---------- Siegestruhe (füllt sich durch Kämpfe) ---------- */
 const CHEST_MAX = 30;
 function addChest(n) { G.chest = Math.min(CHEST_MAX, (G.chest || 0) + n); }
-function chestState() { const n = G.chest || 0, lvl = chapterLvl(); return { n, gold: n * (12 + lvl * 5), xp: n * (15 + lvl * 9), mithril: Math.floor(n / 5) * 2, items: Math.floor(n / 6), ready: n >= 5, full: n >= CHEST_MAX }; }
+function chestState() { const n = G.chest || 0, lvl = chapterLvl(); return { n, gold: n * (12 + lvl * 5), xp: n * (15 + lvl * 9), frags: Math.floor(n / 10), items: Math.floor(n / 6), ready: n >= 5, full: n >= CHEST_MAX }; }
 function claimChest() {
   const st = chestState(); if (!st.ready) return null;
   const items = []; for (let i = 0; i < st.items; i++) items.push(genItem(chapterLvl() + 1, rollRarity('elite')));
-  const rw = { gold: st.gold, xp: st.xp, mithril: st.mithril, items };
+  const rw = { gold: st.gold, xp: st.xp, frags: st.frags, items };
   const res = applyReward(rw, G.party); G.chest = 0; save(); return { rw, res };
 }
 
@@ -268,11 +291,11 @@ function addQuest() {
   G.board.active.push({ id: q.id, goal: Math.round(q.goal * scale), prog: 0 });
 }
 function track(stat, n = 1) { if (!G) return; const b = ensureBoard(); for (const a of b.active) { const q = QUESTS.find(x => x.id === a.id); if (q.stat === stat) a.prog += n; } }
-function questReward() { const lvl = chapterLvl(); return { gold: 150 + lvl * 25, mithril: 6 + Math.floor(lvl / 8) }; }
+function questReward() { const lvl = chapterLvl(); return { gold: 260 + lvl * 30 }; }
 function questState(i) { const a = ensureBoard().active[i], q = QUESTS.find(x => x.id === a.id); return { a, q, v: a.prog, goal: a.goal, done: a.prog >= a.goal, r: questReward() }; }
-function claimQuest(i) { const st = questState(i); if (!st.done) return false; G.gold += st.r.gold; G.mithril += st.r.mithril; G.board.done++; G.board.bonus++; G.board.active.splice(i, 1); addQuest(); save(); return true; }
+function claimQuest(i) { const st = questState(i); if (!st.done) return false; G.gold += st.r.gold; G.board.done++; G.board.bonus++; G.board.active.splice(i, 1); addQuest(); save(); return true; }
 function boardBonusReady() { return (ensureBoard().bonus || 0) >= 4; }
-function claimBoardBonus() { if (!boardBonusReady()) return null; G.board.bonus -= 4; const it = genItem(chapterLvl() + 2, Math.random() < .2 ? 4 : 3); addItem(it); G.mithril += 30; if (G.settings.autoEquip) autoEquip(); save(); return it; }
+function claimBoardBonus() { if (!boardBonusReady()) return null; G.board.bonus -= 4; const it = genItem(chapterLvl() + 2, Math.random() < .2 ? 4 : 3); addItem(it); grantFragments(1); if (G.settings.autoEquip) autoEquip(); save(); return it; }
 function questsClaimable() { const b = ensureBoard(); return b.active.filter((a, i) => questState(i).done).length + (boardBonusReady() ? 1 : 0); }
 
 /* ---------- Relikte ---------- */
@@ -287,7 +310,7 @@ function towerGroup(f = towerFloor()) {
   const w = C.waves[(f * 3) % C.waves.length];
   return { group: f % 5 === 0 ? [...w, 'mordor_troll'].slice(0, 5) : w, kind: f % 5 === 0 ? 'elite' : 'normal', bg: C.bg };
 }
-function towerReward(f) { return { gold: 120 + f * 40, mithril: 4 + Math.floor(f / 2) + (f % 5 === 0 ? 15 : 0) }; }
+function towerReward(f) { return { gold: 160 + f * 50, frags: f % 5 === 0 ? 1 : 0 }; }
 
 /* ---------- Begleiter ---------- */
 function grantCompanion(id) { if (G.comps[id]) return null; G.comps[id] = 1; if (!G.companion) G.companion = id; G.stats.comps = Object.keys(G.comps).length; save(); return COMPANIONS.find(c => c.id === id); }
@@ -304,7 +327,7 @@ function genSetItem(S2, lvl, r = 3) {
 function checkFullSet() { for (const k of G.party) { const n = {}; for (const s2 of Object.keys(SLOTS)) { const it = G.heroes[k].eq[s2] && itemById(G.heroes[k].eq[s2]); if (it?.set) n[it.set] = (n[it.set] || 0) + 1; } if (Object.values(n).some(x => x >= 3)) G.stats.fullSet = 1; } }
 
 /* ---------- Nebenquests ---------- */
-function sideUnlocked(sd) { return G.story.ch > sd.after || G.story.loop > 0; }
+function sideUnlocked(sd) { return G.story.ch > sd.after || G.story.loop > 0 || !!(G.unl && G.unl['side:' + sd.id]); }
 function sideLvl(sd) { return STORY[sd.after].lvl + 3 + G.story.loop * LOOP_LVL; }
 
 /* ---------- Heldenreise-Modifikatoren ---------- */
@@ -314,7 +337,7 @@ function hasMod(k) { return activeMods().some(m => k in m.e); }
 
 /* ---------- Raid-Prüfungen ---------- */
 function raidLvl() { return Math.max(...G.party.map(k => G.heroes[k].lvl)) + 2; }
-function raidRewards(pct, first) { const lvl = raidLvl(); return { gold: Math.round((200 + lvl * 40) * (1 + pct * 4)), mithril: Math.round(pct * 40) + (first ? 25 : 0), items: Math.max(1, Math.round(pct * 4)) }; }
+function raidRewards(pct, first) { const lvl = raidLvl(); return { gold: Math.round((200 + lvl * 40) * (1 + pct * 4)), frags: Math.round(pct * 2) + (first ? 1 : 0), items: Math.max(1, Math.round(pct * 4)) }; }
 
 /* ---------- Spielstand sichern ---------- */
 function exportSave() { save(); return btoa(unescape(encodeURIComponent(JSON.stringify(G)))); }

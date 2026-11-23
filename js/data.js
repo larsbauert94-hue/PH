@@ -750,31 +750,33 @@ const LEGENDARIES = [
 
 const ACHIEVEMENTS = [
   { id: 'win10', n: 'Erste Schritte', d: 'Gewinne 10 Kämpfe.', stat: 'wins', goal: 10, r: { gold: 300 } },
-  { id: 'win100', n: 'Kampferprobt', d: 'Gewinne 100 Kämpfe.', stat: 'wins', goal: 100, r: { mithril: 60 } },
-  { id: 'win500', n: 'Veteran des Ringkriegs', d: 'Gewinne 500 Kämpfe.', stat: 'wins', goal: 500, r: { mithril: 200 } },
-  { id: 'boss3', n: 'Bosse fallen', d: 'Besiege 3 Bosse.', stat: 'bosses', goal: 3, r: { mithril: 40 } },
-  { id: 'boss10', n: 'Bezwinger der Schatten', d: 'Besiege 10 Bosse.', stat: 'bosses', goal: 10, r: { mithril: 120 } },
-  { id: 'ch6', n: 'Hin und wieder zurück', d: 'Schließe Teil I ab.', stat: 'chapters', goal: 6, r: { mithril: 100 } },
-  { id: 'ch14', n: 'Der Ring ist vernichtet', d: 'Besiege Sauron am Schicksalsberg.', stat: 'chapters', goal: 14, r: { mithril: 200 } },
-  { id: 'ch15', n: 'Heimkehr', d: 'Befreie das Auenland.', stat: 'chapters', goal: 15, r: { mithril: 100 } },
-  { id: 'ch21', n: 'Die Ringe der Macht', d: 'Schließe Teil III ab.', stat: 'chapters', goal: 21, r: { mithril: 300 } },
-  { id: 'side4', n: 'Abseits der Pfade', d: 'Schließe alle 4 Nebenquests ab.', stat: 'sides', goal: 4, r: { mithril: 150 } },
-  { id: 'comp5', n: 'Treue Begleiter', d: 'Sammle 5 Begleiter.', stat: 'comps', goal: 5, r: { mithril: 100 } },
-  { id: 'set3', n: 'Vollständig gerüstet', d: 'Trage ein vollständiges Set.', stat: 'fullSet', goal: 1, r: { mithril: 80 } },
-  { id: 'loop2', n: 'Heldenreise', d: 'Beginne eine zweite Reise.', stat: 'loops', goal: 1, r: { mithril: 200 } },
-  { id: 'relics10', n: 'Schatzkammer', d: 'Sammle 10 Relikte.', stat: 'relics', goal: 10, r: { mithril: 100 } },
-  { id: 'tower20', n: 'Herr des Turms', d: 'Erreiche Etage 20 im Orthanc-Turm.', stat: 'towerBest', goal: 20, r: { mithril: 150 } },
-  { id: 'combo4', n: 'Gemeinsam stark', d: 'Erreiche eine Kombo ×4.', stat: 'maxCombo', goal: 4, r: { mithril: 60 } },
-  { id: 'heroes10', n: 'Die Gemeinschaft wächst', d: 'Versammle 10 Helden.', stat: 'heroes', goal: 10, r: { mithril: 60 } },
-  { id: 'heroes34', n: 'Rat von Elrond', d: 'Versammle alle 34 Helden.', stat: 'heroes', goal: 34, r: { mithril: 250 } },
-  { id: 'epic5', n: 'Schatzsucher', d: 'Finde 5 epische Gegenstände.', stat: 'epics', goal: 5, r: { mithril: 50 } },
-  { id: 'legend1', n: 'Legendär', d: 'Finde einen legendären Gegenstand.', stat: 'legends', goal: 1, r: { mithril: 80 } },
-  { id: 'evo1', n: 'Aufstieg', d: 'Entwickle einen Helden.', stat: 'evolutions', goal: 1, r: { mithril: 40 } },
-  { id: 'evo5', n: 'Legenden erwachen', d: 'Führe 5 Entwicklungen durch.', stat: 'evolutions', goal: 5, r: { mithril: 150 } },
-  { id: 'lvl25', n: 'Erfahrener Held', d: 'Ein Held erreicht Stufe 25.', stat: 'maxLvl', goal: 25, r: { mithril: 80 } },
-  { id: 'enh5', n: 'Meisterschmied', d: 'Verstärke einen Gegenstand auf +5.', stat: 'maxEnh', goal: 5, r: { mithril: 50 } },
-  { id: 'ch24', n: 'Das Letzte Bündnis', d: 'Schließe Teil IV ab.', stat: 'chapters', goal: 24, r: { mithril: 250 } },
-  { id: 'ch28', n: 'Bezwinger Morgoths', d: 'Besiege Morgoth in Angband.', stat: 'chapters', goal: 28, r: { mithril: 400 } },
+  { id: 'win100', n: 'Kampferprobt', d: 'Gewinne 100 Kämpfe.', stat: 'wins', goal: 100, r: { frags: 1 } },
+  { id: 'win500', n: 'Veteran des Ringkriegs', d: 'Gewinne 500 Kämpfe.', stat: 'wins', goal: 500, r: { frags: 3 } },
+  { id: 'boss3', n: 'Bosse fallen', d: 'Besiege 3 Bosse.', stat: 'bosses', goal: 3, r: { frags: 1 } },
+  { id: 'boss10', n: 'Bezwinger der Schatten', d: 'Besiege 10 Bosse.', stat: 'bosses', goal: 10, r: { frags: 2 } },
+  { id: 'ch6', n: 'Hin und wieder zurück', d: 'Schließe Teil I ab.', stat: 'chapters', goal: 6, r: { frags: 2 } },
+  { id: 'ch14', n: 'Der Ring ist vernichtet', d: 'Besiege Sauron am Schicksalsberg.', stat: 'chapters', goal: 14, r: { frags: 3 } },
+  { id: 'ch15', n: 'Heimkehr', d: 'Befreie das Auenland.', stat: 'chapters', goal: 15, r: { frags: 2 } },
+  { id: 'ch21', n: 'Die Ringe der Macht', d: 'Schließe Teil III ab.', stat: 'chapters', goal: 21, r: { frags: 5 } },
+  { id: 'side4', n: 'Abseits der Pfade', d: 'Schließe alle 4 Nebenquests ab.', stat: 'sides', goal: 4, r: { frags: 2 } },
+  { id: 'comp5', n: 'Treue Begleiter', d: 'Sammle 5 Begleiter.', stat: 'comps', goal: 5, r: { frags: 2 } },
+  { id: 'set3', n: 'Vollständig gerüstet', d: 'Trage ein vollständiges Set.', stat: 'fullSet', goal: 1, r: { frags: 1 } },
+  { id: 'loop2', n: 'Heldenreise', d: 'Beginne eine zweite Reise.', stat: 'loops', goal: 1, r: { frags: 3 } },
+  { id: 'relics10', n: 'Schatzkammer', d: 'Sammle 10 Relikte.', stat: 'relics', goal: 10, r: { frags: 2 } },
+  { id: 'tower20', n: 'Herr des Turms', d: 'Erreiche Etage 20 im Orthanc-Turm.', stat: 'towerBest', goal: 20, r: { frags: 2 } },
+  { id: 'combo4', n: 'Gemeinsam stark', d: 'Erreiche eine Kombo ×4.', stat: 'maxCombo', goal: 4, r: { frags: 1 } },
+  { id: 'heroes10', n: 'Die Gemeinschaft wächst', d: 'Versammle 10 Helden.', stat: 'heroes', goal: 10, r: { frags: 1 } },
+  { id: 'heroes34', n: 'Rat von Elrond', d: 'Versammle alle 34 Helden.', stat: 'heroes', goal: 34, r: { frags: 4 } },
+  { id: 'epic5', n: 'Schatzsucher', d: 'Finde 5 epische Gegenstände.', stat: 'epics', goal: 5, r: { frags: 1 } },
+  { id: 'legend1', n: 'Legendär', d: 'Finde einen legendären Gegenstand.', stat: 'legends', goal: 1, r: { frags: 1 } },
+  { id: 'evo1', n: 'Aufstieg', d: 'Entwickle einen Helden.', stat: 'evolutions', goal: 1, r: { frags: 1 } },
+  { id: 'evo5', n: 'Legenden erwachen', d: 'Führe 5 Entwicklungen durch.', stat: 'evolutions', goal: 5, r: { frags: 2 } },
+  { id: 'lvl25', n: 'Erfahrener Held', d: 'Ein Held erreicht Stufe 25.', stat: 'maxLvl', goal: 25, r: { frags: 1 } },
+  { id: 'ring3', n: 'Meisterschmied', d: 'Schmiede drei Ringe der Macht.', stat: 'rings', goal: 3, r: { gold: 6000 } },
+  { id: 'ch24', n: 'Das Letzte Bündnis', d: 'Schließe Teil IV ab.', stat: 'chapters', goal: 24, r: { frags: 4 } },
+  { id: 'ch28', n: 'Bezwinger Morgoths', d: 'Besiege Morgoth in Angband.', stat: 'chapters', goal: 28, r: { frags: 7 } },
+  { id: 'ring1', n: 'Ringschmied', d: 'Schmiede deinen ersten Ring der Macht.', stat: 'rings', goal: 1, r: { gold: 1500 } },
+  { id: 'ring7', n: 'Herr der Ringe', d: 'Schmiede alle sieben Ringe.', stat: 'rings', goal: 7, r: { gold: 20000 } }
 ];
 
 const BACKGROUNDS = {
@@ -851,7 +853,7 @@ const BONDS = [
   { a: 'beren', b: 'luthien', n: 'Beren & Lúthien', e: { hp: 10, crit: 6 }, d: '+10 % LP, +6 % Krit' },
   { a: 'gilgalad', b: 'elendil', n: 'Das Letzte Bündnis', e: { atk: 8, def: 6 }, d: '+8 % Angriff, +6 % Verteidigung' },
   { a: 'eomer', b: 'eowyn', n: 'Kinder der Mark', e: { atk: 8 }, d: '+8 % Angriff' },
-  { a: 'glorfindel', b: 'elrond', n: 'Alte Freunde', e: { hp: 8, healPct: 10 }, d: '+8 % LP, +10 % Heilung' },,
+  { a: 'glorfindel', b: 'elrond', n: 'Alte Freunde', e: { hp: 8, healPct: 10 }, d: '+8 % LP, +10 % Heilung' },
   { a: 'frodo', b: 'gollum', n: 'Herr und Diener', e: { dodge: 6, crit: 6 }, d: '+6 % Ausweichen, +6 % Krit' },
   { a: 'celebrimbor', b: 'galadriel', n: 'Die Drei Ringe', e: { mag: 8, hp: 6 }, d: '+8 % Magie, +6 % LP' }
 ];
@@ -867,6 +869,16 @@ const MOUNTS = [
   { id: 'arod', n: 'Arod', d: 'Ein Pferd aus Rohan, das Legolas ohne Sattel reitet.', heroes: ['legolas'], kind: 'horse', look: { fur: '#e6e0d6', mane: '#c8c0b0', belly: '#d8d2c8' }, b: { spd: 3, crit: 4 }, bd: '+3 Tempo, +4 % Krit', ch: 10 },
   { id: 'windfola', n: 'Windfola', d: 'Trug Éowyn und Merry in die Schlacht.', heroes: ['eowyn'], kind: 'horse', look: { fur: '#8a8a86', mane: '#4a4a48', belly: '#9a9a96', gear: '#6a5a3a' }, b: { spd: 3, crit: 4 }, bd: '+3 Tempo, +4 % Krit', ch: 12 },
   { id: 'stybba', n: 'Stybba', d: 'Merrys kleines, tapferes Pony.', heroes: ['merry'], kind: 'pony', look: { fur: '#8a6a4a', mane: '#4a3020', belly: '#9a7a5a', gear: '#6a4a2a' }, b: { spd: 2, dodge: 5 }, bd: '+2 Tempo, 5 % Ausweichen', ch: 12 }
+];
+/* Die Ringe der Macht: aus Fragmenten geschmiedet, die mächtigsten Gegenstände des Spiels */
+const RINGS = [
+  { id: 'barahir', n: 'Barahirs Ring', lore: 'Zwei Schlangen mit Smaragdaugen, Erbstück des Hauses Bëor – Zeichen der Freundschaft zwischen Elben und Menschen.', need: 3, from: 0, c: '#5ad88a', e: { hpPct: 18, atkPct: 15, magPct: 15 }, p: { reviveSelf: .35 }, pd: 'Steht einmal pro Kampf mit 35 % LP wieder auf.', aura: { hp: 5 }, ad: 'Gruppe: +5 % LP' },
+  { id: 'durin', n: 'Durins Ring', lore: 'Einer der Sieben, den Zwergenkönigen gegeben. Er mehrt Gold und Standhaftigkeit.', need: 4, from: 1, c: '#e8b84a', e: { defPct: 25, hpPct: 20 }, p: { thorns: 18, dmgRed: 8 }, pd: '18 % Dornen, −8 % erlittener Schaden.', aura: { def: 8 }, ad: 'Gruppe: +8 % Verteidigung' },
+  { id: 'vilya', n: 'Vilya, Ring der Luft', lore: 'Der mächtigste der Drei, mit einem Saphir besetzt. Elrond hütet ihn in Bruchtal.', need: 5, from: 7, c: '#5a9cff', e: { magPct: 25, healPct: 25, atkPct: 12 }, p: { ultCharge: 25 }, pd: 'Ultimate lädt 25 % schneller.', aura: { ultCharge: 10 }, ad: 'Gruppe: Ultimate +10 %' },
+  { id: 'nenya', n: 'Nenya, Ring des Wassers', lore: 'Aus Mithril mit einem weißen Stein. Galadriels Ring bewahrt Lothlórien vor dem Verfall.', need: 5, from: 9, c: '#e8f4ff', e: { hpPct: 25, healPct: 30, defPct: 12 }, p: { regenTurn: 4, healRecv: 15 }, pd: 'Regeneriert 4 % LP pro Runde.', aura: { hp: 8, healPct: 10 }, ad: 'Gruppe: +8 % LP, +10 % Heilung' },
+  { id: 'narya', n: 'Narya, Ring des Feuers', lore: 'Der Ring mit dem Rubin, der Herzen entflammt. Círdan gab ihn Gandalf.', need: 5, from: 10, c: '#ff5a2a', e: { atkPct: 25, magPct: 25, crit: 10 }, p: { burnOnHit: .3, critDmg: 25 }, pd: 'Treffer setzen mit 30 % in Brand, +25 % Krit-Schaden.', aura: { atk: 8 }, ad: 'Gruppe: +8 % Angriff' },
+  { id: 'neun', n: 'Ring der Neun', lore: 'Den Menschen gegeben, die nach Macht gierten. Große Kraft – zu einem Preis.', need: 6, from: 11, c: '#a070ff', e: { atkPct: 42, magPct: 42, hpPct: -10 }, p: { lifesteal: 15, crit: 12 }, pd: '15 % Lebensraub, +12 % Krit, aber −10 % LP.', aura: { crit: 6 }, ad: 'Gruppe: +6 % Krit' },
+  { id: 'einer', n: 'Der Eine Ring', lore: 'Ein Ring, sie zu knechten, sie alle zu finden, ins Dunkel zu treiben und ewig zu binden.', need: 9, from: 13, c: '#ffcf3a', e: { atkPct: 55, magPct: 55, hpPct: 40, defPct: 25, crit: 15 }, p: { dodge: 18, startInvis: 1, critDmg: 50 }, pd: 'Unsichtbar zu Kampfbeginn, 18 % Ausweichen, +50 % Krit-Schaden.', aura: { atk: 12, hp: 10 }, ad: 'Gruppe: +12 % Angriff, +10 % LP' }
 ];
 const SETS = [
   { id: 'erebor', n: 'Erbe von Erebor', ch: 4, c: '#e8c060', b2: { hpPct: 15 }, b3: { dmgRed: 10 }, d2: '+15 % LP', d3: '−10 % erlittener Schaden' },
