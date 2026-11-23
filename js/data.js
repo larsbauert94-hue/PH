@@ -365,7 +365,7 @@ const HEROES = {
     ult: { n: 'Die Drei Ringe', d: 'Alle Feinde 240 % Magie, Gruppe heilt 30 %.', anim: 'cast', fx: 'holy', tgt: 'all', dmg: 2.4, stat: 'mag', healAllPct: .3 },
     pas: [PS('Meisterschmied', 1, { magPct: 10 }, '+10 % Magie.'), PS('Feanors Erbe', 15, { critDmg: 25 }, '+25 % Krit-Schaden.'), PS('Hüter der Drei', 25, { auraHp: 8 }, 'Gruppe: +8 % LP.')] },
   gollum: { n: 'Gollum', cls: 'schurke', wpn: 'claws', era: 'Drittes Zeitalter', stages: ['Sméagol', 'Stinker', 'Gollum'],
-    look: { body: 'goblin', skin: '#c8c4a8', hair: '#3a3428', hs: 'wild', eyeC: '#a8d8f0', tunic: '#4a4638', pants: '#c8c4a8', boots: '#b8b498' },
+    look: { body: 'goblin', tusks: 0, skin: '#c8c4a8', hair: '#3a3428', hs: 'lank', eyeC: '#a8d8f0', tunic: '#4a4638', pants: '#c8c4a8', boots: '#b8b498' },
     stageLook: [{}, { skin: '#bcb89c' }, { skin: '#b0ac90', eyeC: '#d0f0ff' }],
     act: { n: 'Biss', d: '150 % Schaden, Gift.', cd: 1, anim: 'melee', fx: 'slash', tgt: 'single', dmg: 1.5, st: [['poison', .7, 3]] },
     act2: { n: 'Mein Schatz!', d: '240 % Schaden, immer kritisch.', cd: 4, anim: 'melee', fx: 'dark', tgt: 'single', dmg: 2.4, alwaysCrit: 1 },
@@ -708,7 +708,11 @@ const BASES = {
   armor:  { slot: 'armor', icon: 'armor', names: ['Lederwams', 'Kettenhemd', 'Schuppenpanzer', 'Plattenrüstung', 'Elbenmantel', 'Brigantine'] },
   trinket:{ slot: 'trinket', icon: 'ring', names: ['Ring', 'Amulett', 'Brosche', 'Talisman', 'Siegel'] }
 };
-const ORIGINS = ['Gondorisches', 'Elbisches', 'Zwergisches', 'Númenórisches', 'Rohirrisches', 'Altes', 'Dúnedain-'];
+const ORIGINS = ['Gondorisch', 'Elbisch', 'Zwergisch', 'Númenórisch', 'Rohirrisch', 'Alt', 'Dúnedain-'];
+/* Grammatisches Geschlecht der Gegenstände, damit es „Elbische Brosche“ und „Alter Kriegshammer“ heißt */
+const GENUS = { Kurzschwert: 'n', Langschwert: 'n', Dolch: 'm', Klinge: 'f', Säbel: 'm', Breitschwert: 'n', Kurzbogen: 'm', Langbogen: 'm', Kompositbogen: 'm', Elbenbogen: 'm', Handaxt: 'f', Streitaxt: 'f', Kriegshammer: 'm', Doppelaxt: 'f', Streitkolben: 'm', Wanderstab: 'm', Eichenstab: 'm', Zauberstab: 'm', Runenstab: 'm', Speer: 'm', Lanze: 'f', Glefe: 'f', Lederwams: 'n', Kettenhemd: 'n', Schuppenpanzer: 'm', Plattenrüstung: 'f', Elbenmantel: 'm', Brigantine: 'f', Ring: 'm', Amulett: 'n', Brosche: 'f', Talisman: 'm', Siegel: 'n' };
+function originAdj(o, noun) { return o.endsWith('-') ? o : o + ({ m: 'er', f: 'e', n: 'es' }[GENUS[noun]] || 'es'); }
+function fixItemName(n) { return String(n).replace(/^(Gondorisch|Elbisch|Zwergisch|Númenórisch|Rohirrisch|Alt)(?:es|er|e) (\S+)/, (m, o, noun) => GENUS[noun] ? originAdj(o, noun) + ' ' + noun : m); }
 const AFFIX = {
   atk: { n: 'Angriff', suf: 'der Stärke', f: l => 1 + l * 0.4 },
   mag: { n: 'Magie', suf: 'des Wissens', f: l => 1 + l * 0.4 },
@@ -790,7 +794,7 @@ const BACKGROUNDS = {
   cirith:  { sky: ['#120a18', '#1e1228', '#2a1a38'], far: '#1a1222', mid: '#22182a', ground: '#2a2230', gd: '#1a1420', props: 'webs', parts: 'ash', moon: '#c8b8e0' },
   pelennor:{ sky: ['#3a2218', '#6a3a22', '#a8642e'], far: '#4a3a32', mid: '#4a4030', ground: '#6a6040', gd: '#4a4230', props: 'city', parts: 'embers' },
   doom:    { sky: ['#1a0806', '#3a0e08', '#6a1a0a'], far: '#2a0e0a', mid: '#1e0c0a', ground: '#2e1a16', gd: '#1e100e', props: 'doom', parts: 'embers', lava: 1 },
-  snow:    { sky: ['#8aa0c0', '#b8c8e0', '#e0e8f4'], far: '#c8d4e4', mid: '#dce4ee', ground: '#eef2f8', gd: '#c8d4e2', props: 'ice', parts: 'snow' },
+  snow:    { sky: ['#6a809e', '#9aaac2', '#c8d2e0'], far: '#a4b4c8', mid: '#bccad8', ground: '#d6dee8', gd: '#a6b4c6', props: 'ice', parts: 'snow' },
   sea:     { sky: ['#2a3a5a', '#4a6a8a', '#8aa8c0'], far: '#3a5a7a', mid: '#2a4a6a', ground: '#7a6a4a', gd: '#5a4a32', props: 'sea', parts: 'spray' },
   south:   { sky: ['#a86a3a', '#d8a060', '#f0d090'], far: '#8a6a4a', mid: '#7a5a3a', ground: '#9a7a4a', gd: '#7a5e38', props: 'south', parts: 'ash', sun: '#fff0c0' },
   rhun:    { sky: ['#3a2a48', '#6a4a6a', '#b8808a'], far: '#5a4058', mid: '#6a5a4a', ground: '#8a7a50', gd: '#6a5a3a', props: 'steppe', parts: 'none', moon: '#f0e0f0' },
@@ -874,13 +878,13 @@ const MOUNTS = [
 ];
 /* Die Ringe der Macht: aus Fragmenten geschmiedet, die mächtigsten Gegenstände des Spiels */
 const RINGS = [
-  { id: 'barahir', n: 'Barahirs Ring', lore: 'Zwei Schlangen mit Smaragdaugen, Erbstück des Hauses Bëor – Zeichen der Freundschaft zwischen Elben und Menschen.', need: 3, from: 0, c: '#5ad88a', e: { hpPct: 18, atkPct: 15, magPct: 15 }, p: { reviveSelf: .35 }, pd: 'Steht einmal pro Kampf mit 35 % LP wieder auf.', aura: { hp: 5 }, ad: 'Gruppe: +5 % LP' },
-  { id: 'durin', n: 'Durins Ring', lore: 'Einer der Sieben, den Zwergenkönigen gegeben. Er mehrt Gold und Standhaftigkeit.', need: 4, from: 1, c: '#e8b84a', e: { defPct: 25, hpPct: 20 }, p: { thorns: 18, dmgRed: 8 }, pd: '18 % Dornen, −8 % erlittener Schaden.', aura: { def: 8 }, ad: 'Gruppe: +8 % Verteidigung' },
-  { id: 'vilya', n: 'Vilya, Ring der Luft', lore: 'Der mächtigste der Drei, mit einem Saphir besetzt. Elrond hütet ihn in Bruchtal.', need: 5, from: 7, c: '#5a9cff', e: { magPct: 25, healPct: 25, atkPct: 12 }, p: { ultCharge: 25 }, pd: 'Ultimate lädt 25 % schneller.', aura: { ultCharge: 10 }, ad: 'Gruppe: Ultimate +10 %' },
-  { id: 'nenya', n: 'Nenya, Ring des Wassers', lore: 'Aus Mithril mit einem weißen Stein. Galadriels Ring bewahrt Lothlórien vor dem Verfall.', need: 5, from: 9, c: '#e8f4ff', e: { hpPct: 25, healPct: 30, defPct: 12 }, p: { regenTurn: 4, healRecv: 15 }, pd: 'Regeneriert 4 % LP pro Runde.', aura: { hp: 8, healPct: 10 }, ad: 'Gruppe: +8 % LP, +10 % Heilung' },
-  { id: 'narya', n: 'Narya, Ring des Feuers', lore: 'Der Ring mit dem Rubin, der Herzen entflammt. Círdan gab ihn Gandalf.', need: 5, from: 10, c: '#ff5a2a', e: { atkPct: 25, magPct: 25, crit: 10 }, p: { burnOnHit: .3, critDmg: 25 }, pd: 'Treffer setzen mit 30 % in Brand, +25 % Krit-Schaden.', aura: { atk: 8 }, ad: 'Gruppe: +8 % Angriff' },
+  { id: 'barahir', lb: ['beren', 'aragorn', 'isildur', 'elendil'], n: 'Barahirs Ring', lore: 'Zwei Schlangen mit Smaragdaugen, Erbstück des Hauses Bëor – Zeichen der Freundschaft zwischen Elben und Menschen.', need: 3, from: 0, c: '#5ad88a', e: { hpPct: 18, atkPct: 15, magPct: 15 }, p: { reviveSelf: .35 }, pd: 'Steht einmal pro Kampf mit 35 % LP wieder auf.', aura: { hp: 5 }, ad: 'Gruppe: +5 % LP' },
+  { id: 'durin', lb: ['durin', 'thorin'], n: 'Durins Ring', lore: 'Einer der Sieben, den Zwergenkönigen gegeben. Er mehrt Gold und Standhaftigkeit.', need: 4, from: 1, c: '#e8b84a', e: { defPct: 25, hpPct: 20 }, p: { thorns: 18, dmgRed: 8 }, pd: '18 % Dornen, −8 % erlittener Schaden.', aura: { def: 8 }, ad: 'Gruppe: +8 % Verteidigung' },
+  { id: 'vilya', lb: ['elrond', 'gilgalad'], n: 'Vilya, Ring der Luft', lore: 'Der mächtigste der Drei, mit einem Saphir besetzt. Elrond hütet ihn in Bruchtal.', need: 5, from: 7, c: '#5a9cff', e: { magPct: 25, healPct: 25, atkPct: 12 }, p: { ultCharge: 25 }, pd: 'Ultimate lädt 25 % schneller.', aura: { ultCharge: 10 }, ad: 'Gruppe: Ultimate +10 %' },
+  { id: 'nenya', lb: ['galadriel'], n: 'Nenya, Ring des Wassers', lore: 'Aus Mithril mit einem weißen Stein. Galadriels Ring bewahrt Lothlórien vor dem Verfall.', need: 5, from: 9, c: '#e8f4ff', e: { hpPct: 25, healPct: 30, defPct: 12 }, p: { regenTurn: 4, healRecv: 15 }, pd: 'Regeneriert 4 % LP pro Runde.', aura: { hp: 8, healPct: 10 }, ad: 'Gruppe: +8 % LP, +10 % Heilung' },
+  { id: 'narya', lb: ['gandalf', 'cirdan', 'fremder'], n: 'Narya, Ring des Feuers', lore: 'Der Ring mit dem Rubin, der Herzen entflammt. Círdan gab ihn Gandalf.', need: 5, from: 10, c: '#ff5a2a', e: { atkPct: 25, magPct: 25, crit: 10 }, p: { burnOnHit: .3, critDmg: 25 }, pd: 'Treffer setzen mit 30 % in Brand, +25 % Krit-Schaden.', aura: { atk: 8 }, ad: 'Gruppe: +8 % Angriff' },
   { id: 'neun', n: 'Ring der Neun', lore: 'Den Menschen gegeben, die nach Macht gierten. Große Kraft – zu einem Preis.', need: 6, from: 11, c: '#a070ff', e: { atkPct: 42, magPct: 42, hpPct: -10 }, p: { lifesteal: 15, crit: 12 }, pd: '15 % Lebensraub, +12 % Krit, aber −10 % LP.', aura: { crit: 6 }, ad: 'Gruppe: +6 % Krit' },
-  { id: 'einer', n: 'Der Eine Ring', lore: 'Ein Ring, sie zu knechten, sie alle zu finden, ins Dunkel zu treiben und ewig zu binden.', need: 9, from: 13, c: '#ffcf3a', e: { atkPct: 55, magPct: 55, hpPct: 40, defPct: 25, crit: 15 }, p: { dodge: 18, startInvis: 1, critDmg: 50 }, pd: 'Unsichtbar zu Kampfbeginn, 18 % Ausweichen, +50 % Krit-Schaden.', aura: { atk: 12, hp: 10 }, ad: 'Gruppe: +12 % Angriff, +10 % LP' }
+  { id: 'einer', lb: ['frodo', 'bilbo', 'sam', 'isildur'], n: 'Der Eine Ring', lore: 'Ein Ring, sie zu knechten, sie alle zu finden, ins Dunkel zu treiben und ewig zu binden.', need: 9, from: 13, c: '#ffcf3a', e: { atkPct: 55, magPct: 55, hpPct: 40, defPct: 25, crit: 15 }, p: { dodge: 18, startInvis: 1, critDmg: 50 }, pd: 'Unsichtbar zu Kampfbeginn, 18 % Ausweichen, +50 % Krit-Schaden.', aura: { atk: 12, hp: 10 }, ad: 'Gruppe: +12 % Angriff, +10 % LP' }
 ];
 const SETS = [
   { id: 'erebor', n: 'Erbe von Erebor', ch: 4, c: '#e8c060', b2: { hpPct: 15 }, b3: { dmgRed: 10 }, d2: '+15 % LP', d3: '−10 % erlittener Schaden' },

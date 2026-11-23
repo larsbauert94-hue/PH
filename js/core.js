@@ -27,7 +27,7 @@ function newProfile() {
     story: { ch: 0, wave: 0, loop: 0, intro: false, farm: false, bossSeen: false, mids: {} },
     stats: { wins: 0, bosses: 0, epics: 0, legends: 0, heroes: 0, evolutions: 0, maxLvl: 1, maxEnh: 0, chapters: 0, relics: 0, towerBest: 0, maxCombo: 0 },
     ach: {}, settings: { speed: 1, sound: true, autoEquip: true, autoParty: true } };
-  save(); return G;
+  migrate(); save(); return G;
 }
 function newHeroState() { return { lvl: 1, xp: 0, stage: 0, eq: { weapon: null, armor: null, trinket: null } }; }
 function save() { if (G) store.set(SAVE_KEY, G); }
@@ -43,6 +43,7 @@ function migrate() {
   for (const k of ['sides', 'comps', 'fullSet', 'loops', 'relics', 'towerBest', 'maxCombo']) if (G.stats[k] === undefined) G.stats[k] = 0;
   syncLevels();
   if (G.heroes && G.story) for (const [k, ch] of [['eomer', 10], ['haldir', 10], ['gollum', 11], ['celebrimbor', 20]]) if (!G.heroes[k] && HEROES[k] && (G.story.ch > ch || G.story.loop > 0)) joinHero(k);
+  for (const it of G.inv || []) if (it && it.leg == null && it.name) it.name = fixItemName(it.name);
   delete G.idle; delete G.daily;
 }
 
@@ -100,7 +101,7 @@ function heroStats(key, aura) {
   const add = (k, v) => { if (k in flat) flat[k] += v; else p[k] = (p[k] || 0) + v; };
   for (const slot of Object.keys(SLOTS)) { const it = hs.eq[slot] && itemById(hs.eq[slot]); if (!it) continue; for (const [k, v] of Object.entries(itemStats(it))) add(k, v); if (it.bonus) for (const [k, v] of Object.entries(it.bonus)) add(k, v); if (it.fav === key) { add('atkPct', 10); add('magPct', 10); } }
   const mt = mountOf(key); if (mt) for (const [k, v] of Object.entries(mt.b)) add(k, v);
-  const rg = ringOf(key); if (rg) { for (const [k, v] of Object.entries(ringBonus(rg.R, rg.stars))) add(k, v); for (const [k, v] of Object.entries(rg.R.p)) add(k, v); }
+  const rg = ringOf(key); if (rg) { const lm = loreBearer(rg.R, key) ? LORE_RING : 1; for (const [k, v] of Object.entries(ringBonus(rg.R, rg.stars))) add(k, Math.round(v * lm * 10) / 10); for (const [k, v] of Object.entries(rg.R.p)) add(k, v); }
   for (const ps of H.pas) if (ps.lvl <= lv) for (const [k, v] of Object.entries(ps.e)) if (!k.startsWith('aura')) add(k, v);
   const setN = {}; for (const slot of Object.keys(SLOTS)) { const it = hs.eq[slot] && itemById(hs.eq[slot]); if (it?.set) setN[it.set] = (setN[it.set] || 0) + 1; }
   for (const [id, n] of Object.entries(setN)) { const S2 = SETS.find(x => x.id === id); if (!S2) continue; if (n >= 2) for (const [k, v] of Object.entries(S2.b2)) add(k, v); if (n >= 3) for (const [k, v] of Object.entries(S2.b3)) add(k, v); }
@@ -140,7 +141,11 @@ function fragTotal() { return Object.values(G.frags || {}).reduce((a, b) => a + 
 function ringOf(key) { for (const R of RINGS) { const r = G.rings?.[R.id]; if (r && r.stars > 0 && r.owner === key) return { R, stars: r.stars }; } return null; }
 function ringBonus(R, stars) { const m = RING_STARS[stars] || 1, o = {}; for (const [k, v] of Object.entries(R.e)) o[k] = Math.round(v * m * 10) / 10; return o; }
 function setRingOwner(id, key) { for (const R of RINGS) { const r = G.rings[R.id]; if (r && r.owner === key) r.owner = null; } if (G.rings[id]) G.rings[id].owner = key; save(); }
-function autoRings() { let n = 0; const order = RINGS.slice().reverse(); for (const R of order) { const r = G.rings[R.id]; if (!r || r.stars < 1 || (r.owner && G.party.includes(r.owner))) continue; const free = G.party.filter(k => !ringOf(k)).sort((a, b) => heroStats(b).power - heroStats(a).power); if (free.length) { r.owner = free[0]; n++; } } if (n) save(); return n; }
+const LORE_RING = 1.2; function loreBearer(R, key) { return !!(R.lb && R.lb.includes(key)); }
+function autoRings() { let n = 0; const order = RINGS.slice().reverse();
+  // Zuerst bekommen die wahren Träger aus der Lore ihren Ring
+  for (const R of order) { const r = G.rings[R.id]; if (!r || r.stars < 1 || (r.owner && G.party.includes(r.owner))) continue; const lk = (R.lb || []).find(k => G.party.includes(k) && !ringOf(k)); if (lk) { r.owner = lk; n++; } }
+  for (const R of order) { const r = G.rings[R.id]; if (!r || r.stars < 1 || (r.owner && G.party.includes(r.owner))) continue; const free = G.party.filter(k => !ringOf(k)).sort((a, b) => heroStats(b).power - heroStats(a).power); if (free.length) { r.owner = free[0]; n++; } } if (n) save(); return n; }
 function forgeRing(id) { if (!canForge(id)) return false; G.frags[id] -= ringCost(id); const r = G.rings[id] || (G.rings[id] = { stars: 0, owner: null }); r.stars++; G.stats.rings = RINGS.filter(x => (G.rings[x.id]?.stars || 0) > 0).length; if (!r.owner) autoRings(); save(); return true; }
 function gearOf(key) { const hs = G.heroes[key]; if (!hs || !hs.eq) return null; const f = sl => { const it = hs.eq[sl] && itemById(hs.eq[sl]); return it ? { r: it.r, e: it.enh || 0 } : null; }; return { w: f('weapon'), a: f('armor'), t: f('trinket') }; }
 function heroLook(key) { const H = HEROES[key], hs = G.heroes[key] || { stage: 0 }; const L = Object.assign({ wpn: H.wpn }, H.look); for (let i = 1; i <= hs.stage; i++) Object.assign(L, H.stageLook[i] || {}); for (const k in L) if (L[k] === null) delete L[k];
@@ -198,7 +203,7 @@ function genItem(lvl, r, opt = {}) {
   for (let i = 0; i < R.aff && keys.length; i++) { const k = keys.splice(Math.floor(Math.random() * keys.length), 1)[0]; const A = AFFIX[k]; let v = A.f(lvl) * m * rnd(.8, 1.1); v = A.int ? Math.max(1, Math.round(v)) : (PCT_KEYS.includes(k) ? Math.round(v * 10) / 10 : Math.round(v)); stats[k] = (stats[k] || 0) + v; affs.push(k); }
   let name;
   if (leg !== null) name = LEGENDARIES[leg].n;
-  else { name = (r >= 2 ? pick(ORIGINS) + ' ' : '') + pick(B.names) + (affs.length ? ' ' + AFFIX[affs[0]].suf : ''); name = name.replace('Dúnedain- ', 'Dúnedain-'); }
+  else { const noun = pick(B.names); name = (r >= 2 ? originAdj(pick(ORIGINS), noun) + ' ' : '') + noun + (affs.length ? ' ' + AFFIX[affs[0]].suf : ''); name = name.replace('Dúnedain- ', 'Dúnedain-'); }
   const it = { id: G ? G.nextId++ : Math.floor(Math.random() * 1e9), base, slot: B.slot, r, lvl, name, stats, enh: 0, icon: B.icon };
   if (leg !== null) { it.bonus = Object.assign({}, LEGENDARIES[leg].bonus); it.leg = leg; it.passive = LEGENDARIES[leg].p; if (LEGENDARIES[leg].fav) it.fav = LEGENDARIES[leg].fav; }
   return it;
@@ -227,7 +232,7 @@ function autoEquip(keys = G.party) {
 function itemLines(it) {
   const s = itemStats(it), out = [];
   if (it.set) { const S2 = SETS.find(x => x.id === it.set); if (S2) out.push(`Set: ${S2.n}`); }
-  for (const [k, v] of Object.entries(s)) { const n = { atk: 'Angriff', mag: 'Magie', def: 'Verteidigung', res: 'Widerstand', hp: 'LP', spd: 'Tempo' }[k] || AFFIX[k]?.n || k; out.push(`+${v} ${n}`); }
+  for (const [k, v] of Object.entries(s)) { const n = { atk: 'Angriff', mag: 'Magie', def: 'Verteidigung', res: 'Widerstand', hp: 'LP', spd: 'Tempo' }[k] || AFFIX[k]?.n || k, pct = n.endsWith(' %'), val = String(v).replace('.', ','); out.push(pct ? `+${val} % ${n.slice(0, -2)}` : `+${val} ${n}`); }
   return out;
 }
 

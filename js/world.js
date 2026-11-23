@@ -19,7 +19,7 @@ const LIGHT = {
   moria: { c: '255,120,50', a: .38, from: 'below', grade: ['#1a1010', '#ff5a20'] }, amonhen: { c: '230,255,210', a: .24, from: 'right', grade: ['#d8f0c0', '#1a2a1a'] },
   helm: { c: '190,205,230', a: .22, from: 'left', grade: ['#8090a8', '#1a1c22'] }, cirith: { c: '200,150,255', a: .3, from: 'left', grade: ['#6a40a0', '#100818'] },
   pelennor: { c: '255,150,80', a: .32, from: 'below', grade: ['#ffb070', '#3a1a10'] }, doom: { c: '255,90,40', a: .42, from: 'below', grade: ['#3a0a06', '#ff4010'] },
-  snow: { c: '210,235,255', a: .3, from: 'right', grade: ['#e0f0ff', '#4a6080'] }, sea: { c: '200,230,255', a: .26, from: 'right', grade: ['#a8c8f0', '#1a2a40'] },
+  snow: { c: '210,235,255', a: .2, from: 'right', grade: ['#e0f0ff', '#4a6080'] }, sea: { c: '200,230,255', a: .26, from: 'right', grade: ['#a8c8f0', '#1a2a40'] },
   south: { c: '255,210,150', a: .3, from: 'right', grade: ['#ffd8a0', '#4a2a10'] }, rhun: { c: '255,190,220', a: .26, from: 'left', grade: ['#e0a0c0', '#20142a'] },
   khazad: { c: '140,220,255', a: .32, from: 'left', grade: ['#5a8ab0', '#0a1018'] }, eregion: { c: '255,180,110', a: .32, from: 'right', grade: ['#ffc080', '#2a1410'] },
   rivendell: { c: '255,226,180', a: .3, from: 'right', grade: ['#ffe2b0', '#2a3a28'] }, lorien: { c: '240,245,210', a: .3, from: 'left', grade: ['#f4f0c0', '#2e3a20'] },

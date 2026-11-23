@@ -12,6 +12,13 @@ Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden 
 
 Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten). Unter **Optionen → Grafik** lässt sich zwischen *Auto*, *Hoch* (Figuren mit Szenenlicht, Kantenlicht und Bodenverdeckung) und *Normal* wählen; *Auto* schaltet bei zu niedriger Bildrate selbst herunter.
 
+## Neu in Version 12.3
+- **Fehlerprüfung über das ganze Spiel:** alle Spezialmodi, Prüfungen der Macht, Orthanc-Turm, Nebenquests, Bossrevanchen, Ringschmiede, alle 44 Helden in allen Stufen und alle 20 Kulissen automatisch durchgespielt – ohne Fehler
+- **Grammatik der Beute korrigiert:** „Elbische Brosche“, „Alter Kriegshammer“, „Gondorischer Zauberstab“ statt falscher Endungen; vorhandene Gegenstände werden beim Laden automatisch berichtigt; Werte mit deutschem Komma („+42,8 % Krit-Schaden“)
+- **Wahre Ringträger:** Vilya geht automatisch an Elrond oder Gil-galad, Nenya an Galadriel, Narya an Gandalf, Durins Ring an Thorin, der Eine an Frodo – wahre Träger aus der Lore erhalten +20 % Ringwirkung
+- **Grafik:** Baumbart mit Krone aus Zweigen und Laub (im Herbst golden), Gollum mit dünnen Strähnen statt Orkhauern, sanfteres Augenglühen bei Trollen, der Einsame Berg über der Seestadt mit Schneekappe und Spiegelung im See, natürlicher Schnee statt Überbelichtung
+- **Layout:** Relikt-Namen und lange Set-Namen werden nicht mehr abgeschnitten; auf kleinen iPhones (SE/8) zweispaltige Bündnisse, nebeneinanderliegende Knöpfe und einzeilige Hinweise ohne Überlappung
+
 ## Neu in Version 12.2
 - **Reisekarte als echte Mittelerde-Karte:** gealtertes Pergament mit Flecken und angesengten Rändern, schattierte Gebirgszüge (Nebelgebirge, Weiße Berge, Schattengebirge, Erebor), Wälder aus Baumzeichen (Düsterwald, Lórien, Fangorn), Flüsse mit Verlauf, Küste mit Wellen, Regionsnamen (Eriador, Rhovanion, Rohan, Gondor, Mordor …) und Kompassrose; glühender Schicksalsberg
 - **Kapitel-Einblendung als Kinomoment:** bildschirmfüllendes, gemaltes Panorama des Schauplatzes mit seinem Wahrzeichen und langsamem Kamerazoom; auch bei Nebenquests, Bossrevanchen, Prüfungen und Orthanc-Etagen
