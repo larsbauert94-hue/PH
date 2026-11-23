@@ -240,7 +240,7 @@ const RIG = (() => {
         c.strokeStyle = `rgba(0,0,0,${.35 * wv})`; c.lineWidth = .16; c.beginPath(); c.moveTo(fx, fy); c.lineTo(fx + dx, fy + dy); c.stroke(); c.strokeStyle = `rgba(255,250,235,${.4 * wv})`; c.lineWidth = .08; c.beginPath(); c.moveTo(fx + .08, fy - .06); c.lineTo(fx + dx + .08, fy + dy - .06); c.stroke(); }
       for (let i = 0; i < 3; i++) { c.fillStyle = `rgba(40,28,18,${.16 * wv})`; c.beginPath(); c.ellipse(cx - B.tw * .25 + i * B.tw * .22, hipY - 1 - (i % 2) * B.th * .3, 1.1, .7, i, 0, TAU); c.fill(); }
       c.restore(); }
-    if (L.emblem) { const bd2 = L.beard, er = big ? 2.3 : B.tw < 6.5 ? 1.35 : 1.5; if (bd2 === 'dwarf') badge(c, g, L.emblem, cx - .15, hipY - 1.15, er * .78, L.emCol); else badge(c, g, L.emblem, cx - .15, top + B.th * (bd2 === 'long' ? .6 : L.armor ? .31 : .37), er, L.emCol); }
+    if (L.emblem && L.showEmblem) { const bd2 = L.beard, er = big ? 2.3 : B.tw < 6.5 ? 1.35 : 1.5; if (bd2 === 'dwarf') badge(c, g, L.emblem, cx - .15, hipY - 1.15, er * .78, L.emCol); else badge(c, g, L.emblem, cx - .15, top + B.th * (bd2 === 'long' ? .6 : L.armor ? .31 : .37), er, L.emCol); }
     if (L.fur) { for (let i = 0; i < 6; i++) g.ell(cx - B.tw / 2 + .4 + i * (B.tw - .8) / 5, top + .2 + Math.sin(i * 2.1) * .3, 1.5, 1.2, g.rad(cx, top - 1, B.tw, [sh(L.fur, .25), L.fur]), .3); }
     if (L.scarf) { g.ell(cx + .4, top + .4, B.tw * .52, 1.1, g.lin(0, top - 1, 0, top + 1.5, [sh(L.scarf, .2), L.scarf]), .35); g.fill(() => { c.moveTo(cx + 1.4, top + .8); c.quadraticCurveTo(cx + 2.4 + Math.sin(gt / 400) * .3, top + 3.5, cx + 1.8, top + 5.4); c.lineTo(cx + .8, top + 5); c.quadraticCurveTo(cx + 1.2, top + 3, cx + .4, top + 1); }, L.scarf, .3); }
     if (acc.includes('brooch')) { const bx = cx + B.tw / 2 - 1.4, by = top + 1.1; g.fill(() => { c.moveTo(bx, by - .9); c.quadraticCurveTo(bx + .9, by, bx, by + 1.1); c.quadraticCurveTo(bx - .9, by, bx, by - .9); }, g.lin(bx, by - 1, bx, by + 1, ['#b8e8a0', '#3a8a3a']), .25); g.limb([[bx, by + 1.1], [bx, by + 1.6]], .25, '#d8dce4', 0); }
@@ -662,6 +662,29 @@ const RIG = (() => {
     drawEmblem(c, g, type, x, y + h * .02, r * .72, col);
     c.save(); c.translate(x, y); shp(); c.clip(); c.fillStyle = g.lin(-w / 2, -h / 2, w * .1, h * .1, ['rgba(255,255,255,.22)', 'rgba(255,255,255,0)']); c.fillRect(-w / 2, -h / 2, w, h); c.restore();
   }
+  /* Banner an einer Stange: hängendes Tuch mit Schwalbenschwanz, weht im Wind */
+  function flag(c, o) {
+    const g = P(c), t = (o.t || 0) / 1000, Wd = o.w || 13, Hd = o.h || 20, PH = o.pole || 46, top = -PH + 3;
+    c.save();
+    c.fillStyle = g.lin(-.8, 0, .8, 0, ['#2a1a10', '#8a6a40', '#2a1a10']); c.fillRect(-.7, -PH, 1.4, PH + 1);
+    c.fillStyle = g.lin(-1.4, -PH - 3.4, 1.4, -PH, ['#fff4c0', '#c8a040', '#7a5a20']); c.beginPath(); c.moveTo(-1.3, -PH + .2); c.lineTo(0, -PH - 3.6); c.lineTo(1.3, -PH + .2); c.closePath(); c.fill();
+    c.fillStyle = '#5a4026'; c.fillRect(-.5, top - .9, Wd + 1.6, 1.1); c.fillStyle = '#c8a040'; c.beginPath(); c.arc(Wd + 1.1, top - .35, .7, 0, TAU); c.fill();
+    const wv = y => Math.sin(t * 2.4 + y * .32) * (y / Hd) * 1.8 + Math.sin(t * 1.3 + y * .11) * (y / Hd) * .8;
+    const path = () => { c.beginPath(); c.moveTo(.6, top); for (let y = 0; y <= Hd; y += 2) c.lineTo(.6 + wv(y), top + y); c.lineTo(.6 + Wd * .5 + wv(Hd * .82), top + Hd * .82); c.lineTo(.6 + Wd + wv(Hd), top + Hd); for (let y = Hd; y >= 0; y -= 2) c.lineTo(.6 + Wd + wv(y), top + y); c.closePath(); };
+    c.save(); path(); c.clip();
+    c.fillStyle = g.lin(0, top, 0, top + Hd, [sh(o.cloth, .12), o.cloth, sh(o.cloth, -.25)]); c.fillRect(-2, top - 1, Wd + 6, Hd + 2);
+    for (let y = 0; y < Hd; y += 1.5) { const k = Math.cos(t * 2.4 + y * .32); c.fillStyle = k > 0 ? `rgba(255,255,255,${.06 * k})` : `rgba(0,0,0,${-.14 * k})`; c.fillRect(-2, top + y, Wd + 6, 1.6); }
+    const ex = .6 + Wd / 2 + wv(Hd * .42), ey = top + Hd * .42, er = Wd * .3;
+    if (o.em === 'sun') { c.fillStyle = o.emCol; c.beginPath(); c.arc(ex, ey, er * .7, 0, TAU); c.fill(); c.strokeStyle = o.emCol; c.lineWidth = .5; c.beginPath(); for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; c.moveTo(ex + Math.cos(a) * er * .85, ey + Math.sin(a) * er * .85); c.lineTo(ex + Math.cos(a) * er * 1.25, ey + Math.sin(a) * er * 1.25); } c.stroke(); }
+    else if (o.em === 'peaks') { c.fillStyle = o.emCol; c.beginPath(); c.moveTo(ex - er * 1.3, ey + er * .8); c.lineTo(ex - er * .7, ey - er * .2); c.lineTo(ex, ey - er * 1.1); c.lineTo(ex + er * .7, ey - er * .2); c.lineTo(ex + er * 1.3, ey + er * .8); c.closePath(); c.fill(); }
+    else if (o.em === 'serpent') { c.strokeStyle = o.emCol; c.lineWidth = er * .35; c.lineCap = 'round'; c.beginPath(); c.moveTo(ex - er, ey + er); c.bezierCurveTo(ex + er * 1.2, ey + er * .6, ex - er * 1.2, ey - er * .2, ex + er * .6, ey - er); c.stroke(); c.fillStyle = o.emCol; c.beginPath(); c.arc(ex + er * .7, ey - er * 1.05, er * .28, 0, TAU); c.fill(); }
+    else if (o.em === 'ship') { c.fillStyle = o.emCol; c.beginPath(); c.moveTo(ex - er * 1.2, ey + er * .3); c.lineTo(ex + er * 1.2, ey + er * .3); c.lineTo(ex + er * .7, ey + er); c.lineTo(ex - er * .7, ey + er); c.closePath(); c.fill(); c.fillRect(ex - .25, ey - er * 1.2, .5, er * 1.5); c.beginPath(); c.moveTo(ex + .3, ey - er * 1.1); c.lineTo(ex + er, ey); c.lineTo(ex + .3, ey); c.closePath(); c.fill(); }
+    else if (o.em === 'ring') { c.strokeStyle = o.emCol; c.lineWidth = er * .3; c.beginPath(); c.arc(ex, ey, er * .8, .4, TAU - .4); c.stroke(); }
+    else if (o.em) drawEmblem(c, g, o.em, ex, ey, er, o.emCol);
+    c.restore();
+    path(); c.strokeStyle = o.trim || 'rgba(232,200,110,.85)'; c.lineWidth = .45; c.stroke();
+    c.restore();
+  }
   function drawEmblem(c, g, type, x, y, r, col) {
     col = col || EMB_COL[type] || '#ffffff'; c.save(); c.translate(x, y); c.lineCap = 'round'; c.lineJoin = 'round';
     const glowDot = (px, py, rr) => { c.beginPath(); c.arc(px, py, rr, 0, TAU); c.fill(); };
@@ -970,6 +993,7 @@ const RIG = (() => {
     c.save(); c.shadowColor = 'rgba(0,0,0,.75)'; c.shadowBlur = cv.width / 16 * 1.2; c.shadowOffsetY = cv.width / 16 * .5; icon2(c, g, kind, col); c.restore();
     // Glanz und Funkeln je nach Seltenheit
     if (r >= 2) { c.save(); c.globalCompositeOperation = 'source-atop'; c.restore(); c.save(); c.globalCompositeOperation = 'lighter'; c.fillStyle = g.lin(2, 2, 14, 14, ['rgba(255,255,255,0)', 'rgba(255,255,255,' + (.1 + r * .04) + ')', 'rgba(255,255,255,0)']); c.fillRect(0, 0, 16, 16); c.restore(); }
+    if (r >= 5) { c.save(); c.globalCompositeOperation = 'lighter'; c.strokeStyle = 'rgba(255,110,70,.85)'; c.lineWidth = .7; c.beginPath(); c.arc(8, 8, 7.2, 0, Math.PI * 2); c.stroke(); for (let i = 0; i < 6; i++) { const a2 = i / 6 * Math.PI * 2; g.glow(8 + Math.cos(a2) * 7, 8 + Math.sin(a2) * 7, 1.6, '#ff6a3a', .55); } c.restore(); }
     if (r >= 3) { c.save(); c.globalCompositeOperation = 'lighter'; const sp = r >= 4 ? [[12.6, 3.2, 1.6], [3.4, 12.4, 1.1], [13.2, 11.8, .8]] : [[12.6, 3.2, 1.2]]; for (const [x, y, s] of sp) { c.fillStyle = '#ffffff'; c.beginPath(); c.moveTo(x, y - s); c.quadraticCurveTo(x, y, x + s, y); c.quadraticCurveTo(x, y, x, y + s); c.quadraticCurveTo(x, y, x - s, y); c.quadraticCurveTo(x, y, x, y - s); c.fill(); g.glow(x, y, s * 1.8, col, .6); } c.restore(); }
   }
   function icon2(c, g, kind, col) {
@@ -1085,5 +1109,5 @@ const RIG = (() => {
     return out;
   }
 
-  return { landmark, drawEagle, draw, toCanvas, card, layers, dims, ANIMS, impactTime, animTime, background, icon, BODY, sh, rgba, ease, easeOut, P };
+  return { flag, landmark, drawEagle, draw, toCanvas, card, layers, dims, ANIMS, impactTime, animTime, background, icon, BODY, sh, rgba, ease, easeOut, P };
 })();

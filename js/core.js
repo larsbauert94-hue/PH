@@ -40,12 +40,18 @@ function migrate() {
   if (!G.ride) G.ride = {}; if (!G.mounts) { G.mounts = {}; if (G.story) grantMounts(); }
   const d = { chest: 0, board: null, side: {}, comps: {}, companion: null, raid: {}, queue: null, relics: {}, tower: { best: 0, queued: false } };
   for (const [k, v] of Object.entries(d)) if (G[k] === undefined) G[k] = v;
-  for (const k of ['sides', 'comps', 'fullSet', 'loops', 'relics', 'towerBest', 'maxCombo']) if (G.stats[k] === undefined) G.stats[k] = 0;
+  for (const k of ['sides', 'comps', 'fullSet', 'loops', 'relics', 'towerBest', 'maxCombo', 'mythics']) if (G.stats[k] === undefined) G.stats[k] = 0;
   syncLevels();
   if (G.heroes && G.story) for (const [k, ch] of [['eomer', 10], ['haldir', 10], ['gollum', 11], ['celebrimbor', 20]]) if (!G.heroes[k] && HEROES[k] && (G.story.ch > ch || G.story.loop > 0)) joinHero(k);
-  for (const it of G.inv || []) if (it && it.leg == null && it.name) it.name = fixItemName(it.name);
+  for (const it of G.inv || []) { if (it && it.leg == null && it.myth == null && it.name) it.name = fixItemName(it.name); if (it && it.leg >= 15 && it.leg <= 17 && LEGENDARIES[it.leg]) { const L2 = LEGENDARIES[it.leg]; it.name = L2.n; it.bonus = Object.assign({}, L2.bonus); it.passive = L2.p; if (L2.fav) it.fav = L2.fav; else delete it.fav; } }
+  G.banners = G.banners || {}; for (const b of BANNERS) if (G.story && (G.story.ch > b.ch || G.story.loop > 0)) G.banners[b.id] = 1; if (!G.banner) G.banner = BANNERS.find(b => G.banners[b.id])?.id || null;
+  if (!G.unlSeen) { G.unlSeen = {}; if (G.story && (G.story.ch > 0 || G.story.loop > 0 || G.story.wave > 0)) for (const U of UNLOCKS) if (isUnl(U.id)) G.unlSeen[U.id] = 1; } G.unlNew = G.unlNew || {};
   delete G.idle; delete G.daily;
 }
+/* ---------- Freischaltplan ---------- */
+function prog() { return (G.story?.loop || 0) > 0 ? 999 : (G.story?.ch || 0) + Math.min(G.story?.wave || 0, WAVES) / 10; }
+function isUnl(id) { const U = UNLOCKS.find(u => u.id === id); if (!U) return true; if (prog() >= U.at || (G.unl && G.unl['u:' + id])) return true; return !!(G.unl && G.unl.modes && ['horde', 'rush', 'chaos', 'raids', 'tower'].includes(id)); }
+function unlWhen(id) { const U = UNLOCKS.find(u => u.id === id); if (!U) return ''; const c = Math.floor(U.at) + 1, w = Math.round((U.at % 1) * 10); return w ? `Kapitel ${c}, Welle ${w + 1}` : `Kapitel ${c}`; }
 
 /* ---------- Helden & Gruppe ---------- */
 function owned() { return Object.keys(G.heroes); }
@@ -83,6 +89,8 @@ function partyAura(keys = G.party) {
   const a = Object.assign(AURA0(), { _party: 1 }), add = (e) => { for (const [k, v] of Object.entries(e)) a[k] = (a[k] || 0) + v; };
   for (const k of keys) { if (!G.heroes[k]) continue; for (const ps of HEROES[k].pas) if (ps.lvl <= G.heroes[k].lvl) for (const [key, v] of Object.entries(ps.e)) { if (key === 'auraAtk') a.atk += v; if (key === 'auraDef') a.def += v; if (key === 'auraHp') a.hp += v; if (key === 'auraSpd') a.spd += v; if (key === 'auraCrit') a.crit += v; } }
   for (const f of activeFactions(keys)) if (f.tier >= 0) add(f.F.t[f.tier][1]);
+  for (const id of Object.keys(G.trophies || {})) { const H = HUNTS.find(h => h.id === id); if (H) add(H.tr.e); }
+  { const BN = G.banner && BANNERS.find(b => b.id === G.banner); if (BN) add(BN.e); }
   for (const i of Object.keys(G.relics || {})) if (RELICS[i]) add(RELICS[i].e);
   for (const R of RINGS) { const r = G.rings?.[R.id]; if (r && r.stars > 0 && r.owner && keys.includes(r.owner) && R.aura) { const m = RING_STARS[r.stars] || 1; for (const [k, v] of Object.entries(R.aura)) a[k] = (a[k] || 0) + Math.round(v * m); } }
   const cp = COMPANIONS.find(c => c.id === G.companion); if (cp && G.comps[cp.id]) add(cp.e);
@@ -95,6 +103,8 @@ function heroStats(key, aura) {
   const H = HEROES[key], C = CLASSES[H.cls], hs = G.heroes[key] || newHeroState();
   aura = Object.assign(AURA0(), aura || {});
   if (!aura._party) for (const i of Object.keys(G.relics || {})) if (RELICS[i]) for (const [k, v] of Object.entries(RELICS[i].e)) aura[k] += v;
+  if (!aura._party) { const BN = G.banner && BANNERS.find(b => b.id === G.banner); if (BN) for (const [k, v] of Object.entries(BN.e)) aura[k] = (aura[k] || 0) + v; }
+  if (!aura._party) for (const id of Object.keys(G.trophies || {})) { const H = HUNTS.find(h => h.id === id); if (H) for (const [k, v] of Object.entries(H.tr.e)) aura[k] = (aura[k] || 0) + v; }
   if (aura._party) for (const b of activeBonds()) if (b.a === key || b.b === key) for (const [k, v] of Object.entries(b.e)) aura[k] = (aura[k] || 0) + v;
   const lv = hs.lvl, sc = (1 + .11 * (lv - 1)) * STAGE_MULT[hs.stage];
   const flat = { hp: 0, atk: 0, mag: 0, def: 0, res: 0, spd: 0 }, p = {};
@@ -151,7 +161,7 @@ function gearOf(key) { const hs = G.heroes[key]; if (!hs || !hs.eq) return null;
 function heroLook(key) { const H = HEROES[key], hs = G.heroes[key] || { stage: 0 }; const L = Object.assign({ wpn: H.wpn }, H.look); for (let i = 1; i <= hs.stage; i++) Object.assign(L, H.stageLook[i] || {}); for (const k in L) if (L[k] === null) delete L[k];
   const mt = mountOf(key); if (mt) L.mount = { kind: mt.kind, look: mt.look };
   const rg = ringOf(key); if (rg) { L.ring = rg.R.c; L.ringOne = rg.R.id === 'einer' ? 1 : 0; }
-  const gr = gearOf(key); if (gr) { L.gear = gr; if (gr.w && gr.w.r >= 3) L.wc = gr.w.r >= 4 ? '#fff0b8' : '#e4d6ff'; }
+  const gr = gearOf(key); if (gr) { L.gear = gr; if (gr.w && gr.w.r >= 3) L.wc = gr.w.r >= 5 ? '#ffd2c0' : gr.w.r >= 4 ? '#fff0b8' : '#e4d6ff'; }
   return L; }
 function lookAtStage(key, st) { const H = HEROES[key]; const L = Object.assign({ wpn: H.wpn }, H.look); for (let i = 1; i <= st; i++) Object.assign(L, H.stageLook[i] || {}); for (const k in L) if (L[k] === null) delete L[k]; return L; }
 function heroTitle(key) { const hs = G.heroes[key]; return HEROES[key].stages[hs ? hs.stage : 0]; }
@@ -180,6 +190,7 @@ function canEvolve(key) { const hs = G.heroes[key]; if (hs.stage >= 2) return nu
 function evolve(key) { const e = canEvolve(key); if (!e || !e.ok) return false; G.gold -= e.cost.gold; G.heroes[key].stage++; G.stats.evolutions++; save(); return true; }
 
 /* ---------- Gegenstände ---------- */
+function topRarity(myth, leg = .5) { return Math.random() < myth ? 5 : Math.random() < leg ? 4 : 3; }
 function rollRarity(kind) {
   const W = { normal: [58, 30, 10, 1.8, .2], elite: [20, 42, 28, 8.5, 1.5], boss: [0, 22, 45, 27, 6], chest: [0, 0, 30, 55, 15] }[kind] || [60, 30, 9, 1, 0];
   let r = Math.random() * W.reduce((a, b) => a + b, 0), out = 0; for (let i = 0; i < W.length; i++) { r -= W[i]; if (r <= 0) { out = i; break; } }
@@ -188,8 +199,9 @@ function rollRarity(kind) {
 }
 function genItem(lvl, r, opt = {}) {
   lvl = Math.max(1, Math.round(lvl));
-  let leg = null, base = opt.base;
-  if (r === 4) { leg = opt.leg ?? Math.floor(Math.random() * LEGENDARIES.length); base = LEGENDARIES[leg].base; }
+  let leg = null, myth = null, base = opt.base;
+  if (r === 4) { if (opt.leg == null) { const pool = LEGENDARIES.map((l, i) => i).filter(i => !LEGENDARIES[i].special); leg = pool[Math.floor(Math.random() * pool.length)]; } else leg = opt.leg; base = LEGENDARIES[leg].base; }
+  if (r === 5) { myth = opt.myth ?? Math.floor(Math.random() * MYTHICS.length); base = MYTHICS[myth].base; }
   if (!base) {
     const slot = pick(['weapon', 'weapon', 'armor', 'trinket']);
     if (slot === 'weapon') { const cls = (G?.party || []).filter(k => HEROES[k]).flatMap(k => CLASSES[HEROES[k].cls].wcls); base = Math.random() < .8 && cls.length ? pick(cls) : pick(['klinge', 'bogen', 'wucht', 'stab', 'speer']); }
@@ -198,25 +210,27 @@ function genItem(lvl, r, opt = {}) {
   const B = BASES[base], R = RARITY[r], m = R.mult, stats = {};
   if (B.slot === 'weapon') stats[base === 'stab' ? 'mag' : 'atk'] = Math.round((2 + lvl * .75) * m);
   if (B.slot === 'armor') { stats.def = Math.round((1 + lvl * .5) * m); stats.hp = Math.round((8 + lvl * 4) * m); }
-  if (B.slot === 'trinket') { stats.hp = Math.round((5 + lvl * 2.5) * m); const mm = leg !== null ? LEGENDARIES[leg].main : pick(['atk', 'mag', 'res']); stats[mm] = (stats[mm] || 0) + Math.round((1 + lvl * .4) * m); }
+  if (B.slot === 'trinket') { stats.hp = Math.round((5 + lvl * 2.5) * m); const mm = leg !== null ? LEGENDARIES[leg].main : myth !== null ? MYTHICS[myth].main : pick(['atk', 'mag', 'res']); stats[mm] = (stats[mm] || 0) + Math.round((1 + lvl * .4) * m); }
   const keys = Object.keys(AFFIX).filter(k => !(k in stats)); const affs = [];
   for (let i = 0; i < R.aff && keys.length; i++) { const k = keys.splice(Math.floor(Math.random() * keys.length), 1)[0]; const A = AFFIX[k]; let v = A.f(lvl) * m * rnd(.8, 1.1); v = A.int ? Math.max(1, Math.round(v)) : (PCT_KEYS.includes(k) ? Math.round(v * 10) / 10 : Math.round(v)); stats[k] = (stats[k] || 0) + v; affs.push(k); }
   let name;
   if (leg !== null) name = LEGENDARIES[leg].n;
+  else if (myth !== null) name = MYTHICS[myth].n;
   else { const noun = pick(B.names); name = (r >= 2 ? originAdj(pick(ORIGINS), noun) + ' ' : '') + noun + (affs.length ? ' ' + AFFIX[affs[0]].suf : ''); name = name.replace('Dúnedain- ', 'Dúnedain-'); }
   const it = { id: G ? G.nextId++ : Math.floor(Math.random() * 1e9), base, slot: B.slot, r, lvl, name, stats, enh: 0, icon: B.icon };
+  if (myth !== null) { it.bonus = Object.assign({}, MYTHICS[myth].bonus); it.myth = myth; it.passive = MYTHICS[myth].p; it.lore = MYTHICS[myth].lore; }
   if (leg !== null) { it.bonus = Object.assign({}, LEGENDARIES[leg].bonus); it.leg = leg; it.passive = LEGENDARIES[leg].p; if (LEGENDARIES[leg].fav) it.fav = LEGENDARIES[leg].fav; }
   return it;
 }
-function itemValue(it) { return Math.round((8 + it.lvl * 3) * [1, 2, 4, 9, 20][it.r] * (1 + (it.enh || 0) * .3)); }
-function enhCost(it) { return Math.round((20 + it.lvl * 6) * [1, 1.4, 2, 3, 4.5][it.r] * Math.pow(1.45, it.enh || 0)); }
+function itemValue(it) { return Math.round((8 + it.lvl * 3) * [1, 2, 4, 9, 20, 45][it.r] * (1 + (it.enh || 0) * .3)); }
+function enhCost(it) { return Math.round((20 + it.lvl * 6) * [1, 1.4, 2, 3, 4.5, 6][it.r] * Math.pow(1.45, it.enh || 0)); }
 function canEquip(key, it) { return it.slot !== 'weapon' || CLASSES[HEROES[key].cls].wcls.includes(it.base); }
 function equippedBy(id) { for (const [k, hs] of Object.entries(G.heroes)) for (const s of Object.keys(SLOTS)) if (hs.eq[s] === id) return k; return null; }
 function equip(key, it) { const prev = equippedBy(it.id); if (prev) G.heroes[prev].eq[it.slot] = null; G.heroes[key].eq[it.slot] = it.id; save(); }
 function unequip(key, slot) { G.heroes[key].eq[slot] = null; save(); }
 function salvage(it) { if (equippedBy(it.id)) return 0; const v = itemValue(it); G.gold += v; G.inv = G.inv.filter(i => i.id !== it.id); return v; }
 function enhance(it) { const c = enhCost(it); if (G.gold < c || it.enh >= 10) return false; G.gold -= c; it.enh++; G.stats.maxEnh = Math.max(G.stats.maxEnh, it.enh); save(); return true; }
-function addItem(it) { if (it.r >= 2) it.nw = 1; G.inv.push(it); if (it.r === 3) G.stats.epics++; if (it.r === 4) G.stats.legends++; }
+function addItem(it) { if (it.r >= 2) it.nw = 1; G.inv.push(it); if (it.r === 3) G.stats.epics++; if (it.r === 4) G.stats.legends++; if (it.r === 5) { G.stats.mythics = (G.stats.mythics || 0) + 1; typeof onMythic === 'function' && onMythic(it); } }
 function powerDiff(k, it) { const hs = G.heroes[k], prev = hs.eq[it.slot], before = heroStats(k).power; hs.eq[it.slot] = it.id; const after = heroStats(k).power; hs.eq[it.slot] = prev; return after - before; }
 function autoEquip(keys = G.party) {
   let n = 0; const ch = []; autoEquip.last = ch;
@@ -246,6 +260,20 @@ function chapterWaves(i = G.story.ch) {
   return [w[0], w[1], w[2], w[3], w[4], plus(w[0], 1), plus(w[2], 2), plus(w[3], 3)].slice(0, WAVES);
 }
 const isEliteWave = w => w === 3 || w === 7;
+/* Elite-Eigenschaften verteilen: o = { boss, elite, all, one } (Anzahl je Gegnerart) */
+function rollAfx(n, group) { const ids = Object.keys(ELITE_AFX).filter(a => a !== 'anfuehrer' || group.length > 1); const out = []; while (out.length < n && ids.length) out.push(ids.splice(Math.floor(Math.random() * ids.length), 1)[0]); return out; }
+function afxPlan(group, o) {
+  const plan = group.map(() => null); let top = -1, best = -1;
+  group.forEach((k, i) => { const E = ENEMIES[k]; if (E.boss) { if (o.boss) plan[i] = rollAfx(o.boss, group); return; } if (E.elite && o.elite) plan[i] = rollAfx(o.elite, group); else if (o.all) plan[i] = rollAfx(o.all, group); if (E.hp > best) { best = E.hp; top = i; } });
+  if (o.one && top >= 0 && !plan[top]) plan[top] = rollAfx(o.one, group);
+  return plan;
+}
+function storyAfx(group, kind) {
+  const ch = G.story.ch, lp = G.story.loop || 0;
+  if (kind === 'boss') return ch >= 10 || lp ? afxPlan(group, { boss: 1 + (lp >= 2 ? 1 : 0) }) : null;
+  if (kind === 'elite') return ch >= 3 || lp ? afxPlan(group, { one: 1 + (lp ? 1 : 0) }) : null;
+  return lp && Math.random() < .3 ? afxPlan(group, { one: 1 }) : null;
+}
 function battleReward(kind, enemies) {
   const lb = 1 + .25 * (G.story.loop || 0);
   const xp = Math.round(enemies.reduce((a, e) => a + e.xp, 0) * (kind === 'elite' ? 1.3 : 1) * lb);
@@ -332,6 +360,12 @@ function genSetItem(S2, lvl, r = 3) {
 function checkFullSet() { for (const k of G.party) { const n = {}; for (const s2 of Object.keys(SLOTS)) { const it = G.heroes[k].eq[s2] && itemById(G.heroes[k].eq[s2]); if (it?.set) n[it.set] = (n[it.set] || 0) + 1; } if (Object.values(n).some(x => x >= 3)) G.stats.fullSet = 1; } }
 
 /* ---------- Nebenquests ---------- */
+/* ---------- Kopfgeldjagd ---------- */
+function huntRank(id) { return (G.hunts || {})[id] || 0; }
+function huntLvl(H) { return Math.max(STORY[H.after].lvl + 4 + G.story.loop * LOOP_LVL, (G.team?.lvl || 1) - 5) + huntRank(H.id) * 2; }
+function huntOpen(H) { return G.story.ch > H.after || G.story.loop > 0 || !!(G.unl && G.unl['hunt:' + H.id]); }
+function huntPrice(H) { return 1200 + H.after * 200; }
+function huntAff(H) { const rk = huntRank(H.id), boss = H.aff.slice(); if (rk >= 4) { const ex = Object.keys(ELITE_AFX).filter(a => !boss.includes(a)); boss.push(ex[rk % ex.length]); } return [boss, ...H.esc.map(() => rk >= 8 ? [Object.keys(ELITE_AFX)[(rk * 3) % 6]] : null)]; }
 function sideUnlocked(sd) { return G.story.ch > sd.after || G.story.loop > 0 || !!(G.unl && G.unl['side:' + sd.id]); }
 function sideLvl(sd) { return STORY[sd.after].lvl + 3 + G.story.loop * LOOP_LVL; }
 

@@ -109,6 +109,12 @@ class World {
     this.enemies.push(u); return u;
   }
   all() { return [...this.heroes, ...this.enemies]; }
+  affix(u, ids) {
+    u.afx = ids.filter(a => ELITE_AFX[a]); u.elite = true;
+    if (u.afx.includes('gepanzert')) addS(u, 'shield', 99, Math.round(u.maxHp * (u.boss ? .25 : .35)), this);
+    if (u.afx.length) { u.maxHp = Math.round(u.maxHp * (1 + .08 * u.afx.length)); u.hp = u.maxHp; }
+  }
+  leaderAura() { if (this.enemies.some(e => alive(e) && e.afx && e.afx.includes('anfuehrer'))) for (const e of this.enemies) if (alive(e) && !(e.afx && e.afx.includes('anfuehrer'))) addS(e, 'fuehrung', 99, 0, this); }
 
   /* ---------- Zeit ---------- */
   wait(ms) { return new Promise(res => this.timers.push({ t: this.time + ms, res })); }
@@ -142,7 +148,7 @@ class World {
     this.shakeV = Math.max(0, this.shakeV - dt * .02);
     if (this.flashV) { this.flashV.t += dt; if (this.flashV.t > this.flashV.dur) this.flashV = null; }
     this.ambient(dt);
-    if (this.fighting && !this.busy && this.raid && this.time >= this.raidEnd) { this.busy = true; this.finish('time'); }
+    if (this.fighting && !this.busy && this.raidEnd && this.time >= this.raidEnd) { this.busy = true; this.finish('time'); }
     if (this.fighting && !this.busy && !this.hold) {
       const live = this.all().filter(alive);
       for (const u of live) u.atb += effSpd(u) * dt * .016;
@@ -191,6 +197,8 @@ class World {
     if (opts.keepHp) { for (const h of this.heroes) { h.statuses = []; h.cd = {}; h.threat = 0; h.atb = 0; h.holdAnim = null; if (alive(h)) h.anim = { n: 'idle', el: 0 }; } } else this.restoreHeroes();
     if (hasMod('noEnergy')) this.heroes.forEach(h => h.energy = 0);
     group.forEach(k => this.addEnemy(k, lvl, kind)); this.layoutEnemies();
+    if (opts.aff) opts.aff.forEach((ids, i) => { if (ids && ids.length && this.enemies[i]) this.affix(this.enemies[i], ids); });
+    { const fc = {}; for (const e of this.enemies) { const f = FOE_FLAGS[e.look.emblem] ? e.look.emblem : FOE_FAC[e.key]; if (f) fc[f] = (fc[f] || 0) + 1; } const best = Object.entries(fc).sort((a, b) => b[1] - a[1])[0]; this.foeFlag = best && best[1] >= 2 ? best[0] : null; }
     // Gegner marschieren heran, während die Gruppe weiterzieht
     this.walking = true; this.heroes.forEach(h => this.setAnim(h, 'walk'));
     const dist = this.LW * .75;
@@ -198,7 +206,9 @@ class World {
     this.walking = false; this.all().forEach(u => this.setAnim(u, 'idle'));
     if (kind === 'boss') { const bz = this.enemies.find(e => e.boss) || this.enemies[0]; this.cine = { t: this.time, dur: 2100 }; this.focus(bz, 1.34, 1600); this.setAnim(bz, 'shout'); sfx('crit'); await this.wait(350); this.shake(5); this.flash('#ff3a1a', 450); this.fxs.push({ k: 'ring', x: bz.x, y: bz.y - 2, r: 80, c: '#ffd0a0', t: 0, dur: 750 }); this.fxs.push({ k: 'ring', x: bz.x, y: bz.y - 2, r: 46, c: '#ff8a50', t: 0, dur: 520 }); this.burst(bz.x, bz.y - 3, 'stone', 28, 1.9, .5); await this.wait(1100); }
     if (this.abortNext) { this.abortNext = false; this.enemies.forEach(e => { e.fade = 0; e.hp = 0; }); return { win: false, aborted: true, enemies: [], dmgPct: 0 }; }
-    this.applyStartPassives();
+    this.applyStartPassives(); this.leaderAura();
+    for (const e of this.enemies) if (e.afx) e.afx.forEach((a, j) => this.wait(j * 380).then(() => this.num(e, ELITE_AFX[a].n, ELITE_AFX[a].c, 1.1)));
+    if (opts.bless) opts.bless(this);
     const ch = opts.chaos;
     if (ch === 'schnell') this.all().forEach(u => u.spd = Math.round(u.spd * 1.7));
     if (ch === 'glas') this.all().forEach(u => { u.atk *= 2; u.mag *= 2; u.maxHp = Math.round(u.maxHp * .6); u.hp = Math.min(u.hp, u.maxHp); });
@@ -207,7 +217,8 @@ class World {
     if (ch === 'riesen') this.enemies.forEach(e => { e.maxHp = Math.round(e.maxHp * 1.8); e.hp = e.maxHp; e.atk = Math.round(e.atk * 1.15); });
     [...this.heroes, ...this.enemies].forEach(u => { u.atb = rnd(0, 40) + u.spd; });
     this.fighting = true; this.busy = false; this.turn = 0;
-    if (this.raid) this.raidEnd = this.time + (opts.time || 45000);
+    if (this.raid || opts.time) this.raidEnd = this.time + (opts.time || 45000);
+    this.fstat = { t0: this.time, fallen: 0, minTeam: 1, afxKills: 0 };
     return new Promise(res => { this.onFightEnd = res; });
   }
   applyStartPassives() {
@@ -221,7 +232,7 @@ class World {
       if (p.startHaste) addS(u, 'haste', 3, 0, this);
     }
   }
-  checkEnd() { if (!this.fighting) return null; if (this.enemies.every(e => !alive(e))) return 'win'; if (this.heroes.every(h => !alive(h))) return 'lose'; if (this.raid && this.time >= this.raidEnd) return 'time'; return null; }
+  checkEnd() { if (!this.fighting) return null; if (this.enemies.every(e => !alive(e))) return 'win'; if (this.heroes.every(h => !alive(h))) return 'lose'; if (this.raidEnd && this.time >= this.raidEnd) return 'time'; return null; }
   async finish(res) {
     this.fighting = false; this.busy = true;
     if (res === 'win' || res === 'time') { this.heroes.filter(alive).forEach(h => { h.holdAnim = 'victory'; this.setAnim(h, 'victory'); }); sfx('win'); }
@@ -230,7 +241,8 @@ class World {
     this.heroes.forEach(h => { h.holdAnim = null; if (alive(h)) this.setAnim(h, 'idle'); });
     this.busy = false;
     const boss = this.enemies.find(e => e.boss);
-    const cb = this.onFightEnd; this.onFightEnd = null; cb && cb({ win: res === 'win', timeout: res === 'time', enemies: this.enemies, dmgPct: boss ? 1 - boss.hp / boss.maxHp : 0 });
+    const fs = this.fstat || { t0: this.time, fallen: 0, minTeam: 1, afxKills: 0 }, eh = this.enemies.reduce((a, e) => a + Math.max(0, e.hp), 0), em = this.enemies.reduce((a, e) => a + e.maxHp, 0) || 1;
+    const cb = this.onFightEnd; this.onFightEnd = null; cb && cb({ win: res === 'win', timeout: res === 'time', enemies: this.enemies, dmgPct: boss ? 1 - boss.hp / boss.maxHp : 0, fallen: fs.fallen, dur: this.time - fs.t0, minTeam: fs.minTeam, afxKills: fs.afxKills, aliveEnd: this.heroes.filter(alive).length, left: eh / em, rams: this.enemies.filter(e => alive(e) && e.key === 'ram_troll').length });
   }
   async act(u) {
     this.busy = true; u.atb = 0; this.active = u; this.turn++;
@@ -252,6 +264,7 @@ class World {
       if (s.id === 'regen') { this.heal(u, u, u.maxHp * .07, { silent: 1 }); ticked = true; }
     }
     if (u.p?.regenTurn) this.heal(u, u, u.maxHp * u.p.regenTurn / 100, { silent: 1 });
+    if (u.afx && u.afx.includes('uralt') && u.hp < u.maxHp) this.heal(u, u, u.maxHp * .04, { silent: 1 });
     const stunned = !!hasS(u, 'stun');
     u.statuses.forEach(s => { if (s.dur < 90) s.dur--; }); u.statuses = u.statuses.filter(s => s.dur > 0);
     for (const k in u.cd) if (u.cd[k] > 0) u.cd[k]--;
@@ -336,6 +349,7 @@ class World {
     if (sk.tgt !== 'single') return null;
     const vis = foes.filter(f => !hasS(f, 'invis')); const pool = vis.length ? vis : foes;
     if (u.side === 'enemy') {
+      if (u.afx && u.afx.includes('schattenhaft') && Math.random() < .75) { this.burst(u.x + u.ox, u.y + u.oy - u.h * .5, 'dark', 10, 1, .3); return pool.reduce((a, b) => (b.hp / b.maxHp < a.hp / a.maxHp ? b : a), pool[0]); }
       const taunt = pool.filter(f => hasS(f, 'taunt')); if (taunt.length) return pick(taunt);
       if (Math.random() < .78) return pool.reduce((a, b) => (b.threat > a.threat ? b : a), pool[0]);
       return pick(pool);
@@ -482,6 +496,9 @@ class World {
     if (a.side === 'hero') { a.threat += dmg * a.threatMul; a.energy = Math.min(100, a.energy + 3 * (1 + (ap.ultCharge || 0) / 100)); }
     if (t.side === 'hero') t.energy = Math.min(100, t.energy + dmg / t.maxHp * 60 * (1 + (tp.ultCharge || 0) / 100));
     if (ap.lifesteal && dmg > 0) this.heal(a, a, dmg * ap.lifesteal / 100, { silent: 1 });
+    if (a.afx && a.afx.includes('morgul') && dmg > 0 && alive(t)) addS(t, 'morgul', 3, 0, this);
+    if (t.afx && t.afx.includes('rasend') && !t.raged && t.hp > 0 && t.hp < t.maxHp * .3) { t.raged = 1; addS(t, 'enrage', 99, 0, this); this.num(t, 'Raserei!', '#ff5a3c', 1.4); this.burst(t.x + t.ox, t.y + t.oy - t.h * .5, 'fire', 14, 1, .4); this.shake(2); }
+    if (t.side === 'hero' && this.fstat) { let hp = 0, mx = 0; for (const h of this.heroes) { hp += Math.max(0, h.hp); mx += h.maxHp; } this.fstat.minTeam = Math.min(this.fstat.minTeam, hp / (mx || 1)); }
     if (tp.thorns && dmg > 0 && alive(a)) { const r = Math.max(1, Math.round(dmg * tp.thorns / 100)); a.hp = Math.max(0, a.hp - r); this.num(a, r, '#f0b070'); if (a.hp <= 0) this.die(a); }
     if (dmg > 0 && alive(t)) { const proc = (k, s, dur) => { if (ap[k] && Math.random() < ap[k]) addS(t, s, dur, 0, this); }; proc('burnOnHit', 'burn', 3); proc('poisonOnHit', 'poison', 3); proc('slowOnHit', 'slow', 2); proc('stunOnHit', 'stun', 1); }
     if (ap.doubleHit && !sk.isDouble && Math.random() < ap.doubleHit && alive(t)) { this.num(t, 'Doppelt', '#ffe080'); this.hit(a, t, Object.assign({}, sk, { isDouble: 1 }), mult * .6); }
@@ -492,7 +509,7 @@ class World {
   heal(src, t, amt, o = {}) {
     if (!alive(t)) return 0;
     const sp = src.p || {}, tp = t.p || {};
-    amt *= (1 + (sp.healPct || 0) / 100) * (1 + (tp.healRecv || 0) / 100) * (src.side === 'hero' ? modVal('heal') : 1);
+    amt *= (1 + (sp.healPct || 0) / 100) * (1 + (tp.healRecv || 0) / 100) * (src.side === 'hero' ? modVal('heal') : 1) * (hasS(t, 'morgul') ? .5 : 1);
     if (!o.silent && src.side === 'hero' && Math.random() < src.crit / 100) amt *= 1.5;
     amt = Math.round(amt);
     const before = t.hp; t.hp = Math.min(t.maxHp, t.hp + amt); const got = t.hp - before;
@@ -509,6 +526,8 @@ class World {
   die(u) {
     if (u.p?.reviveSelf && !u.usedRevive) { u.usedRevive = 1; u.hp = Math.round(u.maxHp * u.p.reviveSelf); this.num(u, 'Unbeugsam', '#ffe080'); this.burst(u.x, u.y - u.h * .5, 'holy', 14, 1, .6); return; }
     u.hp = 0; u.statuses = []; u.charging = false; this.setAnim(u, 'dead'); sfx('die');
+    if (this.fstat && this.fighting) { if (u.side === 'hero') this.fstat.fallen++; else if (u.afx) this.fstat.afxKills++; }
+    if (u.afx && u.afx.includes('anfuehrer') && !this.enemies.some(e => e !== u && alive(e) && e.afx && e.afx.includes('anfuehrer'))) { for (const e of this.enemies) rmS(e, 'fuehrung'); this.h.banner?.('Der Anführer ist gefallen!', 'ult'); }
     if (u.key === 'balrog' && this.arena === 'bridge') { u.falling = this.time; this.bridgeBreak = { x: u.x + u.ox, t: this.time }; this.shake(6); for (let i = 0; i < 24; i++) this.parts.push({ x: u.x + u.ox + rnd(-14, 14), y: 100 + rnd(-6, 24), vx: rnd(-.8, .8), vy: rnd(-1.2, .2), g: .05, t: 0, life: rnd(700, 1300), c: pick(['#5a5650', '#3e3a36', '#24201e']), s: 1.8 }); this.h.banner?.('Die Brücke bricht!', 'warn'); }
     if (u.side === 'enemy' && this.fighting && this.enemies.every(e => !alive(e) || e === u)) { this.slowUntil = this.time + 750; this.cine = { t: this.time, dur: 1500 }; this.focus(u, 1.24, 1000); this.flash('#fff4d0', 380); this.fxs.push({ k: 'rays', x: u.x + u.ox, y: u.y + u.oy - u.h * .5, t: 0, dur: 1300 }); }
     if (u.side === 'enemy') { this.h.kill?.(u); const n = u.big ? 34 : 18; for (let i = 0; i < n; i++) this.parts.push({ x: u.x + u.ox + rnd(-u.w, u.w) * .6, y: u.y + u.oy - rnd(0, u.h), vx: rnd(-.25, .25), vy: -rnd(.15, .6), g: -.002, t: 0, life: rnd(700, 1300), c: pick(['#ff9a40', '#ffcf70', '#c04a20', '#4a3a3a']), s: Math.random() < .4 ? 1.6 : 1, glow: Math.random() < .7 }); }
@@ -563,6 +582,7 @@ class World {
     if (this.hq()) this.drawRays(ctx, gt, L);
     this.drawArena(ctx, gt, L);
     this.drawAtmos(ctx, gt);
+    this.drawFlags(ctx, gt);
     const units = this.all().filter(u => u.fade > 0).sort((a, b) => (a.y + a.oy) - (b.y + b.oy));
     for (const u of units) { const x = u.x + u.ox + u.kb, y = u.y + u.oy; const Ls = LIGHT[this.bgKey] || LIGHT._, sd = Ls.from === 'left' ? 1 : Ls.from === 'right' ? -1 : 0, fl = hasS(u, 'fly') ? .45 : 1; ctx.globalAlpha = .32 * u.fade * fl; ctx.save(); ctx.translate(x + sd * u.h * .32, y); ctx.transform(1, 0, sd * -.9, 1, 0, 0); const spr = this.shadowSprite(), rx = u.h * .5 + u.w * .3, ry = (u.w + 2) * .32; ctx.globalAlpha *= .65; ctx.drawImage(spr, -rx, -ry, rx * 2, ry * 2); ctx.restore(); ctx.globalAlpha = .62 * u.fade * fl; const cx2 = u.w + 1, cy2 = (u.w + 1) * .24; ctx.drawImage(spr, x - cx2, y - cy2, cx2 * 2, cy2 * 2); }
     ctx.globalAlpha = 1;
@@ -697,6 +717,12 @@ class World {
       ctx.fillStyle = 'rgba(255,240,220,.08)'; ctx.fillRect(x0, top, x1 - x0, 1.2); }
     ctx.restore();
   }
+  drawFlags(ctx, gt) {
+    const sp = this.spread(), BN = typeof G !== 'undefined' && G && G.banner && isUnl('banner') ? BANNERS.find(b => b.id === G.banner) : null;
+    if (BN && this.heroes.length) { ctx.save(); ctx.translate(Math.max(10, this.cx - 94 * sp), 97); RIG.flag(ctx, { em: BN.em, cloth: BN.cloth, emCol: BN.emCol, t: gt }); ctx.restore(); }
+    const F = this.foeFlag && FOE_FLAGS[this.foeFlag], vis = this.enemies.reduce((a, e) => Math.max(a, alive(e) ? 1 : e.fade || 0), 0);
+    if (F && vis > 0) { ctx.save(); ctx.globalAlpha = vis; ctx.translate(Math.min(this.LW - 10, this.cx + 94 * sp), 97); ctx.scale(-1, 1); RIG.flag(ctx, { em: F.em, cloth: F.cloth, emCol: F.emCol, t: gt + 700, trim: 'rgba(120,110,100,.8)' }); ctx.restore(); }
+  }
   drawDecals(ctx) {
     if (!this.decals || !this.decals.length) return; ctx.save();
     for (const d of this.decals) { const age = (this.time - d.t) / 1000, a = Math.min(1, age * 6); ctx.save(); ctx.globalAlpha = a; ctx.translate(d.x, d.y); ctx.scale(1, .34);
@@ -814,6 +840,7 @@ class World {
     rr(x - w / 2, y, w * f, 2, 1, g);
     const sh = hasS(u, 'shield'); if (sh) rr(x - w / 2, y + 2.1, Math.min(w, w * sh.val / u.maxHp), .8, .4, '#a8d4ff');
     let i = 0; for (const st of u.statuses) { if (i > 5) break; ctx.fillStyle = STATUS[st.id].c; ctx.beginPath(); ctx.arc(x - w / 2 + 1 + i * 3, y - 2.2, 1, 0, Math.PI * 2); ctx.fill(); i++; }
+    if (u.afx) u.afx.forEach((a, j) => { const A = ELITE_AFX[a], ax = x + w / 2 + 2.6, ay = y + 1 - j * 4.4; ctx.save(); ctx.translate(ax, ay); ctx.rotate(Math.PI / 4); ctx.fillStyle = 'rgba(8,6,10,.9)'; ctx.fillRect(-1.9, -1.9, 3.8, 3.8); ctx.fillStyle = A.c; ctx.fillRect(-1.45, -1.45, 2.9, 2.9); ctx.restore(); ctx.fillStyle = '#140c08'; ctx.font = '700 2.4px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(A.l, ax, ay + .15); });
   }
   drawParts(ctx) {
     for (const p of this.parts) {
@@ -866,11 +893,11 @@ function addS(u, id, dur, val, W) {
 }
 function effStat(u, stat) {
   let v = u[stat];
-  if (stat === 'atk' || stat === 'mag') { if (hasS(u, 'atkUp')) v *= 1.3; if (hasS(u, 'atkDown')) v *= .75; if (hasS(u, 'enrage')) v *= 1.25; }
-  if (stat === 'def' || stat === 'res') { if (hasS(u, 'defUp')) v *= 1.5; if (hasS(u, 'defDown')) v *= .65; }
+  if (stat === 'atk' || stat === 'mag') { if (hasS(u, 'atkUp')) v *= 1.3; if (hasS(u, 'atkDown')) v *= .75; if (hasS(u, 'enrage')) v *= 1.25; if (hasS(u, 'fuehrung')) v *= 1.15; }
+  if (stat === 'def' || stat === 'res') { if (hasS(u, 'defUp')) v *= 1.5; if (hasS(u, 'defDown')) v *= .65; if (hasS(u, 'fuehrung')) v *= 1.15; }
   return v;
 }
-function effSpd(u) { let v = u.spd; if (hasS(u, 'haste')) v *= 1.35; if (hasS(u, 'slow')) v *= .7; return v; }
+function effSpd(u) { let v = u.spd; if (hasS(u, 'haste')) v *= 1.35; if (hasS(u, 'slow')) v *= .7; if (u.raged) v *= 1.6; return v; }
 function basicSkill(u) {
   const w = u.wpn, mag = u.atkStat === 'mag';
   const anim = w === 'bow' ? 'shoot' : mag ? 'cast' : u.side === 'enemy' && u.ranged ? 'shoot' : 'melee';

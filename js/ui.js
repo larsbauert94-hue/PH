@@ -78,12 +78,13 @@ const icHtml = it => `<canvas class="ic r${it.r}" data-ic="${it.icon}" data-c="$
 
 /* ---------- HUD ---------- */
 function buildHud() {
-  $('#party').innerHTML = G.party.map(k => `<div class="pc" data-k="${k}" style="--rc:${heroCol(k)}"><canvas data-card="${k}" data-bust="1"></canvas><div class="hpv"></div><span class="pl">${G.heroes[k].lvl}</span><div class="hpb"><i class="tr"></i><i class="hp"></i></div><div class="ultbar"><i></i></div></div>`).join('');
+  $('#party').innerHTML = '<div id="boons" class="boons"></div>' + G.party.map(k => `<div class="pc" data-k="${k}" style="--rc:${heroCol(k)}"><canvas data-card="${k}" data-bust="1"></canvas><div class="hpv"></div><span class="pl">${G.heroes[k].lvl}</span>${ringOf(k) ? `<i class="pc-ring" style="--rc:${ringOf(k).R.c}" title="${esc(ringOf(k).R.n)}"></i>` : ''}<div class="hpb"><i class="tr"></i><i class="hp"></i></div><div class="ultbar"><i></i></div></div>`).join('');
   $$('#party .pc').forEach(el => el.onclick = () => { if (W.manualUlt(el.dataset.k)) { sfx('ult'); return; } sfx('click'); openHero(el.dataset.k); });
-  paintCards($('#party'));
+  paintCards($('#party')); renderBoons.sig = null; renderBoons();
 }
 function updateHud() {
   if (!W || !G) return;
+  applyLocks(); renderBoons();
   const ch = STORY[G.story.ch];
   $('#chapPart').textContent = ch.part + (G.story.loop ? ` · Heldenreise ${G.story.loop + 1}` : '');
   $('#chapName').textContent = `${G.story.ch + 1}. ${ch.n}`;
@@ -108,9 +109,10 @@ function updateHud() {
     if (el._f !== undefined && W.fighting) { if (f < el._f - .01) { el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit'); } else if (f > el._f + .01) { el.classList.remove('heal'); void el.offsetWidth; el.classList.add('heal'); } } el._f = f;
     el.querySelector('.pl').textContent = G.heroes[u.key]?.lvl || '';
   }
-  const boss = W.enemies.find(e => e.boss && alive(e)), bb = $('#bossbar');
-  bb.hidden = !boss || !W.fighting;
-  if (boss) { const bf = boss.hp / boss.maxHp * 100; $('#bossName').textContent = boss.name; $('#bossFill').style.width = bf + '%'; $('#bossTrail').style.width = bf + '%'; $('#bossPct').textContent = Math.ceil(bf) + ' %'; $('#bossMark').hidden = !!boss.phased || !(PHASE2[boss.key] || boss.transform) || bf <= 50; }
+  const boss = W.enemies.find(e => e.boss && alive(e)), bb = $('#bossbar'), tleft = W.raidEnd && W.fighting ? ` · ${Math.max(0, Math.ceil((W.raidEnd - W.time) / 1000))} s` : '';
+  bb.hidden = !(boss || W.gate) || !W.fighting; bb.classList.toggle('gate', !boss && !!W.gate);
+  if (!boss && W.gate) { $('#bossName').textContent = `Tor der Hornburg · Welle ${W.gate.wave}`; $('#bossFill').style.width = W.gate.hp + '%'; $('#bossTrail').style.width = W.gate.hp + '%'; $('#bossPct').textContent = Math.ceil(W.gate.hp) + ' %' + tleft; $('#bossMark').hidden = true; }
+  if (boss) { const bf = boss.hp / boss.maxHp * 100; $('#bossName').textContent = boss.name; $('#bossFill').style.width = bf + '%'; $('#bossTrail').style.width = bf + '%'; $('#bossPct').textContent = Math.ceil(bf) + ' %' + tleft; $('#bossMark').hidden = !!boss.phased || !(PHASE2[boss.key] || boss.transform) || bf <= 50; }
 }
 let bannerT = 0;
 function comboFx(n) { const c = $('#combo'); c.innerHTML = `<small>Gemeinschafts-Kombo</small>×${n}`; c.className = 'show'; clearTimeout(comboFx.t); comboFx.t = setTimeout(() => c.className = '', 1600); G.stats.maxCombo = Math.max(G.stats.maxCombo, n); if (n === 2) track('combos', 1); sfx('ult'); }
@@ -166,7 +168,7 @@ function dialog(lines) {
 }
 function splash(html, ms = 0, cls = '') {
   return new Promise(res => {
-    const s = $('#splash'); s.className = 'splash ' + cls; s.innerHTML = html; s.hidden = false; document.body.classList.add('splash-open'); paintCards(s); paintComps(s);
+    const s = $('#splash'); s.className = 'splash ' + cls; s.innerHTML = html; s.hidden = false; document.body.classList.add('splash-open'); paintCards(s); paintComps(s); paintFlags(s);
     W.hold = true;
     const close = () => { s.classList.add('out'); setTimeout(() => { s.hidden = true; s.classList.remove('out'); document.body.classList.remove('splash-open'); W.hold = false; res(); }, 300); };
     if (ms) setTimeout(close, ms); else { s.onclick = () => { s.onclick = null; sfx('click'); close(); }; }
@@ -205,8 +207,9 @@ function paintPano(cv, key) {
   tile(L.mid, yo, L.HZ + 4); if (lm && lm.front) land(6);
   tile(L.ground, L.HZ + yo, Math.max(60, cv.height / s - L.HZ - yo + 2));
 }
-function panoSplash(kicker, h1, h2, key, ms) { const pr = splash(`<div class="ctitle pano"><canvas class="cpano"></canvas><div class="ct-text"><div class="kicker">${kicker}</div><h1>${h1}</h1><h2>${h2}</h2></div></div>`, ms, 'chap panoS'); paintPano($('#splash .cpano'), key); return pr; }
-function chapterTitle(ch) { return panoSplash(esc(ch.part), `Kapitel ${G.story.ch + 1}`, esc(ch.n), chBg(ch, 0), 2800); }
+function panoSplash(kicker, h1, h2, key, ms, extra = '') { const pr = splash(`<div class="ctitle pano"><canvas class="cpano"></canvas><div class="ct-text"><div class="kicker">${kicker}</div><h1>${h1}</h1><h2>${h2}</h2>${extra}</div></div>`, ms, 'chap panoS'); paintPano($('#splash .cpano'), key); return pr; }
+function chapterNews(i) { if (G.story.loop) return []; return [...UNLOCKS.filter(U => U.at >= i && U.at < i + 1).map(U => U.n), ...RINGS.filter(R => R.from === i && i > 0).map(R => R.n.split(',')[0] + '-Fragmente')]; }
+function chapterTitle(ch) { const nw = chapterNews(G.story.ch); return panoSplash(esc(ch.part), `Kapitel ${G.story.ch + 1}`, esc(ch.n), chBg(ch, 0), nw.length ? 3300 : 2800, nw.length ? `<div class="ct-new">✦ Neu in diesem Kapitel: ${nw.map(esc).join(' · ')}</div>` : ''); }
 function kitLines(k) { const H = HEROES[k]; return `<li><b class="k-ult">Ultimate</b> ${esc(H.ult.n)}</li><li><b class="k-act">Aktiv</b> ${esc(H.act.n)}</li><li><b class="k-act2">Aktiv II</b> ${esc(H.act2.n)}</li>`; }
 function joinSplash(k, back) {
   sfx('join'); const H = HEROES[k], C = CLASSES[H.cls];
@@ -243,7 +246,43 @@ function onResult(r, kind) {
     const xp = Math.round(r.enemies.filter(e => !alive(e) && e.xp).reduce((a, e) => a + e.xp, 0) * .4);
     applyReward({ xp, gold: 0, items: [], frags: 0 }, party);
   }
-  checkFullSet(); save(); updateHud();
+  checkFullSet(); save(); updateHud(); trackFeats({ r, kind });
+}
+/* ---------- Kapitel-Prüfungen: Heldenhaft & Legendär, je drei Sterne ---------- */
+const TRIAL = { h: { n: 'Heldenhaft', off: 0, aff: { elite: 1, one: 1, boss: 1 }, time: 80000, c: '#7ab8ff' }, l: { n: 'Legendär', off: 5, aff: { all: 1, elite: 2, one: 2, boss: 2 }, time: 95000, c: '#ff9a3a' } };
+const STAR_MS = [[6, { frags: 3 }], [15, { frags: 4, r: 4 }], [30, { frags: 5, r: 5 }], [50, { frags: 8, r: 4 }], [80, { frags: 10, r: 5 }], [120, { frags: 12, r: 5 }], [168, { frags: 20, r: 5 }]];
+function trialLvl(ch, t) { return Math.max(STORY[ch].lvl + 3 + G.story.loop * LOOP_LVL, (G.team?.lvl || 1) - 4) + TRIAL[t].off; }
+function trialStars(ch, t) { const m = (G.trials?.[ch]?.[t]) || 0; return (m & 1 ? 1 : 0) + (m & 2 ? 1 : 0) + (m & 4 ? 1 : 0); }
+function starTotal() { let n = 0; for (const ch of Object.keys(G.trials || {})) for (const t of ['h', 'l']) n += trialStars(+ch, t); return n; }
+function starStr(m) { return [1, 2, 4].map(b => m & b ? '★' : '☆').join(''); }
+function trialOpen(ch, t) { return t === 'h' ? chapterStatus(ch) === 'done' : !!((G.trials?.[ch]?.h || 0) & 1); }
+async function trialRun(ch, t) {
+  const C = STORY[ch], T = TRIAL[t], prevBg = W.bgKey, lvl = trialLvl(ch, t); G.queue = null; G.trials = G.trials || {}; save();
+  W.setBg(chBg(C)); await panoSplash(`Kapitel-Prüfung · ${T.n}`, `Kapitel ${ch + 1}`, esc(C.n), chBg(C), 2100);
+  const wv = chapterWaves(ch), fights = [[wv[3], 'elite'], [wv[7], 'elite'], [C.boss, 'boss']];
+  applyParty(); W.restoreHeroes();
+  let fallen = 0, dur = 0, won = true, aborted = false;
+  for (let i = 0; i < fights.length; i++) {
+    const [grp, kind] = fights[i]; await W.walk(800);
+    if (kind === 'boss') await bossSplash(C.boss.find(k => ENEMIES[k].boss) || C.boss[0]);
+    const r = await W.fight(grp, lvl + i, kind, { aff: afxPlan(grp, T.aff), keepHp: i > 0 ? 1 : 0 });
+    if (r.aborted) { aborted = true; break; }
+    if (kind === 'boss') r.setCh = ch; onResult(r, kind); fallen += r.fallen; dur += r.dur;
+    if (!r.win) { won = false; break; }
+    for (const h of W.heroes) if (!alive(h)) W.revive(h, .3); healParty(.3);
+  }
+  if (aborted) { W.setBg(prevBg); return; }
+  const rec = G.trials[ch] || (G.trials[ch] = {}), old = rec[t] || 0, got = (won ? 1 : 0) | (won && !fallen ? 2 : 0) | (won && dur <= T.time ? 4 : 0), nw = got & ~old;
+  rec[t] = old | got; const items = []; let frags = 0, gold = 0;
+  const nNew = [1, 2, 4].filter(b => nw & b).length; frags += nNew * (t === 'l' ? 2 : 1); gold += nNew * (t === 'l' ? 400 : 180) * (1 + G.story.loop * .25);
+  if (won) { items.push(genItem(lvl + 2, t === 'l' ? topRarity(.12, .55) : rollRarity('boss'))); if ((nw & 1) && t === 'l') items.push(genItem(lvl + 2, topRarity(.35, 1))); }
+  const before = starTotal() - [1, 2, 4].filter(b => nw & b).length; const ms = [];
+  for (const [need, rw] of STAR_MS) if (before < need && starTotal() >= need) { ms.push(need); frags += rw.frags; if (rw.r) items.push(genItem(Math.max(lvl, chapterLvl()) + 2, rw.r)); }
+  G.gold += Math.round(gold); if (frags) grantFragments(frags); items.forEach(addItem); if (G.settings.autoEquip) autoEquip(); save(); applyParty(); updateHud();
+  trackFeats({ trial: t, won, ch });
+  const line = (ok, txt) => `<div class="tr-c ${ok ? 'ok' : ''}"><b>${ok ? '★' : '☆'}</b>${txt}</div>`;
+  await splash(`<div class="cdone trial" style="--tc:${T.c}"><div class="kicker">Kapitel-Prüfung · ${T.n} · Kapitel ${ch + 1}</div><h1 class="tr-st">${starStr(rec[t])}</h1><div class="tr-cs">${line(won, 'Sieg')}${line(won && !fallen, 'Kein Held gefallen')}${line(won && dur <= T.time, `Unter ${Math.round(T.time / 1000)} s Kampfzeit <small>(${Math.round(dur / 1000)} s)</small>`)}</div><p>${nNew ? `<b>${nNew} neue${nNew > 1 ? '' : 'r'} Stern${nNew > 1 ? 'e' : ''}!</b> ` : ''}${gold ? '◆ ' + fmt(Math.round(gold)) + ' · ' : ''}${frags ? '◈ ' + frags + ' · ' : ''}Sterne gesamt: ${starTotal()}${ms.length ? ` · <b>Meilenstein ${ms.join(', ')} erreicht!</b>` : ''}</p>${items.length ? `<div class="loot1">${items.map(it => `${icHtml(it)}<b style="color:${RARITY[it.r].c}">${esc(it.name)}</b>`).join('')}</div>` : ''}<div class="dhint">Tippen zum Fortfahren</div></div>`, 0, 'doneS');
+  W.setBg(prevBg); updateHud();
 }
 async function bossRematch(ch) {
   const C = STORY[ch], prevBg = W.bgKey; G.queue = null; save();
@@ -284,15 +323,19 @@ async function sideRun(id) {
 const MODES = [
   { id: 'horde', n: 'Endloser Ansturm', ic: '∞', d: 'Welle um Welle, ohne Heilung dazwischen. Wie weit kommt deine Gruppe?' },
   { id: 'rush', n: 'Bossrausch', ic: '♛', d: 'Fünf bereits besiegte Bosse hintereinander. Zwischen den Kämpfen nur 30 % Heilung.' },
-  { id: 'chaos', n: 'Chaos-Prüfung', ic: '✷', d: 'Fünf Kämpfe, jeder mit einer verrückten Regel: Blitztempo, Glaskanonen, Kritsturm …' }
+  { id: 'chaos', n: 'Chaos-Prüfung', ic: '✷', d: 'Fünf Kämpfe, jeder mit einer verrückten Regel: Blitztempo, Glaskanonen, Kritsturm …' },
+  { id: 'helm', n: 'Helms Klamm', ic: '⚔', d: 'Verteidigt das Tor der Hornburg gegen endlose Uruk-Wellen. Fällt das Tor, ist alles verloren.' },
+  { id: 'pfad', n: 'Pfad der Verzweiflung', ic: '☠', d: '15 Kämpfe ohne Heilung. Nach jedem Sieg wählst du einen Segen.' }
 ];
 const CHAOS = [['schnell', 'Blitztempo: alle sind 70 % schneller'], ['glas', 'Glaskanonen: doppelter Schaden, 40 % weniger Leben'], ['energie', 'Volle Kraft: alle Ultimates sofort bereit'], ['krit', 'Kritsturm: +45 % Krit-Chance für alle'], ['riesen', 'Riesenwuchs: Gegner mit 80 % mehr Leben']];
-function modeUnlocked() { return G.story.ch >= 3 || G.story.loop > 0 || !!(G.unl && G.unl.modes); }
+function modeUnlocked() { return isUnl('horde'); }
 const MODE_PRICE = 2500;
 function buyEarly(key, price, label, after) { if (G.gold < price) { toast(`Dafür brauchst du ◆ ${fmt(price)} Gold.`, 'mini'); return false; } G.gold -= price; G.unl = G.unl || {}; G.unl[key] = 1; save(); sfx('join'); toast(`<b>${esc(label)}</b> früher freigeschaltet!`, 'lvl'); updateHud(); after && after(); return true; }
 function modePool() { const last = G.story.loop ? STORY.length : Math.max(1, G.story.ch); const waves = [], bosses = []; for (let i = 0; i < last; i++) { (STORY[i].waves || []).forEach(w => waves.push(w)); bosses.push(i); } return { waves, bosses }; }
 function healParty(pct) { for (const h of W.heroes) { if (h.hp > 0) h.hp = Math.min(h.maxHp, Math.round(h.hp + h.maxHp * pct)); } }
 async function modeRun(id) {
+  if (id === 'helm') return helmRun();
+  if (id === 'pfad') return pfadRun();
   const M = MODES.find(m => m.id === id), prevBg = W.bgKey, pool = modePool(); G.queue = null; G.modes = G.modes || {}; save();
   await splash(`<div class="ctitle"><div class="kicker">Spezialmodus</div><h1>${M.ic} ${esc(M.n)}</h1><h2>${esc(M.d)}</h2></div>`, 2200, 'chap');
   applyParty(); W.restoreHeroes();
@@ -367,6 +410,7 @@ async function towerRun() {
 }
 async function director() {
   while (true) {
+    await announceUnlocks();
     const ch = STORY[G.story.ch]; W.setBg(chBg(ch, G.story.wave));
     if (!G.story.intro) {
       await W.wait(400); await chapterTitle(ch);
@@ -378,7 +422,7 @@ async function director() {
     }
     const w = G.story.wave, mk = G.story.ch + '-' + w;
     if (G.tower.queued) { running = 'Orthanc-Turm'; try { await towerRun(); } finally { running = null; } continue; }
-    if (G.queue) { const q = G.queue; running = { boss: 'Bosskampf', side: 'Nebenquest', raid: 'Prüfung der Macht', mode: 'Spezialmodus' }[q.type] || 'Herausforderung'; try { if (q.type === 'boss') await bossRematch(q.ch); else if (q.type === 'side') await sideRun(q.id); else if (q.type === 'raid') await raidRun(q.key); else if (q.type === 'mode') await modeRun(q.id); else G.queue = null; } finally { running = null; } continue; }
+    if (G.queue) { const q = G.queue, R2 = RUNS[q.type]; running = R2 ? R2[0] : 'Herausforderung'; try { if (R2) await R2[1](q); else G.queue = null; } catch (e) { console.error(e); G.queue = null; } finally { running = null; } continue; }
     if (w < WAVES) {
       if ((ch.mid?.[w] || ch.midLine?.[w]) && !G.story.mids[mk]) {
         await dialog(ch.midLine?.[w]); for (const k of ch.mid?.[w] || []) { joinHero(k); applyParty(); await joinSplash(k); }
@@ -386,7 +430,7 @@ async function director() {
       }
       applyParty(); await W.walk(1500);
       const kind = isEliteWave(w) ? 'elite' : 'normal'; waveCard(w, kind);
-      const r = await W.fight(chapterWaves()[w], waveLvl(w), kind);
+      const grp = chapterWaves()[w], r = await W.fight(grp, waveLvl(w), kind, { aff: storyAfx(grp, kind) });
       if (r.aborted) continue;
       onResult(r, kind);
       if (r.win) { G.story.wave++; track('wins', 1); } else { G.story.wave = Math.max(0, w - 1); banner('Rückzug! Die Gruppe sammelt sich.', 'foe'); }
@@ -399,7 +443,7 @@ async function director() {
     if (!G.story.bossSeen) { await dialog(ch.bossLine); G.story.bossSeen = true; save(); }
     applyParty(); await W.walk(1200);
     const bk = ch.boss.find(k => ENEMIES[k].boss) || ch.boss[0]; await bossSplash(bk);
-    const r = await W.fight(ch.boss, waveLvl(WAVES) + 1, 'boss'); r.setCh = G.story.ch;
+    const r = await W.fight(ch.boss, waveLvl(WAVES) + 1, 'boss', { aff: storyAfx(ch.boss, 'boss') }); r.setCh = G.story.ch;
     if (r.aborted) continue;
     onResult(r, 'boss');
     if (r.win) {
@@ -410,6 +454,7 @@ async function director() {
       const relic = G.story.loop === 0 ? grantRelic(G.story.ch) : null;
       if (relic) { W.pendingParty = 1; await splash(`<div class="cdone relic"><div class="kicker">Relikt gefunden</div><canvas class="ric" data-ic="${relic.ic}" data-c="${relic.c}"></canvas><h1>${esc(relic.n)}</h1><p>Dauerhafter Gruppenbonus: <b>${esc(relic.d)}</b></p><div class="dhint">Tippen zum Fortfahren</div></div>`, 0, 'doneS'); }
       const cp = chapterCompanion(G.story.ch); if (cp && !G.comps[cp.id]) { grantCompanion(cp.id); W.pendingParty = 1; await companionSplash(cp); }
+      const bn = G.story.loop === 0 && BANNERS.find(b => b.ch === G.story.ch); if (bn && !(G.banners || {})[bn.id]) { G.banners = G.banners || {}; G.banners[bn.id] = 1; if (!G.banner) G.banner = bn.id; W.pendingParty = 1; save(); sfx('join'); await splash(`<div class="cdone"><div class="kicker">Neues Banner</div><canvas class="bnrbig" data-flag="${bn.id}"></canvas><h1>${esc(bn.n)}</h1><p>Aufgestellt stärkt es die ganze Gruppe: <b>${esc(bn.d)}</b></p><div class="dhint">Tippen zum Fortfahren</div></div>`, 0, 'doneS'); }
       G.stats.chapters = Math.max(G.stats.chapters, G.story.ch + 1 + G.story.loop * STORY.length);
       const mith = 1; grantFragments(1);
       await pickChest(ch.n, mith);
@@ -423,6 +468,7 @@ async function director() {
 /* ---------- Menüs (Glas-Panel) ---------- */
 /* ================= Menüs: ein Bildschirm, Tabs statt Scrollen, Blättern statt Listen ================= */
 let running = null;
+const RUNS = { boss: ['Bosskampf', q => bossRematch(q.ch)], side: ['Nebenquest', q => sideRun(q.id)], raid: ['Prüfung der Macht', q => raidRun(q.key)], mode: ['Spezialmodus', q => modeRun(q.id)], trial: ['Kapitel-Prüfung', q => trialRun(q.ch, q.t)], hunt: ['Kopfgeldjagd', q => huntRun(q.id)] };
 /* Sofort spielen: laufenden Kampf abbrechen (ohne Strafe) und direkt starten */
 function playNow(q, label) {
   if (running) { toast(`Gerade läuft: ${esc(running)}`, 'mini'); return; }
@@ -431,13 +477,15 @@ function playNow(q, label) {
 }
 /* Empfehlung „Nächster Schritt“: die sinnvollste Aktion mit einem Tipp */
 function nextStep() {
-  const fr = RINGS.find(r => canForge(r.id)); if (fr) return { ic: '◍', t: (G.rings?.[fr.id]?.stars ? fr.n + ' veredeln' : fr.n + ' schmieden'), c: fr.c, go: () => openForge(Math.floor(RINGS.indexOf(fr) / 4)) };
+  const nu = UNLOCKS.find(U => G.unlNew?.[U.id] && isUnl(U.id)); if (nu) return { ic: nu.ic, t: 'Neu: ' + nu.n, c: '#7ad8ff', go: () => (UNL_GO[nu.id] || (() => { delete G.unlNew[nu.id]; }))() };
+  const fr = isUnl('forge') && RINGS.find(r => canForge(r.id)); if (fr) return { ic: '◍', t: (G.rings?.[fr.id]?.stars ? fr.n + ' veredeln' : fr.n + ' schmieden'), c: fr.c, go: () => openForge(Math.floor(RINGS.indexOf(fr) / 4)) };
   const fo = RINGS.find(R => (G.rings?.[R.id]?.stars || 0) > 0 && !(G.rings[R.id].owner && G.party.includes(G.rings[R.id].owner)) && G.party.some(k => !ringOf(k))); if (fo) return { ic: '◍', t: fo.n + ' anlegen', c: fo.c, go: () => openRingOwner(fo.id) };
-  const cs = chestState(); if (cs.ready && (G.chest || 0) >= CHEST_MAX * .6) return { ic: '⛁', t: 'Siegestruhe öffnen', c: '#e8bd5c', go: openChest };
-  const q = questsClaimable(); if (q) return { ic: '✎', t: q > 1 ? q + ' Aufträge abholen' : 'Auftrag abholen', c: '#e8bd5c', go: openQuests };
-  const a = claimableCount(); if (a) return { ic: '♛', t: a > 1 ? a + ' Erfolge abholen' : 'Erfolg abholen', c: '#e8bd5c', go: () => openAch() };
+  const cs = chestState(); if (isUnl('chest') && cs.ready && (G.chest || 0) >= CHEST_MAX * .6) return { ic: '⛁', t: 'Siegestruhe öffnen', c: '#e8bd5c', go: openChest };
+  const q = isUnl('quests') && questsClaimable(); if (q) return { ic: '✎', t: q > 1 ? q + ' Aufträge abholen' : 'Auftrag abholen', c: '#e8bd5c', go: openQuests };
+  const a = isUnl('ach') && claimableCount(); if (a) return { ic: '♛', t: a > 1 ? a + ' Erfolge abholen' : 'Erfolg abholen', c: '#e8bd5c', go: () => openAch() };
   const ev = G.party.find(k => canEvolve(k)?.lvlOk); if (ev) return { ic: '★', t: HEROES[ev].n + ' entwickeln', c: '#ffd760', go: () => openHero(ev, 'werte') };
   if (!G.settings.autoEquip && G.party.some(k => Object.keys(SLOTS).some(sl => upgradeFor(k, sl)))) return { ic: '⚡', t: 'Bessere Ausrüstung', c: '#7dff8a', go: () => openHeroes('team') };
+  const up = UNLOCKS.find(U => !isUnl(U.id)); if (up) return { ic: '✧', t: `Bald: ${up.n} · ${unlWhen(up.id).replace('Kapitel', 'Kap.')}`, c: '#9aa4b8', go: () => lockHint(up.id) };
   return null;
 }
 function renderNext() {
@@ -452,7 +500,7 @@ function unitInfo(u, cx, cy) {
   const skills = E ? [...new Set((u.skills || []).map(s => s.n))].slice(0, 4).join(' · ') : [H.act.n, H.act2.n, H.ult.n].join(' · ');
   const extra = E ? `Bestiarium: ${fmt((G.bestiary || {})[u.key] || 0)}× besiegt` : `Ultimate ${Math.min(100, Math.round(u.energy))} %${ringOf(u.key) ? ' · ◍ ' + esc(ringOf(u.key).R.n) : ''}`;
   box.className = 'uinfo ' + (E ? 'foe' : 'hero');
-  box.innerHTML = `<div class="ui-h"><b>${esc(u.name)}</b><span>${tag} · St. ${u.lvl || G.team.lvl}</span></div><div class="ui-hp"><i style="width:${f * 100}%"></i></div><small class="ui-n">${fmt(u.hp)} / ${fmt(u.maxHp)} LP${u.statuses.length ? ' · ' + u.statuses.slice(0, 4).map(st => `<span style="color:${STATUS[st.id].c}">●</span>`).join('') : ''}</small><small class="ui-s">${esc(skills)}</small><small class="ui-x">${extra}</small>`;
+  box.innerHTML = `<div class="ui-h"><b>${esc(u.name)}</b><span>${tag} · St. ${u.lvl || G.team.lvl}</span></div><div class="ui-hp"><i style="width:${f * 100}%"></i></div><small class="ui-n">${fmt(u.hp)} / ${fmt(u.maxHp)} LP${u.statuses.length ? ' · ' + u.statuses.slice(0, 4).map(st => `<span style="color:${STATUS[st.id].c}">●</span>`).join('') : ''}</small><small class="ui-s">${esc(skills)}</small>${u.afx && u.afx.length ? `<small class="ui-a">${u.afx.map(a => `<b style="color:${ELITE_AFX[a].c}">${ELITE_AFX[a].n}</b> ${esc(ELITE_AFX[a].d)}`).join('<br>')}</small>` : ''}<small class="ui-x">${extra}</small>`;
   box.hidden = false;
   const app = $('#app').getBoundingClientRect(), bw = box.offsetWidth, bh = box.offsetHeight;
   box.style.left = Math.max(8, Math.min(app.width - bw - 8, cx - app.left - bw / 2)) + 'px'; box.style.top = Math.max(8, Math.min(app.height - bh - 8, cy - app.top - bh - 18)) + 'px';
@@ -474,16 +522,86 @@ function flyCoins(u, n) {
 function chBg(C, w = 99) { let b = C.bg; for (const [w0, k] of Object.entries(C.bgAt || {})) if (w >= +w0) b = k; return b; }
 function waveCard(w, kind) { const el = $('#wave'); el.className = 'wave ' + kind; el.innerHTML = `<small>${esc(STORY[G.story.ch].n)}</small><b>Welle ${w + 1} von ${WAVES}</b>${kind === 'elite' ? '<em>Elite</em>' : w === WAVES - 1 ? '<em>Letzte Welle</em>' : ''}`; el.hidden = false; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); clearTimeout(waveCard.t); waveCard.t = setTimeout(() => { el.hidden = true; }, 1900); }
 function refreshLooks() { for (const u of W.heroes) { const L = heroLook(u.key), sig = JSON.stringify(L.gear || null); if (u._gsig !== undefined && u._gsig !== sig && alive(u)) W.gearUp(u); u._gsig = sig; u.look = L; } }
+/* ---------- Bonusleiste über den Heldenbildern ---------- */
+const EFF_N = { hp: 'LP', atk: 'Angriff', mag: 'Magie', def: 'Verteidigung', spd: 'Tempo', crit: 'Krit', dodge: 'Ausweichen', healPct: 'Heilung', ultCharge: 'Ultimate', thorns: 'Dornen', startBuffRegen: 'Erholung zu Kampfbeginn' };
+function effTxt(e) { return Object.entries(e).filter(([k, v]) => v).map(([k, v]) => k === 'startBuffRegen' ? EFF_N[k] : `+${String(Math.round(v * 10) / 10).replace('.', ',')} % ${EFF_N[k] || k}`).join(', '); }
+function sumEff(list) { const o = {}; for (const e of list) for (const [k, v] of Object.entries(e)) o[k] = (o[k] || 0) + v; return o; }
+function boonList() {
+  const out = [], cp = COMPANIONS.find(c => c.id === G.companion && G.comps[c.id]);
+  if (cp) out.push({ id: 'comp', ic: '❀', c: '#9fd08a', n: 'Begleiter: ' + cp.n, d: cp.d });
+  const BN = isUnl('banner') && G.banner && BANNERS.find(b => b.id === G.banner); if (BN) out.push({ id: 'banner', ic: '⚐', c: BN.emCol === '#141010' ? '#e8c860' : BN.emCol, bg: BN.cloth, n: BN.n, d: BN.d });
+  for (const f of activeFactions(G.party).filter(f => f.tier >= 0)) out.push({ id: 'bond', ic: f.F.ic, c: f.F.c, n: `Bündnis: ${f.F.n} (${f.n})`, d: f.F.t[f.tier][2] });
+  const rl = Object.keys(G.relics || {}).filter(i => RELICS[i]); if (rl.length) out.push({ id: 'relic', ic: '◆', c: '#e8bd5c', n: `${rl.length} Relikte`, d: effTxt(sumEff(rl.map(i => RELICS[i].e))), cnt: rl.length });
+  const tr = Object.keys(G.trophies || {}).map(id => HUNTS.find(h => h.id === id)).filter(Boolean); if (tr.length) out.push({ id: 'trophy', ic: '✦', c: '#ffd75a', n: `${tr.length} Jagdtrophäen`, d: effTxt(sumEff(tr.map(h => h.tr.e))), cnt: tr.length });
+  const rg = G.party.map(k => [k, ringOf(k)]).filter(x => x[1]); if (rg.length) out.push({ id: 'ring', ic: '◍', c: rg[0][1].R.c, n: `${rg.length} Ring${rg.length > 1 ? 'e' : ''} der Macht`, d: rg.map(([k, r]) => `${r.R.n.split(',')[0]} ★${r.stars} (${HEROES[k].n}${loreBearer(r.R, k) ? ', wahrer Träger' : ''})`).join(' · '), cnt: rg.length });
+  const sets = []; for (const k of G.party) { const n = {}; for (const sl of Object.keys(SLOTS)) { const it = G.heroes[k].eq[sl] && itemById(G.heroes[k].eq[sl]); if (it?.set) n[it.set] = (n[it.set] || 0) + 1; } for (const [id, c] of Object.entries(n)) if (c >= 2) { const S2 = SETS.find(x => x.id === id); if (S2) sets.push(`${S2.n} ${c}/3 (${HEROES[k].n})`); } }
+  if (sets.length) out.push({ id: 'set', ic: '⛉', c: '#b8a8e8', n: 'Set-Boni', d: sets.join(' · '), cnt: sets.length });
+  if (W && W.pfadB && W.pfadB.taken.length) out.push({ id: 'pfad', ic: '☘', c: '#c890ff', n: 'Segen des Pfades', d: W.pfadB.taken.map(id => BLESSINGS.find(b => b.id === id)?.n).filter(Boolean).join(', '), cnt: W.pfadB.taken.length });
+  const mods = activeMods(); if (mods.length) out.push({ id: 'mods', ic: '☠', c: '#ff7a5a', n: `Heldenreise ${G.story.loop + 1}: Erschwernisse`, d: mods.map(m => m.n).join(', ') });
+  return out;
+}
+const BOON_SLOTS = [['comp', 'comps', '❀', 'Begleiter'], ['banner', 'banner', '⚐', 'Banner'], ['bond', 'bonds', '⚭', 'Bündnisse'], ['relic', 'relics', '◆', 'Relikte'], ['trophy', 'hunt', '✦', 'Trophäen'], ['ring', 'forge', '◍', 'Ringe'], ['set', 'sets', '⛉', 'Sets']];
+function renderBoons() {
+  const els = [document.getElementById('boons'), document.getElementById('boonsL')].filter(Boolean); if (!els.length || !G) return; const L = boonList();
+  const chips = BOON_SLOTS.map(([id, u, ic, n]) => { const act = L.filter(b => b.id === id); if (!isUnl(u)) return { st: 'lk', ic, lbl: n, u, c: '#8a8a8a' }; if (!act.length) return { st: 'off', ic, lbl: n, c: '#9a9480' };
+    const a = act[0], cnt = id === 'bond' ? act.length : a.cnt || 0; const lbl = id === 'comp' ? a.n.replace('Begleiter: ', '').split(' ')[0] : id === 'banner' ? a.n.replace(/^Banner (von |der )?/, '') : id === 'bond' ? (act.length > 1 ? act.length + ' Bündnisse' : a.n.replace(/^Bündnis: /, '').replace(/ \(\d+\)$/, '')) : n;
+    return { st: 'on', ic: a.ic, lbl, c: a.c, bg: a.bg, cnt }; });
+  for (const b of L) if (b.id === 'pfad' || b.id === 'mods') chips.push({ st: 'on', ic: b.ic, lbl: b.id === 'pfad' ? 'Segen' : 'Erschwernis', c: b.c, cnt: b.cnt || 0 });
+  const sig = JSON.stringify(chips); if (renderBoons.sig === sig) return; renderBoons.sig = sig;
+  const html = chips.map(b => `<button class="bo ${b.st}" ${b.st === 'lk' ? `data-lock="${b.u}"` : ''} style="--bc:${b.c};${b.bg ? `--bb:${b.bg}` : ''}" title="${esc(b.lbl)}"><span>${b.ic}</span>${b.cnt > 1 ? `<i>${b.cnt}</i>` : ''}<em class="bo-l">${esc(b.lbl)}</em></button>`).join('');
+  for (const el of els) { el.innerHTML = html; el.hidden = false; el.onclick = e => { e.stopPropagation(); const lk = e.target.closest('[data-lock]'); if (lk) return lockHint(lk.dataset.lock); sfx('click'); showBoons(el); }; }
+}
+function showBoons(src) {
+  const L = boonList(), box = $('#uinfo'); if (!L.length) { toast('Noch keine Boni aktiv – Begleiter, Banner, Relikte und Ringe kommen im Lauf der Reise.', 'mini'); return; }
+  box.className = 'uinfo boons'; box.innerHTML = `<div class="ui-h"><b>Aktive Boni</b><span>wirken auf die Gruppe</span></div>${L.map(b => `<div class="bo-r"><span class="bo-i" style="--bc:${b.c};${b.bg ? `--bb:${b.bg}` : ''}">${b.ic}</span><span><b>${esc(b.n)}</b><small>${esc(b.d)}</small></span></div>`).join('')}`;
+  box.hidden = false; const app = $('#app').getBoundingClientRect(), bw = box.offsetWidth, bh = box.offsetHeight, land = app.width > app.height, ref = (land ? $('#boonsL') : $('#party')).getBoundingClientRect();
+  if (land) { box.style.left = Math.max(8, Math.min(app.width - bw - 8, ref.left - app.left)) + 'px'; box.style.top = Math.max(8, Math.min(app.height - bh - 8, ref.bottom - app.top + 8)) + 'px'; }
+  else { box.style.left = Math.max(8, Math.min(app.width - bw - 8, ref.left - app.left + ref.width / 2 - bw / 2)) + 'px'; box.style.top = Math.max(8, Math.min(app.height - bh - 8, ref.top - app.top - bh - 34)) + 'px'; }
+  clearTimeout(unitInfo.t); unitInfo.t = setTimeout(() => { box.hidden = true; }, 7000);
+}
+/* ---------- Freischaltungen: grau, Hinweis, NEU-Markierung, Ankündigung ---------- */
+const TAB_UNL = { modi: 'horde', jagd: 'hunt', chronik: 'chronik', best: 'best', reittiere: 'mounts', begleiter: 'comps', banner: 'banner', buende: 'bonds', feat: 'feats', rel: 'relics', sets: 'sets' };
+const TAB_CLEAR = { story: ['trialH', 'trialL', 'side'], modi: ['horde', 'rush', 'chaos', 'tower', 'raids', 'helm', 'pfad'], jagd: ['hunt'], chronik: ['chronik'], best: ['best'], reittiere: ['mounts'], begleiter: ['comps'], banner: ['banner'], buende: ['bonds'], sets: ['sets'], feat: ['feats'], rel: ['relics'], ach: ['ach'] };
+const NAV_NEW = { nHeroes: ['comps', 'bonds', 'banner', 'mounts'], nBag: ['sets'], nStory: ['hunt', 'trialH', 'trialL', 'horde', 'rush', 'chaos', 'tower', 'raids', 'helm', 'pfad', 'side', 'best', 'chronik'], nQuest: ['quests'], nForge: ['forge'], nAch: ['ach', 'relics', 'feats'], chest: ['chest'] };
+const NAV_LOCK = { nQuest: 'quests', nForge: 'forge', nAch: 'ach', chest: 'chest' };
+const UNL_GO = { best: () => openStory('best'), chest: () => openChest(), quests: () => openQuests(), comps: () => openHeroes('begleiter'), relics: () => openRelics(), chronik: () => openStory('chronik'), ach: () => openAch(), bonds: () => openHeroes('buende'), forge: () => openForge(0), hunt: () => openStory('jagd'), trialH: () => openStory('story', undefined, Math.max(0, G.story.ch - 1)), trialL: () => openStory('story', undefined, Math.max(0, G.story.ch - 1)), horde: () => openModes(0), rush: () => openModes(0), chaos: () => openModes(0), tower: () => openModes(0), helm: () => openModes(0), pfad: () => openModes(0), raids: () => openModes(1), feats: () => openFeats(), banner: () => openHeroes('banner'), sets: () => openSets(0), side: () => openStory('story'), mounts: () => openHeroes('reittiere') };
+function lockHint(id) { const U = UNLOCKS.find(u => u.id === id); if (!U) return; sfx('click'); toast(`🔒 <b>${esc(U.n)}</b> wird freigeschaltet ab ${unlWhen(id)}.`, 'unlock'); }
+function gate(id) { if (!isUnl(id)) { lockHint(id); return false; } if (G.unlNew && G.unlNew[id]) { delete G.unlNew[id]; save(); setTimeout(updateHud, 0); } return true; }
+function applyLocks() {
+  for (const [id, u] of Object.entries(NAV_LOCK)) { const el = document.getElementById(id); if (el) el.classList.toggle('lk', !isUnl(u)); }
+  for (const [id, us] of Object.entries(NAV_NEW)) { const el = document.getElementById(id); if (el) el.classList.toggle('nwu', us.some(u => G.unlNew?.[u] && isUnl(u))); }
+}
+async function announceUnlocks() {
+  G.unlSeen = G.unlSeen || {}; G.unlNew = G.unlNew || {};
+  const nw = UNLOCKS.filter(U => isUnl(U.id) && !G.unlSeen[U.id]); if (!nw.length) return;
+  for (const U of nw) { G.unlSeen[U.id] = 1; G.unlNew[U.id] = 1; } save(); updateHud(); sfx('join');
+  let go = null;
+  const pr = splash(`<div class="unl"><div class="kicker">Neu freigeschaltet</div>${nw.map(U => `<div class="unl-c"><span class="unl-ic">${U.ic}</span><div><b>${esc(U.n)}</b><small>${esc(U.d)}</small></div></div>`).join('')}<div class="unl-b"><button class="btn gold" id="unlGo">▶ Jetzt ansehen</button><button class="btn" id="unlLater">Weiter</button></div></div>`, 0, 'unlS');
+  const s = $('#splash'), close = s.onclick;
+  s.querySelector('#unlGo').onclick = e => { e.stopPropagation(); go = nw[0]; close && close(); };
+  s.querySelector('#unlLater').onclick = e => { e.stopPropagation(); close && close(); };
+  await pr; if (go && UNL_GO[go.id]) UNL_GO[go.id]();
+}
+function paintFlags(root) {
+  requestAnimationFrame(() => root.querySelectorAll('canvas[data-flag]').forEach(cv => { const B = BANNERS.find(b => b.id === cv.dataset.flag); if (!B) return; const dpr = Math.min(2, devicePixelRatio || 1), w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return; cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); const c = cv.getContext('2d'), g = c.createRadialGradient(cv.width / 2, cv.height * .45, 4, cv.width / 2, cv.height * .5, cv.width * .7); g.addColorStop(0, '#3a4256'); g.addColorStop(1, '#10121a'); c.fillStyle = g; c.fillRect(0, 0, cv.width, cv.height); const sc = cv.height / 56; c.setTransform(sc, 0, 0, sc, cv.width / 2 - 7 * sc, cv.height - 3 * sc); RIG.flag(c, { em: B.em, cloth: B.cloth, emCol: B.emCol, t: 900 }); }));
+}
+function openBanners() {
+  const cards = BANNERS.map(B => { const own = G.banners?.[B.id], on = G.banner === B.id; return `<div class="m-tile bnr ${own ? '' : 'lk'} ${on ? 'on' : ''}"><canvas data-flag="${B.id}"></canvas><b>${esc(B.n)}</b><small>${esc(B.d)}<br><em>${own ? (on ? 'Steht hinter deiner Gruppe' : 'Im Besitz') : '🔒 Sieg in Kapitel ' + (B.ch + 1)}</em></small>${own ? `<button class="btn small ${on ? '' : 'gold'}" data-bn="${B.id}" ${on ? 'disabled' : ''}>${on ? '✓ Aufgestellt' : '⚐ Aufstellen'}</button>` : ''}</div>`; });
+  openSheet('Helden', `<div class="m-tiles bnrs">${cards.join('')}<div class="m-tile info"><span class="m-ic">⚐</span><b>Banner</b><small>Das aufgestellte Banner weht hinter deiner Gruppe und stärkt alle Helden. Neue Banner gibt es für Kapitel-Siege.</small></div></div>`, s => {
+    paintFlags(s); s.querySelectorAll('[data-bn]').forEach(b => b.onclick = () => { G.banner = b.dataset.bn; save(); sfx('buff'); W.pendingParty = 1; toast(`<b>${esc(BANNERS.find(x => x.id === G.banner).n)}</b> aufgestellt`, 'lvl'); openBanners(); });
+  }, { tabs: heroTabs(), tab: 'banner', onTab: t => openHeroes(t, 0) });
+}
 function openSheet(title, html, after, o = {}) {
   cancelAnimationFrame(artRaf);
   const s = $('#sheet');
-  const tabs = o.tabs ? `<div class="m-tabs">${o.tabs.map(([id, n, badge]) => `<button class="m-tab ${o.tab === id ? 'on' : ''}" data-tab="${id}">${n}${badge ? `<i>${badge}</i>` : ''}</button>`).join('')}</div>` : '';
+  if (o.tab && TAB_CLEAR[o.tab] && G.unlNew) { let ch2 = 0; for (const u of TAB_CLEAR[o.tab]) if (G.unlNew[u]) { delete G.unlNew[u]; ch2 = 1; } if (ch2) { save(); setTimeout(updateHud, 0); } }
+  const tabs = o.tabs ? `<div class="m-tabs ${o.tabs.length > 5 ? 'many' : ''}">${o.tabs.map(([id, n, badge]) => { const lk = TAB_UNL[id] && !isUnl(TAB_UNL[id]), nw = !lk && (TAB_CLEAR[id] || []).some(u => G.unlNew?.[u]); return `<button class="m-tab ${o.tab === id ? 'on' : ''} ${lk ? 'lk' : ''} ${nw ? 'nw' : ''}" data-tab="${id}">${n}${badge ? `<i>${badge}</i>` : ''}</button>`; }).join('')}</div>` : '';
   const pg = o.pages > 1 ? `<div class="m-pg"><button class="m-pb" data-pg="-1" ${o.page <= 0 ? 'disabled' : ''}>‹</button><span>${o.page + 1}/${o.pages}</span><button class="m-pb" data-pg="1" ${o.page >= o.pages - 1 ? 'disabled' : ''}>›</button></div>` : '';
   const vk = title + '|' + (o.tab || '') + '|' + (o.page || 0), fresh = vk !== openSheet.vk || !s.classList.contains('open'); openSheet.vk = vk; s.classList.toggle('anim', fresh);
   s.innerHTML = `<div class="sh-head"><h2>${title}</h2>${tabs}<div class="m-hr">${o.extra || ''}${pg}<button class="x" aria-label="Schließen">✕</button></div></div><div class="sh-body fit">${html}</div>`;
   s.hidden = false; requestAnimationFrame(() => s.classList.add('open')); document.body.classList.add('sheet-open');
   s.querySelector('.x').onclick = closeSheet;
-  if (o.onTab) s.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { sfx('click'); o.onTab(b.dataset.tab); });
+  if (o.onTab) s.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { sfx('click'); if (b.classList.contains('lk')) return lockHint(TAB_UNL[b.dataset.tab]); o.onTab(b.dataset.tab); });
   if (o.onPage) s.querySelectorAll('[data-pg]').forEach(b => b.onclick = () => { sfx('click'); o.onPage(o.page + +b.dataset.pg); });
   paintCards(s); after && after(s);
   if (!s._swipe) { s._swipe = 1; let x0 = 0, y0 = 0, t0 = 0;
@@ -526,7 +644,10 @@ function openSlot(k, sl, page = 0) {
     const bk = s.querySelector('#slBack'); if (bk) bk.onclick = () => openHeroes('team');
   }, { pages: np, page, onPage: p => openSlot(k, sl, p), extra: '<button class="btn small" id="slBack">‹ Team</button>' });
 }
+function heroTabs() { return [['team', 'Team'], ['helden', `Alle ${owned().length}`], ['reittiere', 'Reittiere'], ['begleiter', 'Begleiter'], ['banner', 'Banner'], ['buende', 'Bünde']]; }
 function openHeroes(tab = openHeroes.tab || 'team', page = openHeroes.page) {
+  if (TAB_UNL[tab] && !isUnl(TAB_UNL[tab])) tab = 'team';
+  if (tab === 'banner') { openHeroes.tab = tab; return openBanners(); }
   openHeroes.tab = tab;
   const own = owned().sort((a, b) => (G.party.includes(b) - G.party.includes(a)) || heroStats(b).power - heroStats(a).power);
   const all = [...own.map(k => [k, 0]), ...Object.keys(HEROES).filter(k => !G.heroes[k]).map(k => [k, 1])];
@@ -552,7 +673,7 @@ function openHeroes(tab = openHeroes.tab || 'team', page = openHeroes.page) {
       sfx(tr || eq ? 'level' : 'click'); toast(eq ? `Optimiert: ${eq} Ausrüstungswechsel · Kampfkraft +${fmt(p1 - p0)}` : 'Schon optimal ausgerüstet.', eq ? 'lvl' : 'mini'); openHeroes();
     };
     const ap = s.querySelector('#autoP'); if (ap) ap.onclick = () => { G.settings.autoParty = !G.settings.autoParty; if (G.settings.autoParty) { autoParty(); W.pendingParty = 1; buildHud(); } save(); openHeroes(); };
-  }, { tabs: [['team', 'Team'], ['helden', `Alle ${own.length}/${Object.keys(HEROES).length}`], ['reittiere', 'Reittiere'], ['begleiter', 'Begleiter'], ['buende', 'Bündnisse']], tab, onTab: t => openHeroes(t, 0), pages: np, page, onPage: p => openHeroes(tab, p),
+  }, { tabs: heroTabs(), tab, onTab: t => openHeroes(t, 0), pages: np, page, onPage: p => openHeroes(tab, p),
     extra: tab === 'team' || tab === 'helden' ? `<button class="btn small gold" id="optAll" title="Beste Ausrüstung für alle anlegen">⚡<span class="lbl"> Optimieren</span></button><button class="btn small ${G.settings.autoParty ? 'on' : ''}" id="autoP" title="Gruppe automatisch aufstellen">Auto</button>` : '' });
 }
 function mountPrice(m) { return 1200 + m.ch * 260; }
@@ -628,11 +749,12 @@ function openHero(k, tab = openHero.tab || 'werte') {
 /* ---------- Sets: Übersicht, Fortschritt und wo man sie farmt ---------- */
 function setSource(S) {
   if (S.ch !== undefined) { const ok = chapterStatus(S.ch) === 'done'; return { t: `Kapitelboss ${S.ch + 1} · ${STORY[S.ch].n}`, ok, lbl: ok ? '▶ Boss farmen' : `🔒 ab Kapitel ${S.ch + 1}`, go: () => playNow({ type: 'boss', ch: S.ch }, 'Bosskampf: ' + STORY[S.ch].n) }; }
-  if (S.src === 'tower') return { t: 'Orthanc-Turm: 35 % pro bezwungener Etage', ok: true, lbl: '▶ Turm', go: () => playNow({ type: 'tower' }, 'Orthanc-Turm') };
-  if (S.src === 'horde') return { t: 'Endloser Ansturm: Chance alle 5 Wellen', ok: modeUnlocked(), lbl: modeUnlocked() ? '▶ Ansturm' : '🔒 ab Kapitel 4', go: () => playNow({ type: 'mode', id: 'horde' }, 'Endloser Ansturm') };
-  return { t: 'Prüfungen der Macht: ab Stufe 2', ok: modeUnlocked(), lbl: modeUnlocked() ? '▶ Prüfungen' : '🔒 ab Kapitel 4', go: () => openStory('modi') };
+  if (S.src === 'tower') return { t: 'Orthanc-Turm: 35 % pro bezwungener Etage', ok: isUnl('tower'), lbl: isUnl('tower') ? '▶ Turm' : '🔒 ab ' + unlWhen('tower'), go: () => playNow({ type: 'tower' }, 'Orthanc-Turm') };
+  if (S.src === 'horde') return { t: 'Endloser Ansturm: Chance alle 5 Wellen', ok: isUnl('horde'), lbl: isUnl('horde') ? '▶ Ansturm' : '🔒 ab ' + unlWhen('horde'), go: () => playNow({ type: 'mode', id: 'horde' }, 'Endloser Ansturm') };
+  return { t: 'Prüfungen der Macht: ab Stufe 2', ok: isUnl('raids'), lbl: isUnl('raids') ? '▶ Prüfungen' : '🔒 ab ' + unlWhen('raids'), go: () => openModes(1) };
 }
 function openSets(page = openSets.page) {
+  if (!gate('sets')) return;
   const per = 6, np = pages(SETS.length, per); page = openSets.page = clampPg(page, np);
   openSheet('Beutel', `<div class="m-sets">${SETS.slice(page * per, page * per + per).map((S, i) => { const o = setOwned(S.id), n = Object.keys(o).length, src = setSource(S); return `<div class="m-set ${n >= 3 ? 'full' : ''}" style="--sc:${S.c}"><div class="m-sh"><b>${esc(S.n)}</b><span>${n}/3</span></div><div class="m-sp">${['weapon', 'armor', 'trinket'].map(sl => o[sl] ? icHtml(o[sl]) : `<div class="ic empty" title="${SLOTS[sl]}"></div>`).join('')}</div><small class="${n >= 2 ? 'on' : ''}">2 Teile: ${esc(S.d2)}</small><small class="${n >= 3 ? 'on' : ''}">3 Teile: ${esc(S.d3)}</small><div class="m-src" title="${esc(src.t)}">${esc(src.t)}</div><button class="btn small ${src.ok ? 'gold' : ''}" data-farm="${page * per + i}" ${src.ok ? '' : 'disabled'}>${src.lbl}</button></div>`; }).join('')}</div>`, s => {
     s.querySelectorAll('[data-farm]').forEach(b => b.onclick = () => setSource(SETS[+b.dataset.farm]).go());
@@ -648,7 +770,7 @@ function openBag(f = openBag.f || 'all', page = openBag.page, sel = openBag.sel)
   const det = it ? `<div class="m-idet" style="--rc:${RARITY[it.r].c}"><div class="m-ih">${icHtml(it)}<div><b style="color:${RARITY[it.r].c}">${esc(it.name)}${it.enh ? ' +' + it.enh : ''}</b><small>${RARITY[it.r].n} · ${SLOTS[it.slot]}${it.slot === 'weapon' ? ' · ' + WCLS[it.base] : ''} · St. ${it.lvl}</small></div></div>
     <ul>${itemLines(it).map(l => `<li>${esc(l)}</li>`).join('')}</ul>${it.passive ? `<p class="leg">${esc(it.passive)}</p>` : ''}
     <div class="m-ia">${(() => { const b = bestHeroFor(it); return b ? `<button class="btn small gold" data-eqb="${b.k}">Anlegen: ${esc(HEROES[b.k].n)} <span class="pos">+${fmt(b.d)} ⚡</span></button>` : ''; })()}${by ? `<span class="m-worn">Getragen von ${esc(HEROES[by].n)}</span>` : ''}<div class="m-ia2 one"><button class="btn small ghost" data-sv="${it.id}" ${by ? 'disabled' : ''}>Zerlegen<small>◆${fmt(itemValue(it))}</small></button></div></div></div>` : '<div class="m-idet"><p class="muted">Noch keine Gegenstände. Sie fallen in Kämpfen.</p></div>';
-  openSheet('Beutel', `<div class="m-bag"><div class="m-items">${list.slice(page * per, page * per + per).map(x => `<button class="m-it ${x.id === it?.id ? 'sel' : ''} ${x.r >= 4 ? 'leg' : ''}" data-it="${x.id}" style="--rc:${RARITY[x.r].c}">${icHtml(x)}<b>${esc(x.name)}</b>${x.nw ? '<em class="nw">NEU</em>' : ''}${equippedBy(x.id) ? '<i>●</i>' : bestHeroFor(x) ? '<i class="up">▲</i>' : ''}</button>`).join('')}</div>${det}</div>`, s => {
+  openSheet('Beutel', `<div class="m-bag"><div class="m-items">${list.slice(page * per, page * per + per).map(x => `<button class="m-it ${x.id === it?.id ? 'sel' : ''} ${x.r >= 4 ? 'leg' : ''}${x.r >= 5 ? ' myth' : ''}" data-it="${x.id}" style="--rc:${RARITY[x.r].c}">${icHtml(x)}<b>${esc(x.name)}</b>${x.nw ? '<em class="nw">NEU</em>' : ''}${equippedBy(x.id) ? '<i>●</i>' : bestHeroFor(x) ? '<i class="up">▲</i>' : ''}</button>`).join('')}</div>${det}</div>`, s => {
     s.querySelectorAll('[data-it]').forEach(b => b.onclick = () => { sfx('click'); openBag(f, page, +b.dataset.it); });
     s.querySelectorAll('[data-eqb]').forEach(b => b.onclick = () => { const hk = b.dataset.eqb; equip(hk, it); W.pendingParty = 1; refreshLooks(); sfx('level'); toast(`${esc(HEROES[hk].n)}: <b style="color:${RARITY[it.r].c}">${esc(it.name)}</b> angelegt`, 'lvl'); openBag(f, page, it.id); });
     list.slice(page * per, page * per + per).forEach(x => { if (x.nw) x.nw = 0; }); save();
@@ -732,7 +854,8 @@ function chapterCard(i) {
   const btn = st === 'cur' ? `<button class="btn gold big m-play" id="goOn">▶ ${G.story.wave >= WAVES ? 'Zum Bosskampf' : 'Weiterspielen'}</button>` : st === 'done' ? `<button class="btn gold big m-play" data-rematch="${i}">▶ Boss erneut${chapterSet(i) ? ' · Set' : ''}</button>` : '<button class="btn big m-play" disabled>🔒 Noch gesperrt</button>';
   return `<div class="m-ch ${st}"><div class="cc-art"><canvas data-card="${boss}" data-enemy="1" data-bust="1" class="${seen ? '' : 'sil'}"></canvas><span class="cc-st">${st === 'done' ? '✓ Geschafft' : st === 'cur' ? (G.story.wave >= WAVES ? 'Boss wartet' : `Welle ${G.story.wave + 1}/${WAVES}`) : 'Gesperrt'}</span></div>
     <small>Kapitel ${i + 1}</small><h3>${esc(C.n)}</h3>
-    <div class="cc-rows"><div><b>Boss</b><span>${seen ? esc(ENEMIES[boss].n) : '???'}</span></div>${joins.length ? `<div><b>Helden</b><span>${joins.map(k => G.heroes[k] ? esc(HEROES[k].n) : '???').join(', ')}</span></div>` : ''}<div><b>Relikt</b><span>${G.relics[i] ? esc(RELICS[i].n) : '???'}</span></div><div><b>Stufe</b><span>${C.lvl + G.story.loop * LOOP_LVL}+</span></div></div>${btn}</div>`;
+    ${st === 'done' ? `<div class="cc-trials">${['h', 'l'].map(t => { const op = trialOpen(i, t), m = G.trials?.[i]?.[t] || 0; const fu = isUnl(t === 'h' ? 'trialH' : 'trialL'); return `<button class="btn small tr-b ${t} ${fu ? '' : 'lk'}" ${op && fu ? `data-trial="${i}:${t}"` : fu ? 'disabled' : `data-lock="${t === 'h' ? 'trialH' : 'trialL'}"`} style="--tc:${TRIAL[t].c}"><span>${op && fu ? '' : '🔒 '}${TRIAL[t].n}</span><i>${fu ? starStr(m) : 'ab Kap. ' + (Math.floor(UNLOCKS.find(u => u.id === (t === 'h' ? 'trialH' : 'trialL')).at) + 1)}</i></button>`; }).join('')}</div>` : ''}
+    <div class="cc-rows"><div><b>Boss</b><span>${seen ? esc(ENEMIES[boss].n) : '???'}</span></div>${joins.length ? `<div><b>Helden</b><span>${joins.map(k => G.heroes[k] ? esc(HEROES[k].n) : '???').join(', ')}</span></div>` : ''}<div class="cc-opt"><b>Relikt</b><span>${G.relics[i] ? esc(RELICS[i].n) : '???'}</span></div>${(() => { const nw = chapterNews(i), bn = BANNERS.find(b => b.ch === i); return (nw.length ? `<div class="cc-new"><b>Neu</b><span>${nw.map(esc).join(', ')}</span></div>` : '') + (bn ? `<div class="cc-opt"><b>Banner</b><span>${esc(bn.n)}</span></div>` : ''); })()}<div><b>Stufe</b><span>${C.lvl + G.story.loop * LOOP_LVL}+</span></div></div>${btn}</div>`;
 }
 function sidePrice(sd) { return 1500 + sd.after * 220; }
 function sideCard(sd) {
@@ -746,6 +869,7 @@ function sideCard(sd) {
 function openStory(tab = openStory.tab || 'story', part, sel) {
   openStory.tab = tab;
   if (tab === 'modi') return openModes();
+  if (tab === 'jagd') return openHunts();
   if (tab === 'chronik') return openChronik();
   if (tab === 'best') return openBestiary();
   if (part === undefined) part = Math.max(0, PARTS.indexOf(STORY[G.story.ch].part));
@@ -757,6 +881,8 @@ function openStory(tab = openStory.tab || 'story', part, sel) {
     const wire = root => {
       const go = root.querySelector('#goOn'); if (go) go.onclick = () => { closeSheet(); sfx('click'); };
       root.querySelectorAll('[data-rematch]').forEach(b => b.onclick = () => playNow({ type: 'boss', ch: +b.dataset.rematch }, 'Bosskampf: ' + STORY[+b.dataset.rematch].n));
+      root.querySelectorAll('[data-lock]').forEach(b => b.onclick = () => lockHint(b.dataset.lock));
+      root.querySelectorAll('[data-trial]').forEach(b => b.onclick = () => { const [c2, t] = b.dataset.trial.split(':'); playNow({ type: 'trial', ch: +c2, t }, `${TRIAL[t].n}: ${STORY[+c2].n}`); });
       root.querySelectorAll('[data-side]').forEach(b => b.onclick = () => playNow({ type: 'side', id: b.dataset.side }, SIDE.find(x => x.id === b.dataset.side).n));
       root.querySelectorAll('[data-unlside]').forEach(b => b.onclick = () => { const sd = SIDE.find(x => x.id === b.dataset.unlside); buyEarly('side:' + sd.id, sidePrice(sd), sd.n, () => openStory('story', part, 'side:' + sd.id)); });
     };
@@ -765,9 +891,12 @@ function openStory(tab = openStory.tab || 'story', part, sel) {
     s.querySelectorAll('[data-part]').forEach(b => b.onclick = () => { sfx('click'); openStory('story', +b.dataset.part); });
   }, { tabs: STORY_TABS, tab, onTab: t => openStory(t) });
 }
-const STORY_TABS = [['story', 'Geschichte'], ['modi', 'Modi'], ['chronik', 'Chronik'], ['best', 'Bestiarium']];
+const STORY_TABS = [['story', 'Geschichte'], ['modi', 'Modi'], ['jagd', 'Jagd'], ['chronik', 'Chronik'], ['best', 'Bestiarium']];
+const ACH_TABS = [['ach', 'Erfolge'], ['feat', 'Heldentaten'], ['rel', 'Relikte']];
+const achTab = t => t === 'rel' ? openRelics() : t === 'feat' ? openFeats() : openAch();
 function speaker(id) { if (id === 'narr') return ''; if (id.startsWith('e:')) return ENEMIES[id.slice(2)]?.n || ''; return HEROES[id]?.n || id; }
 function openChronik(page = openChronik.page) {
+  if (!gate('chronik')) return;
   const max = G.story.loop ? STORY.length - 1 : G.story.ch, np = max + 1; page = openChronik.page = clampPg(page ?? max, np);
   const C = STORY[page], done = chapterStatus(page) === 'done', boss = C.boss.find(k => ENEMIES[k].boss) || C.boss[0];
   const lines = [...(C.intro || []), ...(done ? (C.outro || []) : [])].filter(l => l && l[1]).slice(0, 9);
@@ -775,24 +904,160 @@ function openChronik(page = openChronik.page) {
     { tabs: STORY_TABS, tab: 'chronik', onTab: t => openStory(t), pages: np, page, onPage: p => openChronik(p) });
 }
 function openBestiary(page = openBestiary.page) {
+  if (!gate('best')) return;
   const keys = Object.keys(ENEMIES), seen = keys.filter(k => (G.bestiary || {})[k]).length, per = 16, np = pages(keys.length, per); page = openBestiary.page = clampPg(page, np);
   openSheet('Reise', `<div class="m-best">${keys.slice(page * per, page * per + per).map(k => { const n = (G.bestiary || {})[k] || 0, E = ENEMIES[k]; return `<div class="m-be ${n ? '' : 'lk'} ${E.boss ? 'boss' : ''}"><canvas data-card="${k}" data-enemy="1" data-bust="1" class="${n ? '' : 'sil'}"></canvas><b>${n ? esc(E.n) : '???'}</b><small>${n ? `${E.boss ? 'Boss · ' : ''}${fmt(n)}× besiegt` : 'Noch nicht begegnet'}</small></div>`; }).join('')}</div>`, null,
     { tabs: STORY_TABS, tab: 'best', onTab: t => openStory(t), pages: np, page, onPage: p => openBestiary(p), extra: `<span class="muted small">${seen}/${keys.length}</span>` });
 }
-function openModes() {
-  const ok = modeUnlocked(), f = towerFloor(), tr = towerReward(f);
+function openModes(page = openModes.page || 0) {
+  if (!isUnl('horde') && !isUnl('tower')) return lockHint('horde');
+  const f = towerFloor(), tr = towerReward(f); page = openModes.page = clampPg(page, 2);
+  const lockTile = (cls, art, n, id) => `<div class="m-tile ${cls} lk">${art}<b>${esc(n)}</b><small>🔒 Ab ${unlWhen(id)}<br><em>${esc(UNLOCKS.find(u => u.id === id).d.split('.')[0])}.</em></small>${UNLOCKS.find(u => u.id === id).price ? `<button class="btn small" data-unl="${id}">🔓 Früher ◆${fmt(UNLOCKS.find(u => u.id === id).price)}</button>` : ''}</div>`;
   const tile = (cls, art, n, sub, data, label, dis) => `<div class="m-tile ${cls}">${art}<b>${n}</b><small>${sub}</small><button class="btn small gold" ${data} ${dis ? 'disabled' : ''}>${label}</button></div>`;
-  const tiles = [
-    ...MODES.map(M => tile('mode', `<span class="m-ic">${M.ic}</span>`, esc(M.n), `${esc(M.d.split('.')[0])}.<br><em>Rekord: ${(G.modes || {})[M.id] || 0}</em>`, ok ? `data-mode="${M.id}"` : 'data-unlmodes="1"', ok ? '▶ Spielen' : `🔓 Früher ◆${fmt(MODE_PRICE)}`, false)),
-    tile('tower', '<span class="m-ic">♜</span>', 'Orthanc-Turm', `Etage ${f} · Stufe ${towerLvl(f)} · <em>◆${fmt(tr.gold)}${tr.frags ? ' · ◈ ' + tr.frags : ''}</em>`, 'id="tw"', '▶ Etage ' + f, false),
-    ...RAIDS.map(R => { const st = G.raid[R.key] || { best: 0, tiers: 0 }; return tile('raid', `<canvas data-card="${R.key}" data-enemy="1" data-bust="1"></canvas>`, esc(R.n), `45 Sek. · Bestwert ${Math.round(st.best * 100)} %<br><em>Stufe ${st.tiers}/${RAID_TIERS.length}</em>`, ok ? `data-raid="${R.key}"` : 'data-unlmodes="1"', ok ? '▶ Spielen' : `🔓 Früher ◆${fmt(MODE_PRICE)}`, false); })
-  ];
-  openSheet('Reise', `<div class="m-tiles">${tiles.join('')}</div>`, s => {
-    s.querySelectorAll('[data-unlmodes]').forEach(b => b.onclick = () => buyEarly('modes', MODE_PRICE, 'Spezialmodi & Prüfungen', () => openModes()));
+  const tiles = page === 0 ? [
+    ...MODES.map(M => isUnl(M.id) ? tile('mode ' + M.id, `<span class="m-ic">${M.ic}</span>`, esc(M.n), `${esc(M.d.split('.')[0])}.<br><em>Rekord: ${(G.modes || {})[M.id] || 0}</em>`, `data-mode="${M.id}"`, '▶ Spielen', false) : lockTile('mode ' + M.id, `<span class="m-ic">${M.ic}</span>`, M.n, M.id)),
+    isUnl('tower') ? tile('tower', '<span class="m-ic">♜</span>', 'Orthanc-Turm', `Etage ${f} · Stufe ${towerLvl(f)} · <em>◆${fmt(tr.gold)}${tr.frags ? ' · ◈ ' + tr.frags : ''}</em>`, 'id="tw"', '▶ Etage ' + f, false) : lockTile('tower', '<span class="m-ic">♜</span>', 'Orthanc-Turm', 'tower')
+  ] : RAIDS.map(R => { if (!isUnl('raids')) return lockTile('raid', `<canvas data-card="${R.key}" data-enemy="1" data-bust="1" class="sil"></canvas>`, R.n, 'raids'); const st = G.raid[R.key] || { best: 0, tiers: 0 }; return tile('raid', `<canvas data-card="${R.key}" data-enemy="1" data-bust="1"></canvas>`, esc(R.n), `45 Sek. · Bestwert ${Math.round(st.best * 100)} %<br><em>Stufe ${st.tiers}/${RAID_TIERS.length}</em>`, `data-raid="${R.key}"`, '▶ Spielen', false); });
+  openSheet('Reise', `<div class="m-tiles ${page === 0 ? 'six' : 'four'}">${tiles.join('')}</div>`, s => {
+    s.querySelectorAll('[data-unl]').forEach(b => b.onclick = () => { const U = UNLOCKS.find(u => u.id === b.dataset.unl); buyEarly('u:' + U.id, U.price, U.n, () => { G.unlSeen = G.unlSeen || {}; G.unlSeen[U.id] = 1; save(); openModes(openModes.page); }); });
     s.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => playNow({ type: 'mode', id: b.dataset.mode }, MODES.find(m => m.id === b.dataset.mode).n));
     s.querySelectorAll('[data-raid]').forEach(b => b.onclick = () => playNow({ type: 'raid', key: b.dataset.raid }, 'Prüfung: ' + RAIDS.find(r => r.key === b.dataset.raid).n));
-    s.querySelector('#tw').onclick = () => playNow({ type: 'tower' }, 'Orthanc-Turm Etage ' + f);
-  }, { tabs: STORY_TABS, tab: 'modi', onTab: t => openStory(t) });
+    const tw = s.querySelector('#tw'); if (tw) tw.onclick = () => playNow({ type: 'tower' }, 'Orthanc-Turm Etage ' + f);
+  }, { tabs: STORY_TABS, tab: 'modi', onTab: t => openStory(t), pages: 2, page, onPage: p => openModes(p) });
+}
+/* ---------- Kopfgeldjagd ---------- */
+function openHunts(page = openHunts.page || 0) {
+  if (!gate('hunt')) return;
+  const per = innerHeight > innerWidth && innerHeight < 761 ? 4 : 8, np = pages(HUNTS.length, per); page = openHunts.page = clampPg(page, np);
+  const tiles = HUNTS.slice(page * per, page * per + per).map(H => { const op = huntOpen(H), rk = huntRank(H.id), E = ENEMIES[H.foe], aff = huntAff(H)[0];
+    return `<div class="m-tile raid hunt ${G.trophies?.[H.id] ? 'got' : ''}"><canvas data-card="${H.foe}" data-enemy="1" data-bust="1" class="${op ? '' : 'sil'}"></canvas><b>${esc(H.sn)}</b><small>${op ? `Jagdstufe ${rk + 1} · St. ${huntLvl(H)}` : `Ab Kapitel ${H.after + 2}`}<br>${aff.map(a => `<span style="color:${ELITE_AFX[a].c}">${ELITE_AFX[a].n}</span>`).join(' · ')}<br><em class="${G.trophies?.[H.id] ? 'ok' : ''}">${G.trophies?.[H.id] ? '✓ ' : '✦ '}${esc(H.tr.n)} · ${esc(H.tr.d)}</em></small>${op ? `<button class="btn small gold" data-hunt="${H.id}">▶ Jagen</button>` : `<button class="btn small" data-unlhunt="${H.id}">🔓 ◆${fmt(huntPrice(H))}</button>`}</div>`; });
+  openSheet('Reise', `<div class="m-tiles hunts ${per === 4 ? 'four' : ''}">${tiles.join('')}</div>`, s => {
+    s.querySelectorAll('[data-hunt]').forEach(b => b.onclick = () => { const H = HUNTS.find(h => h.id === b.dataset.hunt); playNow({ type: 'hunt', id: H.id }, 'Kopfgeld: ' + H.sn); });
+    s.querySelectorAll('[data-unlhunt]').forEach(b => b.onclick = () => { const H = HUNTS.find(h => h.id === b.dataset.unlhunt); buyEarly('hunt:' + H.id, huntPrice(H), 'Kopfgeld: ' + H.sn, () => openHunts()); });
+  }, { tabs: STORY_TABS, tab: 'jagd', onTab: t => openStory(t), pages: np, page, onPage: p => openHunts(p) });
+}
+async function huntRun(id) {
+  const H = HUNTS.find(h => h.id === id), prevBg = W.bgKey, rk = huntRank(id), lvl = huntLvl(H), first = rk === 0; G.queue = null; G.hunts = G.hunts || {}; save();
+  W.setBg(H.bg); await panoSplash(`Kopfgeldjagd · Jagdstufe ${rk + 1}`, esc(H.sn), esc(H.lore), H.bg, 2300);
+  applyParty(); await W.walk(900); await bossSplash(H.foe);
+  const grp = [H.foe, ...H.esc], r = await W.fight(grp, lvl, 'boss', { aff: huntAff(H) });
+  if (r.aborted) { W.setBg(prevBg); return; }
+  onResult(r, 'boss');
+  if (r.win) {
+    G.hunts[id] = rk + 1; G.stats.bosses++; track('bosses', 1);
+    const items = [genItem(lvl, rollRarity('boss'))]; if ((rk + 1) % 5 === 0) items.push(genItem(lvl + 2, topRarity(.25, .75)));
+    const gold = Math.round((250 + lvl * 15) * (1 + G.story.loop * .25)), frags = 1 + (rk % 3 === 2 ? 1 : 0);
+    G.gold += gold; grantFragments(frags); items.forEach(addItem); if (G.settings.autoEquip) autoEquip();
+    if (first) { G.trophies = G.trophies || {}; G.trophies[id] = 1; W.pendingParty = 1; }
+    save(); applyParty(); updateHud(); trackFeats();
+    await splash(`<div class="cdone hunt"><div class="kicker">Kopfgeld eingelöst · Jagdstufe ${rk + 1}</div><canvas class="mcv" data-card="${H.foe}" data-enemy="1" data-bust="1"></canvas><h1>${esc(H.sn)} besiegt</h1>${first ? `<p><b>Trophäe: ${esc(H.tr.n)}</b> · dauerhaft ${esc(H.tr.d)} für alle Helden</p>` : ''}<p>◆ ${fmt(gold)} · ◈ ${frags} · Nächste Jagdstufe: ${rk + 2}</p><div class="loot1">${items.map(it => `${icHtml(it)}<b style="color:${RARITY[it.r].c}">${esc(it.name)}</b>`).join('')}</div><div class="dhint">Tippen zum Fortfahren</div></div>`, 0, 'doneS');
+  } else toast(`${esc(H.sn)} ist entkommen. Werdet stärker und jagt ihn erneut.`, 'unlock');
+  W.setBg(prevBg); updateHud();
+}
+/* ---------- Helms Klamm: das Tor halten ---------- */
+async function helmRun() {
+  const prevBg = W.bgKey, base = Math.max(1, chapterLvl() - 2); G.modes = G.modes || {}; G.queue = null; save();
+  W.setBg('helm'); await panoSplash('Spezialmodus', 'Helms Klamm', 'Haltet das Tor bis zum Morgengrauen!', 'helm', 2400);
+  applyParty(); W.restoreHeroes();
+  const pool = [['uruk', 'uruk', 'orc_archer'], ['uruk', 'berserker', 'orc_archer'], ['uruk', 'uruk', 'uruk', 'orc_archer'], ['berserker', 'berserker', 'uruk'], ['uruk', 'orc_archer', 'orc_archer', 'uruk']];
+  let n = 0, fr = 0, lvl = base; const items = []; W.gate = { hp: 100, wave: 1 };
+  try {
+    for (;;) {
+      const wave = n + 1, ram = wave % 4 === 0, lead = wave % 3 === 0; W.gate.wave = wave; lvl = base + Math.floor(n * .8);
+      let grp = pool[n % pool.length].slice(); if (ram) grp = ['ram_troll', ...grp].slice(0, 5);
+      const aff = afxPlan(grp, { one: wave >= 6 ? 1 : 0 }); if (lead) { const i2 = grp.findIndex(k => k !== 'ram_troll'); aff[i2] = ['anfuehrer']; }
+      banner(`Welle ${wave}${ram ? ' · Rammbock!' : ''}`, ram ? 'foe' : 'ult'); await W.walk(600);
+      const r = await W.fight(grp, lvl, ram || lead ? 'elite' : 'normal', { keepHp: 1, time: 30000, aff });
+      if (r.aborted) break;
+      onResult(r, 'normal');
+      if (!r.win && !r.timeout) { W.gate.hp = 0; break; }
+      if (r.timeout) { const dmg = Math.round(10 + 30 * r.left + r.rams * 14); W.gate.hp = Math.max(0, W.gate.hp - dmg); W.shake(6); W.flash('#ff3a1a', 450); sfx('crit'); banner(`Das Tor bebt! −${dmg} %`, 'foe'); await W.wait(700); }
+      if (W.gate.hp <= 0) break;
+      n++;
+      if (n % 10 === 0) { for (const h of W.heroes) if (!alive(h)) W.revive(h, .5); healParty(.6); W.gate.hp = Math.min(100, W.gate.hp + 25); W.flash('#fff4d0', 700); banner(n === 10 ? 'Gandalf kommt im Morgengrauen!' : 'Erkenbrand bringt Verstärkung!', 'ult'); sfx('join'); await W.wait(900); }
+      else healParty(.12);
+      if (n % 5 === 0) { fr++; items.push(genItem(lvl + 1, n >= 15 ? topRarity(.15, .5) : rollRarity('elite'))); toast(`Welle ${n} gehalten! Bonus gesichert.`, 'lvl'); }
+    }
+  } finally { W.gate = null; }
+  const gold = Math.round(n * (70 + base * 12) * (1 + G.story.loop * .25)), best = G.modes.helm || 0, rec = n > best; G.modes.helm = Math.max(best, n);
+  G.gold += gold; if (fr) grantFragments(fr); items.forEach(addItem); if (G.settings.autoEquip) autoEquip(); save(); applyParty(); W.restoreHeroes(); trackFeats();
+  await splash(`<div class="cdone"><div class="kicker">Helms Klamm</div><h1>${n} Wellen gehalten</h1><p>${rec ? '<b>Neuer Rekord!</b> ' : `Rekord: ${G.modes.helm} · `}◆ ${fmt(gold)}${fr ? ' · ◈ ' + fr : ''}</p>${items.length ? `<div class="loot1">${items.map(it => `${icHtml(it)}<b style="color:${RARITY[it.r].c}">${esc(it.name)}</b>`).join('')}</div>` : ''}<div class="dhint">Tippen zum Fortfahren</div></div>`, 0, 'doneS');
+  W.setBg(prevBg); updateHud();
+}
+/* ---------- Pfad der Verzweiflung ---------- */
+function pickBlessing(n, B) {
+  const dead = W.heroes.some(h => !alive(h)), pool = BLESSINGS.filter(b => !(b.needDead && !dead) && !(b.once !== false && !b.now && B.taken.includes(b.id) && !b.e && !b.p)); const opts = [];
+  while (opts.length < 3 && pool.length) opts.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+  const alive2 = W.heroes.filter(alive).length;
+  let chosen = opts[0];
+  const pr = splash(`<div class="pfad"><div class="kicker">Pfad der Verzweiflung · Kampf ${n} von 15 bestanden</div><h1>Wähle einen Segen</h1><div class="bl-row">${opts.map((b, i) => `<button class="bl-c" data-b="${i}"><span class="bl-ic">${b.ic}</span><b>${esc(b.n)}</b><small>${esc(b.d)}</small></button>`).join('')}</div><div class="pf-st">Helden auf den Beinen: <b>${alive2}/${W.heroes.length}</b>${B.taken.length ? ' · Segen: ' + B.taken.map(id => esc(BLESSINGS.find(x => x.id === id).n)).join(', ') : ''}</div></div>`, 0, 'pfadS');
+  const s = $('#splash'), close = s.onclick; s.onclick = null;
+  s.querySelectorAll('[data-b]').forEach(bt => bt.onclick = e => { e.stopPropagation(); chosen = opts[+bt.dataset.b]; sfx('buff'); close && close(); });
+  return pr.then(() => chosen);
+}
+async function pfadRun() {
+  const prevBg = W.bgKey, pool = modePool(), base = Math.max(1, chapterLvl() - 1); G.modes = G.modes || {}; G.queue = null; save();
+  W.setBg('dolguldur'); await panoSplash('Spezialmodus', 'Pfad der Verzweiflung', '15 Kämpfe · keine Heilung · gefallene Helden bleiben zurück', 'dolguldur', 2600);
+  applyParty(); W.restoreHeroes();
+  const B = { atk: 0, mag: 0, hp: 0, spd: 0, crit: 0, critDmg: 0, p: {}, gold: 0, taken: [] }; let n = 0, lvl = base; W.pfadB = B;
+  const topBoss = pool.bosses[pool.bosses.length - 1];
+  for (let i = 0; i < 15; i++) {
+    lvl = base + Math.round(i * 1.2);
+    let grp, kind = 'normal', aff = null, ci = pool.bosses[Math.floor(Math.random() * pool.bosses.length)];
+    if (i === 14) { ci = topBoss; grp = STORY[ci].boss; kind = 'boss'; aff = afxPlan(grp, { boss: 2, all: 1 }); }
+    else if (i === 4 || i === 9) { grp = STORY[ci].boss; kind = 'boss'; aff = afxPlan(grp, { boss: i === 9 ? 2 : 1 }); }
+    else { grp = pool.waves[Math.floor(Math.random() * pool.waves.length)]; kind = i % 3 === 2 ? 'elite' : 'normal'; if (i >= 3) aff = afxPlan(grp, { one: i >= 7 ? 2 : 1, all: i >= 12 ? 1 : 0 }); }
+    W.setBg(chBg(STORY[ci], Math.floor(Math.random() * 8)));
+    banner(i === 14 ? 'Der letzte Kampf' : `Kampf ${i + 1} von 15`, i === 14 ? 'foe' : 'ult'); await W.walk(700);
+    if (kind === 'boss') await bossSplash(grp.find(k => ENEMIES[k].boss) || grp[0]);
+    const frac = Object.fromEntries(W.heroes.map(h => [h.key, alive(h) ? h.hp / h.maxHp : 0])); applyParty();
+    const r = await W.fight(grp, lvl, kind, { keepHp: 1, aff, bless: w => { for (const h of w.heroes) { h.atk = Math.round(h.atk * (1 + B.atk)); h.mag = Math.round(h.mag * (1 + B.mag)); h.spd = Math.round(h.spd * (1 + B.spd)); h.crit += B.crit; h.critDmg += B.critDmg; h.maxHp = Math.round(h.maxHp * (1 + B.hp)); const f2 = frac[h.key] ?? 1; h.hp = f2 > 0 ? Math.max(1, Math.round(f2 * h.maxHp)) : 0; if (h.hp <= 0) w.setAnim(h, 'dead'); h.p = Object.assign({}, h.p); for (const [k, v] of Object.entries(B.p)) h.p[k] = (h.p[k] || 0) + v; } } });
+    if (r.aborted) { W.pfadB = null; W.setBg(prevBg); applyParty(); W.restoreHeroes(); return; }
+    onResult(r, kind);
+    if (!r.win) break;
+    n++;
+    if (n < 15) { const b = await pickBlessing(n, B); B.taken.push(b.id);
+      if (b.id === 'lembas') for (const h of W.heroes) if (alive(h)) h.hp = Math.min(h.maxHp, Math.round(h.hp + h.maxHp * .5));
+      if (b.id === 'athelas') { const d = W.heroes.find(h => !alive(h)); if (d) W.revive(d, .6); }
+      if (b.e) for (const [k, v] of Object.entries(b.e)) B[k] += v; if (b.p) for (const [k, v] of Object.entries(b.p)) B.p[k] = (B.p[k] || 0) + v; if (b.gold) B.gold += b.gold; }
+  }
+  W.pfadB = null; const items = []; if (n >= 5) items.push(genItem(lvl + 1, topRarity(.05, .4))); if (n >= 10) items.push(genItem(lvl + 2, topRarity(.2, .7))); if (n >= 15) items.push(genItem(lvl + 3, 5));
+  const gold = Math.round(n * (110 + base * 18) * (1 + B.gold) * (1 + G.story.loop * .25)), fr = Math.floor(n / 2) + (n >= 15 ? 5 : 0), best = G.modes.pfad || 0, rec = n > best; G.modes.pfad = Math.max(best, n);
+  G.gold += gold; if (fr) grantFragments(fr); items.forEach(addItem); if (G.settings.autoEquip) autoEquip(); save(); applyParty(); W.restoreHeroes(); trackFeats();
+  await splash(`<div class="cdone"><div class="kicker">Pfad der Verzweiflung</div><h1>${n >= 15 ? 'Bezwungen!' : n + ' von 15 Kämpfen'}</h1><p>${rec ? '<b>Neuer Rekord!</b> ' : `Rekord: ${G.modes.pfad} · `}◆ ${fmt(gold)}${fr ? ' · ◈ ' + fr : ''}</p>${items.length ? `<div class="loot1">${items.map(it => `${icHtml(it)}<b style="color:${RARITY[it.r].c}">${esc(it.name)}</b>`).join('')}</div>` : ''}<div class="dhint">Tippen zum Fortfahren</div></div>`, 0, 'doneS');
+  W.setBg(prevBg); updateHud();
+}
+/* ---------- Heldentaten ---------- */
+function featDone(id) { return !!(G.feats || {})[id]; }
+function grantFeat(id) {
+  if (featDone(id)) return; const F = FEATS.find(f => f.id === id); if (!F) return;
+  G.feats = G.feats || {}; G.feats[id] = 1; const rw = F.rw, items = [];
+  if (rw.gold) G.gold += rw.gold; if (rw.frags) grantFragments(rw.frags, true); if (rw.r) { const it = genItem(chapterLvl() + 2, rw.r); addItem(it); items.push(it); if (G.settings.autoEquip) autoEquip(); W.pendingParty = 1; }
+  save(); sfx('ult'); updateHud();
+  toast(`✦ Heldentat: <b>${esc(F.n)}</b> · ${[rw.gold ? '◆ ' + fmt(rw.gold) : '', rw.frags ? '◈ ' + rw.frags : '', ...items.map(it => `<b style="color:${RARITY[it.r].c}">${esc(it.name)}</b>`)].filter(Boolean).join(' · ')}`, 'lvl');
+}
+const FEAT_PROG = { serie25: () => [G.fstats?.best || 0, 25], serie100: () => [G.fstats?.best || 0, 100], affix25: () => [G.fstats?.afx || 0, 25], affix150: () => [G.fstats?.afx || 0, 150], jaeger: () => [Object.keys(G.hunts || {}).length, 4], meisterjaeger: () => [Object.keys(G.hunts || {}).length, HUNTS.length], sterne15: () => [starTotal(), 15], sterne60: () => [starTotal(), 60], horn10: () => [G.modes?.helm || 0, 10], horn25: () => [G.modes?.helm || 0, 25], pfad8: () => [G.modes?.pfad || 0, 8], pfad15: () => [G.modes?.pfad || 0, 15], ringe3: () => [RINGS.filter(R => (G.rings?.[R.id]?.stars || 0) >= 3).length, 3], quests12: () => [Object.keys(G.side || {}).filter(k => G.side[k]).length, 12] };
+function trackFeats(c = {}) {
+  if (!G) return; const fs = G.fstats = G.fstats || { streak: 0, best: 0, afx: 0 }, r = c.r;
+  if (r && !r.aborted) {
+    if (r.win) fs.streak++; else if (!r.timeout) fs.streak = 0; fs.best = Math.max(fs.best || 0, fs.streak); fs.afx += r.afxKills || 0;
+    if (r.win) { const keys = (r.enemies || []).map(e => e.key);
+      if (c.kind === 'boss' && !r.fallen) grantFeat('makellos');
+      if (!r.fallen && keys.some(k => k === 'smaug' || k === 'glaurung')) grantFeat('drache');
+      if (keys.length >= 3 && r.dur < 8000) grantFeat('blitz');
+      if (r.aliveEnd === 1 && W.heroes.length >= 3) grantFeat('letzter');
+      if (c.kind === 'boss' && r.minTeam < .15) grantFeat('knapp'); }
+  }
+  if (c.trial === 'l' && c.won) grantFeat('legendaer');
+  for (const [id, f] of Object.entries(FEAT_PROG)) { const [v, goal] = f(); if (v >= goal) grantFeat(id); }
+  if ((G.stats.mythics || 0) > 0) grantFeat('mythos');
+}
+function onMythic(it) { setTimeout(() => { W.flash('#ff5a48', 700); W.shake(3); sfx('ult'); banner(`Mythischer Fund: ${it.name}`, 'ult'); trackFeats(); }, 500); }
+function openFeats(page = openFeats.page) {
+  if (!gate('feats')) return;
+  const list = FEATS.slice().sort((a, b) => featDone(a.id) - featDone(b.id)), per = 9, np = pages(list.length, per); page = openFeats.page = clampPg(page, np);
+  const rw = F => [F.rw.gold ? '◆ ' + fmt(F.rw.gold) : '', F.rw.frags ? '◈ ' + F.rw.frags : '', F.rw.r ? `<b style="color:${RARITY[F.rw.r].c}">${RARITY[F.rw.r].n}</b>` : ''].filter(Boolean).join(' ');
+  openSheet('Heldentaten', `<div class="m-achs">${list.slice(page * per, page * per + per).map(F => { const d = featDone(F.id), pr = FEAT_PROG[F.id]?.(); return `<div class="ach feat ${d ? 'claimed' : ''}"><b>${esc(F.n)}</b><small>${esc(F.d)}</small>${pr ? `<div class="bar"><i style="width:${Math.min(100, pr[0] / pr[1] * 100)}%"></i></div>` : ''}<div class="ar"><span>${rw(F)}</span>${d ? '<span class="tag in">✓</span>' : `<span class="tag">${pr ? Math.min(pr[0], pr[1]) + '/' + pr[1] : 'offen'}</span>`}</div></div>`; }).join('')}</div>`, null, { pages: np, page, onPage: p => openFeats(p), tabs: ACH_TABS, tab: 'feat', onTab: achTab });
 }
 function introHelp() {
   return splash(`<div class="help"><div class="kicker">So funktioniert Ringfahrt</div><h1>Willkommen, Gefährte</h1><ul>
@@ -804,6 +1069,7 @@ function introHelp() {
 
 /* ---------- Aufträge, Relikte, Erfolge, Truhe, Optionen ---------- */
 function openQuests() {
+  if (!gate('quests')) return;
   const b = ensureBoard();
   openSheet('Aufträge', `<div class="m-quests">${b.active.map((a, i) => { const st = questState(i); return `<div class="ach ${st.done ? 'ready' : ''}"><b>${esc(st.q.n.replace(/\d+/, st.goal))}</b><div class="bar"><i style="width:${Math.min(100, st.v / st.goal * 100)}%"></i></div><div class="ar"><small>${Math.min(st.v, st.goal)} / ${st.goal}</small><span>◆ ${fmt(st.r.gold)}</span><button class="btn small ${st.done ? 'gold' : ''}" data-q="${i}" ${st.done ? '' : 'disabled'}>Abholen</button></div></div>`; }).join('')}
     <div class="ach bonus ${boardBonusReady() ? 'ready' : ''}"><b>Bonustruhe</b><small>Nach je 4 Aufträgen: ◈ 1 Ringfragment und ein epischer oder legendärer Gegenstand</small><div class="bar"><i style="width:${Math.min(100, b.bonus / 4 * 100)}%"></i></div><div class="ar"><small>${Math.min(4, b.bonus)} / 4 · bisher ${b.done} erledigt</small><button class="btn small ${boardBonusReady() ? 'gold' : ''}" id="qb" ${boardBonusReady() ? '' : 'disabled'}>Öffnen</button></div></div></div>`, s => {
@@ -812,11 +1078,12 @@ function openQuests() {
   });
 }
 function openRelics(sel = openRelics.sel ?? Object.keys(G.relics).map(Number)[0] ?? 0) {
+  if (!gate('relics')) return;
   openRelics.sel = sel; const n = Object.keys(G.relics).length, R = RELICS[sel], own = G.relics[sel];
   openSheet('Relikte', `<div class="m-reldet" style="--rc:${own ? R.c : '#555'}">${own ? `<canvas class="ic" data-ic="${R.ic}" data-c="${R.c}"></canvas><div><b>${esc(R.n)}</b><small>${esc(R.d)} · gilt dauerhaft für alle Helden</small></div>` : `<div class="ic empty"></div><div><b>???</b><small>Boss von Kapitel ${sel + 1}: ${esc(STORY[sel].n)}</small></div>`}<span class="m-cnt">${n}/${RELICS.length}</span></div>
     <div class="m-relics">${RELICS.map((r, i) => `<button class="m-rel ${G.relics[i] ? '' : 'lk'} ${i === sel ? 'sel' : ''}" data-r="${i}" style="--rc:${r.c}">${G.relics[i] ? `<canvas class="ic" data-ic="${r.ic}" data-c="${r.c}"></canvas>` : '<div class="ic empty"></div>'}<small>${G.relics[i] ? esc(r.n) : 'Kap. ' + (i + 1)}</small></button>`).join('')}</div>`, s => {
     s.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { sfx('click'); openRelics(+b.dataset.r); });
-  }, { tabs: [['ach', 'Erfolge'], ['rel', 'Relikte']], tab: 'rel', onTab: t => t === 'rel' ? openRelics() : openAch() });
+  }, { tabs: ACH_TABS, tab: 'rel', onTab: achTab });
 }
 
 /* ---------- Schmiede: Ringe der Macht ---------- */
@@ -830,6 +1097,7 @@ function onFragments(got) {
   sfx('loot');
 }
 function openForge(page = openForge.page) {
+  if (!gate('forge')) return;
   const per = 4, np = pages(RINGS.length + 1, per); page = openForge.page = clampPg(page, np);
   const card = R => { const r = G.rings?.[R.id] || { stars: 0 }, st = r.stars || 0, have = G.frags?.[R.id] || 0, cost = ringCost(R.id), lock = R.from > ringProg(), ok = canForge(R.id), owner = r.owner && G.heroes[r.owner] ? HEROES[r.owner].n : null;
     return `<div class="m-ring ${st ? 'own' : ''} ${lock ? 'lk' : ''} ${R.id === 'einer' ? 'one' : ''}" style="--rc:${R.c}"><canvas data-ring="${R.id}"></canvas><b>${esc(R.n)}</b><span class="m-stars">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= st ? 'on' : ''}">★</i>`).join('')}</span>
@@ -852,13 +1120,15 @@ function openRingOwner(id, page = 0) {
   }, { pages: np, page, onPage: p => openRingOwner(id, p), extra: '<button class="btn small" id="rBack">‹ Schmiede</button>' });
 }
 function openAch(page = openAch.page) {
+  if (!gate('ach')) return;
   const list = ACHIEVEMENTS.map(a => [a, achState(a)]).sort((x, y) => (y[1].done && !y[1].claimed) - (x[1].done && !x[1].claimed) || x[1].claimed - y[1].claimed);
   const per = 9, np = pages(list.length, per); page = openAch.page = clampPg(page, np);
   openSheet('Erfolge', `<div class="m-achs">${list.slice(page * per, page * per + per).map(([a, s]) => `<div class="ach ${s.claimed ? 'claimed' : s.done ? 'ready' : ''}"><b>${esc(a.n)}</b><small>${esc(a.d)}</small><div class="bar"><i style="width:${Math.min(100, s.v / a.goal * 100)}%"></i></div><div class="ar"><span>${a.r.gold ? '◆ ' + fmt(a.r.gold) : ''}${a.r.frags ? ' ◈ ' + a.r.frags : ''}</span>${s.claimed ? '<span class="tag in">✓</span>' : `<button class="btn small ${s.done ? 'gold' : ''}" data-a="${a.id}" ${s.done ? '' : 'disabled'}>Abholen</button>`}</div></div>`).join('')}</div>`, s => {
     s.querySelectorAll('[data-a]').forEach(b => b.onclick = () => { if (claimAch(ACHIEVEMENTS.find(x => x.id === b.dataset.a))) { sfx('loot'); updateHud(); openAch(); } });
-  }, { pages: np, page, onPage: p => openAch(p), tabs: [['ach', 'Erfolge'], ['rel', 'Relikte']], tab: 'ach', onTab: t => t === 'rel' ? openRelics() : openAch() });
+  }, { pages: np, page, onPage: p => openAch(p), tabs: ACH_TABS, tab: 'ach', onTab: achTab });
 }
 function openChest() {
+  if (!gate('chest')) return;
   const st = chestState();
   openSheet('Siegestruhe', `<div class="chestbox"><p>Jeder Sieg legt Beute in die Truhe, ein Bosssieg dreifach. Ab 5 Siegen kannst du sie öffnen, voll ist sie bei ${CHEST_MAX}.</p>
     <div class="bar big"><i style="width:${st.n / CHEST_MAX * 100}%"></i></div><p><b>${st.n} / ${CHEST_MAX}</b> Siege gesammelt</p>

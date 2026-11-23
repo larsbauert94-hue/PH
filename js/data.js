@@ -40,7 +40,18 @@ const STATUS = {
   slow:   { n: 'Lähmung', l: 'LANG', c: '#8fa8d8', bad: 1, d: '−30 % Tempo.' },
   haste:  { n: 'Eile', l: 'EILE', c: '#7fe0d0', d: '+35 % Tempo.' },
   guard:  { n: 'Schildblock', l: 'BLOCK', c: '#c8d8ff', d: '−40 % erlittener Schaden.' },
-  enrage: { n: 'Raserei', l: 'WUT', c: '#ff5a3c', d: '+25 % Angriff und Magie.' }
+  enrage: { n: 'Raserei', l: 'WUT', c: '#ff5a3c', d: '+25 % Angriff und Magie.' },
+  morgul: { n: 'Morgul-Gift', l: 'MORG', c: '#7ab85a', bad: 1, d: 'Jede Heilung wirkt nur halb.' },
+  fuehrung: { n: 'Führung', l: 'FÜHR', c: '#ffd060', d: '+15 % Angriff und Verteidigung.' }
+};
+/* Eigenschaften von Elite-Gegnern (keine Elemente – reine Taktik) */
+const ELITE_AFX = {
+  gepanzert: { n: 'Gepanzert', l: 'G', c: '#a8c8ff', d: 'Schild aus 35 % seiner LP, der zuerst durchbrochen werden muss.' },
+  rasend: { n: 'Rasend', l: 'R', c: '#ff5a3c', d: 'Unter 30 % LP: +60 % Tempo und +25 % Angriff.' },
+  morgul: { n: 'Morgul-Gift', l: 'M', c: '#8ad06a', d: 'Treffer halbieren 3 Runden lang jede Heilung am Ziel.' },
+  anfuehrer: { n: 'Anführer', l: 'A', c: '#ffd060', d: 'Alle anderen Gegner +15 % Angriff und Verteidigung, solange er lebt.' },
+  schattenhaft: { n: 'Schattenhaft', l: 'S', c: '#b090e0', d: 'Springt durch die Schatten und jagt die geschwächten Helden.' },
+  uralt: { n: 'Uralt', l: 'U', c: '#e8c080', d: 'Regeneriert jede Runde 4 % LP.' }
 };
 
 /* ---------------- Fähigkeiten ----------------
@@ -536,6 +547,20 @@ const ENEMIES = {
   gothmog:    { n: 'Gothmog, Herr der Balrogs', type: 'hum', look: { body: 'giant', skin: '#1e0a06', tunic: '#140604', pants: '#140604', hs: 'fire', hair: '#ff4a10', wings: '#2a0804', horns: '#1a0a06', fire: 1, wc: '#ffa040', glow: '#ff4010' }, wpn: 'whip', hp: 980, atk: 30, def: 17, mag: 27, res: 15, spd: 10, sk: ['whip', 'firesword', 'darkMight'], xp: 520, g: 260, tags: [], boss: 1 },
   morgoth:    { n: 'Morgoth Bauglir', type: 'hum', look: { body: 'giant', skin: '#0c0a0e', hs: 'bald', tunic: '#100c14', pants: '#0c0a0e', armor: '#1a1620', hat: 'crown', hatC: '#2a2430', wc: '#3a3440', glow: '#ffffff', noface: 1, aura: '#5a2a80' }, wpn: 'hammer', hp: 1150, atk: 31, def: 20, mag: 31, res: 20, spd: 10, sk: ['smash', 'darkness', 'gaze', 'darkMight', 'summonOrc'], xp: 600, g: 300, tags: [], boss: 1 },
   warg_rider: { n: 'Wargreiter', type: 'hum', look: { body: 'orc', skin: '#6a5a40', hs: 'bald', tunic: '#3a2a1a', armor: '#4a3a2a', wc: '#8a7a60', glow: '#ff6020', mount: { kind: 'warg', look: { fur: '#3a3028', belly: '#5a4a3a', eye: '#ff4020', size: 1, mane: 1 } } }, wpn: 'spear', hp: 130, atk: 16, def: 7, mag: 3, res: 6, spd: 15, sk: ['spear', 'bite', 'howl'], xp: 32, g: 13, tags: ['ork', 'tier'] },
+  orc_chief:  { n: 'Ork-Häuptling von Moria', type: 'hum', look: { emblem: 'eye', body: 'uruk', skin: '#5a6048', hair: '#141210', hs: 'wild', tunic: '#1e1e22', pants: '#1a1a1e', armor: '#26262c', cape: '#1a1414', hat: 'helm', hatC: '#1a1a1e', wc: '#9a9a90', glow: '#ffd040' }, wpn: 'spear', hp: 540, atk: 23, def: 15, mag: 4, res: 9, spd: 11, sk: ['spear', 'heavy', 'warcry', 'summonGob'], xp: 230, g: 115, tags: ['ork'], boss: 1 },
+  dg_captain: { n: 'Hauptmann von Dol Guldur', type: 'hum', look: { emblem: 'eye', body: 'orc', skin: '#4a5040', hair: '#141210', hs: 'wild', tunic: '#22201e', pants: '#1a1816', armor: '#2a2a2e', cape: '#141414', hat: 'spikehelm', hatC: '#2a2a2e', wc: '#8a8a80', glow: '#ff6020' }, wpn: 'sword', hp: 500, atk: 22, def: 13, mag: 6, res: 9, spd: 12, sk: ['slash', 'heavy', 'warcry', 'summonOrc'], xp: 220, g: 110, tags: ['ork'], boss: 1 },
+  corsair_captain: { n: 'Korsarenkapitän von Umbar', type: 'hum', look: { body: 'man', skin: '#8a5a3a', hair: '#1a1210', hs: 'long', beard: 'short', bc: '#1a1210', tunic: '#4a1a1a', pants: '#2a1a1a', cape: '#2a0a0a', armor: '#8a7040', hat: 'hood', hatC: '#1a1010', wc: '#c8c8c8' }, wpn: 'sword', hp: 520, atk: 23, def: 13, mag: 4, res: 9, spd: 13, sk: ['slash', 'heavy', 'volley', 'warcry'], xp: 230, g: 140, tags: [], boss: 1 },
+  kings_men:  { n: 'Gardist des Königs', type: 'hum', look: { body: 'man', skin: '#d0a888', hair: '#2a1a12', hs: 'short', tunic: '#2a2a4a', pants: '#22223a', armor: '#c8b070', hat: 'helm', hatC: '#c8b070', cape: '#3a2a5a', wc: '#d8d8d0' }, wpn: 'spear', hp: 110, atk: 16, def: 10, mag: 3, res: 8, spd: 11, sk: ['spear', 'slash'], xp: 30, g: 16, tags: [] },
+  pharazon:   { n: 'Ar-Pharazôn der Goldene', type: 'hum', look: { body: 'man', skin: '#d8b090', hair: '#2a1a10', hs: 'long', beard: 'short', bc: '#2a1a10', tunic: '#3a2a5a', pants: '#2a2040', armor: '#e0c060', cape: '#4a2a6a', hat: 'crown', hatC: '#e8c050', wc: '#f0e8c8', glow: '#ffd060' }, wpn: 'sword', hp: 600, atk: 24, def: 15, mag: 10, res: 12, spd: 12, sk: ['slash', 'heavy', 'warcry', 'darkMight'], xp: 300, g: 160, tags: [], boss: 1 },
+  ram_troll:  { n: 'Rammbock-Troll', type: 'hum', look: { emblem: 'hand', body: 'troll', skin: '#5a5a4e', tunic: '#2a2622', pants: '#22201c', armor: '#3a3a3a', hs: 'bald', wc: '#6a5030', glow: '#ff8030' }, wpn: 'club', hp: 260, atk: 19, def: 13, mag: 3, res: 6, spd: 6, sk: ['smash', 'heavy'], xp: 90, g: 40, tags: ['troll'], elite: 1 },
+  golfimbul:  { n: 'Golfimbul vom Berg Gram', type: 'hum', look: { body: 'orc', skin: '#6a7a3a', hair: '#1a1a1a', hs: 'wild', tunic: '#3a2a1a', pants: '#2a2018', armor: '#4a4038', cape: '#3a2a1a', hat: 'crown', hatC: '#6a5a3a', wc: '#5a4030', glow: '#ffd040' }, wpn: 'club', hp: 480, atk: 21, def: 12, mag: 3, res: 7, spd: 12, sk: ['heavy', 'smash', 'warcry', 'summonGob'], xp: 200, g: 120, tags: ['ork'], boss: 1 },
+  grishnakh:  { n: 'Grishnákh', type: 'hum', look: { emblem: 'eye', body: 'goblin', skin: '#5a6048', hair: '#141210', hs: 'bald', tunic: '#2a2622', pants: '#221e1a', cape: '#1a1612', wc: '#8a8a80', glow: '#ff4020' }, wpn: 'dagger', hp: 440, atk: 22, def: 10, mag: 4, res: 8, spd: 16, sk: ['slash', 'drain', 'heavy'], xp: 210, g: 120, tags: ['ork'], boss: 1 },
+  mauhur:     { n: 'Mauhúr', type: 'hum', look: { emblem: 'hand', body: 'uruk', skin: '#3a3530', hair: '#141210', hs: 'wild', tunic: '#2a2622', pants: '#22201c', armor: '#3a3a3a', paint: '#f0f0f0', wc: '#9a9a90', glow: '#ff8030' }, wpn: 'sword', hp: 500, atk: 23, def: 13, mag: 4, res: 9, spd: 12, sk: ['slash', 'heavy', 'summonUruk', 'warcry'], xp: 220, g: 125, tags: ['ork'], boss: 1 },
+  ugluk:      { n: 'Uglúk', type: 'hum', look: { emblem: 'hand', body: 'uruk', skin: '#2e2a26', hair: '#141210', hs: 'long', tunic: '#2a2622', pants: '#22201c', armor: '#4a4a4a', hat: 'helm', hatC: '#2e2e30', mark: '#f0f0f0', shield: '#2a2a2a', wc: '#a8a8a0', glow: '#ff8030' }, wpn: 'sword', hp: 560, atk: 23, def: 16, mag: 4, res: 10, spd: 11, sk: ['slash', 'heavy', 'warcry', 'summonUruk'], xp: 240, g: 130, tags: ['ork'], boss: 1 },
+  gorbag:     { n: 'Gorbag von Minas Morgul', type: 'hum', look: { emblem: 'eye', body: 'orc', skin: '#5a6a4a', hair: '#141210', hs: 'wild', tunic: '#23281e', pants: '#1a1e16', armor: '#3a4a3a', hat: 'helm', hatC: '#3a4a3a', wc: '#a8c8a0', glow: '#a0ff80' }, wpn: 'sword', hp: 520, atk: 22, def: 13, mag: 12, res: 11, spd: 12, sk: ['slash', 'morgul', 'heavy', 'summonOrc'], xp: 230, g: 130, tags: ['ork'], boss: 1 },
+  shagrat:    { n: 'Shagrat, Hauptmann des Turms', type: 'hum', look: { emblem: 'eye', body: 'uruk', skin: '#4a4a3a', hair: '#141210', hs: 'bald', tunic: '#262420', pants: '#1e1c18', armor: '#3a3a3a', cape: '#2a1a14', hat: 'spikehelm', hatC: '#3a3a3a', wc: '#8a8a80', glow: '#ff5a20' }, wpn: 'mace', hp: 580, atk: 24, def: 15, mag: 4, res: 10, spd: 11, sk: ['mace', 'heavy', 'warcry', 'summonOrc'], xp: 250, g: 140, tags: ['ork'], boss: 1 },
+  mouth:      { n: 'Der Mund Saurons', type: 'hum', look: { body: 'man', skin: '#d8c8b8', hair: '#141414', hs: 'short', tunic: '#141418', robe: 1, cape: '#0e0e12', hat: 'spikehelm', hatC: '#2a2a2e', wc: '#4a3a5a', glow: '#ff3030', glowC: '#c060ff' }, wpn: 'staff', hp: 540, atk: 14, def: 12, mag: 24, res: 16, spd: 12, sk: ['staff', 'shriek', 'darkness', 'drain'], xp: 260, g: 150, tags: [], boss: 1 },
+  ulfang:     { n: 'Ulfang der Schwarze', type: 'hum', look: { body: 'man', skin: '#9a6a4a', hair: '#0e0a08', hs: 'long', beard: 'long', bc: '#0e0a08', tunic: '#3a1a1a', pants: '#2a1414', armor: '#5a4a3a', cape: '#2a0e0e', hat: 'helm', hatC: '#4a3a2a', wc: '#b0b0a8' }, wpn: 'axe', hp: 600, atk: 25, def: 14, mag: 4, res: 10, spd: 12, sk: ['heavy', 'slash', 'warcry', 'darkMight'], xp: 270, g: 160, tags: [], boss: 1 },
   nazgul_fell:{ n: 'Nazgûl auf Flugbestie', type: 'hum', look: { body: 'man', skin: '#0a0a0c', tunic: '#121216', robe: 1, cape: '#0e0e12', hat: 'spikehelm', hatC: '#3a3a42', wc: '#b8c0c8', glow: '#ff3030', noface: 1, mount: { kind: 'fell', look: { skin: '#2a2a2e', belly: '#4a4a50', wing: '#18181c', eye: '#ff3030', horn: '#5a5a60' } } }, wpn: 'mace', hp: 300, atk: 18, def: 9, mag: 18, res: 13, spd: 12, sk: ['morgul', 'shriek', 'mace'], xp: 90, g: 36, tags: ['geist'], elite: 1, fly: 1 }
 };
 
@@ -696,9 +721,22 @@ const RARITY = [
   { id: 'uncommon', n: 'Ungewöhnlich', c: '#5ecf5a', mult: 1.15, aff: 1 },
   { id: 'rare', n: 'Selten', c: '#4f9ae8', mult: 1.35, aff: 2 },
   { id: 'epic', n: 'Episch', c: '#b46ae8', mult: 1.6, aff: 3 },
-  { id: 'legendary', n: 'Legendär', c: '#f09a2a', mult: 1.9, aff: 3 }
+  { id: 'legendary', n: 'Legendär', c: '#f09a2a', mult: 1.9, aff: 3 },
+  { id: 'mythic', n: 'Mythisch', c: '#ff5a48', mult: 2.3, aff: 4 }
 ];
 const SLOTS = { weapon: 'Waffe', armor: 'Rüstung', trinket: 'Schmuck' };
+/* Mythische Artefakte: nur aus den härtesten Herausforderungen */
+const MYTHICS = [
+  { n: 'Gurthang, Eisen des Todes', base: 'klinge', main: 'atk', bonus: { execute: .6, critDmg: 40, lifesteal: 6 }, p: '+60 % Schaden gegen Feinde unter 30 % LP, 6 % Lebensraub.', lore: 'Túrins schwarze Klinge, aus Anglachel neu geschmiedet.' },
+  { n: 'Aranrúth, Thingols Zorn', base: 'klinge', main: 'atk', bonus: { doubleHit: .22, crit: 10, atkPct: 10 }, p: '22 % Doppelschlag, +10 % Krit.', lore: 'Das Schwert König Thingols, das einzige, das den Untergang Doriaths überdauerte.' },
+  { n: 'Dramborleg, Axt Tuors', base: 'wucht', main: 'atk', bonus: { stunOnHit: .15, bossDmg: 30, atkPct: 10 }, p: 'Treffer betäuben mit 15 %, +30 % Schaden gegen Bosse.', lore: 'Ihr Hieb traf wie ein Donnerschlag und spaltete Stahl.' },
+  { n: 'Dailir, Belegs Pfeil', base: 'bogen', main: 'atk', bonus: { doubleHit: .25, crit: 12, critDmg: 30 }, p: '25 % Doppelschuss, +12 % Krit, +30 % Krit-Schaden.', lore: 'Der Pfeil, den Beleg Langbogen nach jedem Schuss unversehrt wiederfand.' },
+  { n: 'Stab der Blauen Zauberer', base: 'stab', main: 'mag', bonus: { magPct: 20, ultCharge: 25, burnOnHit: .25 }, p: '+20 % Magie, Ultimate +25 %, Treffer setzen mit 25 % in Brand.', lore: 'Alatar und Pallando zogen damit in den fernen Osten – und kehrten nie zurück.' },
+  { n: 'Speer Eorls des Jungen', base: 'speer', main: 'atk', bonus: { startHaste: 1, atkPct: 15, critDmg: 30 }, p: 'Kampfbeginn: Eile. +15 % Angriff, +30 % Krit-Schaden.', lore: 'Mit ihm ritt Eorl auf Felaróf über das Feld von Celebrant.' },
+  { n: 'Drachenhelm von Dor-lómin', base: 'armor', main: 'hp', bonus: { hpPct: 20, dmgRed: 12, thorns: 15 }, p: '−12 % erlittener Schaden, 15 % Dornen.', lore: 'Von Telchar geschmiedet; wer ihn trug, flößte Drachen und Orks Furcht ein.' },
+  { n: 'Nauglamír, Halsband der Zwerge', base: 'trinket', main: 'atk', bonus: { hpPct: 15, atkPct: 12, magPct: 12, reviveSelf: .4 }, p: 'Steht einmal pro Kampf mit 40 % LP wieder auf.', lore: 'Das schönste Werk der Zwerge der Ersten Zeit, für Finrod Felagund geschaffen.' },
+  { n: 'Silmaril', base: 'trinket', main: 'mag', bonus: { atkPct: 18, magPct: 18, healPct: 25, regenTurn: 3, crit: 8 }, p: 'Heilt jede Runde 3 % LP, +25 % Heilung, +8 % Krit.', lore: 'Ein Juwel Fëanors, das das Licht der Zwei Bäume in sich trägt.' }
+];
 const BASES = {
   klinge: { slot: 'weapon', icon: 'sword', names: ['Kurzschwert', 'Langschwert', 'Dolch', 'Klinge', 'Säbel', 'Breitschwert'] },
   bogen:  { slot: 'weapon', icon: 'bow', names: ['Kurzbogen', 'Langbogen', 'Kompositbogen', 'Elbenbogen'] },
@@ -743,12 +781,20 @@ const LEGENDARIES = [
   { n: 'Mithrilhemd', base: 'armor', fav: 'frodo', main: 'def', bonus: { dmgRed: 15, defPct: 20 }, p: '−15 % erlittener Schaden.' },
   { n: 'Rüstung des Letzten Bündnisses', base: 'armor', main: 'def', bonus: { hpPct: 15, reviveSelf: .3 }, p: 'Überlebt einmal einen tödlichen Treffer (30 % LP).' },
   { n: 'Elbenmantel aus Lórien', base: 'armor', main: 'res', bonus: { dodge: 10, startInvis: 1 }, p: 'Kampfbeginn: Unsichtbar.' },
-  { n: 'Narya, Ring des Feuers', base: 'trinket', main: 'mag', bonus: { startHaste: 1, magPct: 12, burnOnHit: .15 }, p: 'Kampfbeginn: Eile. Brand bei Treffern (15 %).' },
-  { n: 'Nenya, Ring des Wassers', base: 'trinket', fav: 'galadriel', main: 'hp', bonus: { regenTurn: 3, healPct: 15 }, p: 'Heilt jede Runde 3 % LP.' },
-  { n: 'Vilya, Ring der Luft', base: 'trinket', fav: 'elrond', main: 'mag', bonus: { healPct: 30, resGain: 20 }, p: '+30 % Heilung, +20 % Mana.' },
+  { n: 'Horn von Gondor', base: 'trinket', fav: 'boromir', main: 'atk', bonus: { startHaste: 1, atkPct: 12, threat: 20 }, p: 'Kampfbeginn: Eile. +12 % Angriff, zieht Feinde an.' },
+  { n: 'Elessar, der Elbenstein', base: 'trinket', fav: 'aragorn', main: 'hp', bonus: { regenTurn: 3, healPct: 15 }, p: 'Heilt jede Runde 3 % LP.' },
+  { n: 'Brosche aus Lórien', base: 'trinket', main: 'mag', bonus: { healPct: 30, ultCharge: 20 }, p: '+30 % Heilung, Ultimate lädt 20 % schneller.' },
   { n: 'Elendilmir', base: 'trinket', main: 'hp', bonus: { startEnergy: 40, ultCharge: 20 }, p: 'Kampfbeginn: +40 Ultimate.' },
   { n: 'Evenstar-Anhänger', base: 'trinket', fav: 'arwen', main: 'res', bonus: { reviveSelf: .5, healPct: 15 }, p: 'Überlebt einmal einen tödlichen Treffer (50 % LP).' },
-  { n: 'Phiole Galadriels', base: 'trinket', main: 'mag', bonus: { startShieldAll: 1, statusCh: 15 }, p: 'Kampfbeginn: Schild für alle.' }
+  { n: 'Phiole Galadriels', base: 'trinket', main: 'mag', bonus: { startShieldAll: 1, statusCh: 15 }, p: 'Kampfbeginn: Schild für alle.' },
+  { n: 'Klinge der Waldläufer', base: 'klinge', main: 'atk', bonus: { vsGeist: .4, crit: 6, dodge: 6 }, p: '+40 % Schaden gegen Geister, +6 % Ausweichen.', special: 1 },
+  { n: 'Axt der Mazarbul-Wache', base: 'wucht', main: 'atk', bonus: { vsOrk: .4, thorns: 10, defPct: 8 }, p: '+40 % Schaden gegen Orks, 10 % Dornen.', special: 1 },
+  { n: 'Bogen aus Thranduils Hallen', base: 'bogen', main: 'atk', bonus: { crit: 10, slowOnHit: .25, doubleHit: .1 }, p: 'Treffer lähmen mit 25 %, 10 % Doppelschuss.', special: 1 },
+  { n: 'Stern von Fornost', base: 'trinket', main: 'hp', bonus: { vsGeist: .3, startShieldAll: .4, hpPct: 8 }, p: 'Kampfbeginn: Schild für die ganze Gruppe, +30 % gegen Geister.', special: 1 },
+  { n: 'Säbel der Korsarenkönige', base: 'klinge', main: 'atk', bonus: { lifesteal: 8, critDmg: 25, crit: 6 }, p: '8 % Lebensraub, +25 % Krit-Schaden.', special: 1 },
+  { n: 'Hammer der Gwaith-i-Mírdain', base: 'wucht', main: 'atk', bonus: { startShieldSelf: .25, stunOnHit: .12, magPct: 10 }, p: 'Kampfbeginn: Schild (25 % LP), Treffer betäuben mit 12 %.', special: 1 },
+  { n: 'Arondirs Silvanbogen', base: 'bogen', fav: 'arondir', main: 'atk', bonus: { crit: 8, execute: .3, dodge: 6 }, p: '+30 % Schaden gegen Feinde unter 30 % LP, +6 % Ausweichen.', special: 1 },
+  { n: 'Klinge des Hauses Andúnië', base: 'klinge', fav: 'elendil', main: 'atk', bonus: { atkPct: 10, bossDmg: 25, crit: 6 }, p: '+25 % Schaden gegen Bosse, +10 % Angriff.', special: 1 }
 ];
 
 
@@ -920,7 +966,39 @@ const SIDE = [
   { id: 'ostirith', n: 'Die Tunnel von Ostirith', after: 17, bg: 'south', map: [76, 72],
     intro: [['arondir', 'Unter dem Wachturm graben sie Tunnel. Die Dörfler sitzen in der Falle.'], ['bronwyn', 'Dann kämpfen wir uns zu ihnen durch. Gemeinsam.']],
     waves: [['adar_orc', 'adar_orc'], ['adar_orc', 'orc_archer', 'warg'], ['adar_orc', 'adar_orc', 'adar_orc']], boss: ['uruk_captain', 'adar_orc'],
-    outro: [['bronwyn', 'Ostirith hält. Und ich gehe mit euch, wohin auch immer der Weg führt.']], hero: 'bronwyn' }
+    outro: [['bronwyn', 'Ostirith hält. Und ich gehe mit euch, wohin auch immer der Weg führt.']], hero: 'bronwyn' },
+  { id: 'wetter', n: 'Die Wetterspitze', after: 7, bg: 'weather', map: [35, 27],
+    intro: [['narr', 'Fünf Schatten steigen den Hang von Amon Sûl hinauf. Die Ringgeister wissen, wer den Ring trägt.'], ['aragorn', 'Fackeln! Feuer ist das Einzige, was sie fürchten.']],
+    waves: [['nazgul', 'wolf'], ['nazgul', 'wolf', 'wolf'], ['nazgul', 'nazgul']], boss: ['khamul', 'nazgul', 'nazgul'],
+    outro: [['aragorn', 'Sie fliehen – für diese Nacht. In den Trümmern des Wachturms lag eine Klinge der Dúnedain.']], legend: 'Klinge der Waldläufer' },
+  { id: 'mazarbul', n: 'Die Kammer von Mazarbul', after: 8, bg: 'moria', map: [47, 39],
+    intro: [['narr', '„Wir können nicht hinaus. Sie kommen.“ So endet das Buch von Mazarbul. Trommeln in der Tiefe.'], ['gimli', 'Balin … Hier liegt er. Dafür werden sie bezahlen!']],
+    waves: [['goblin', 'goblin', 'orc_archer'], ['goblin', 'goblin', 'cave_troll'], ['goblin', 'orc', 'goblin', 'orc_archer']], boss: ['orc_chief', 'goblin', 'goblin'],
+    outro: [['gimli', 'Balins Grab ist gerächt. Diese Axt gehörte einem seiner Getreuen.']], legend: 'Axt der Mazarbul-Wache' },
+  { id: 'gollum', n: 'Die Jagd auf Gollum', after: 6, bg: 'mirkwood', map: [61, 30],
+    intro: [['aragorn', 'Gandalf bat mich, Gollum zu finden. Seine Spur führt in den Düsterwald.'], ['legolas', 'Orks aus Dol Guldur haben unsere Wachen überfallen. Er ist entkommen!']],
+    waves: [['spiderling', 'spiderling', 'orc'], ['orc', 'orc_archer', 'warg'], ['spiderling', 'spiderling', 'orc', 'orc']], boss: ['dg_captain', 'orc', 'spiderling'],
+    outro: [['legolas', 'Gollum ist fort, doch der Hauptmann wird niemandem mehr schaden. Nehmt diesen Bogen aus den Hallen meines Vaters.']], legend: 'Bogen aus Thranduils Hallen' },
+  { id: 'fornost', n: 'Die Schlacht von Fornost', after: 12, bg: 'weather', map: [24, 19],
+    intro: [['narr', 'Im Jahr 1975 des Dritten Zeitalters stellen Gondor und die Elben von Lindon das Heer von Angmar vor Fornost.'], ['glorfindel', 'Verfolgt ihn nicht! Nicht durch die Hand eines Mannes wird er fallen.']],
+    waves: [['orc', 'warg', 'orc_archer'], ['wight', 'wight', 'orc'], ['mordor_troll', 'orc', 'orc']], boss: ['witch_king', 'nazgul', 'orc'],
+    outro: [['glorfindel', 'Angmar ist gebrochen. Nehmt diesen Stern – sein Licht brennt gegen die Schatten.']], legend: 'Stern von Fornost' },
+  { id: 'umbar', n: 'Die Korsaren von Umbar', after: 12, bg: 'sea', map: [57, 71],
+    intro: [['aragorn', 'Bei Pelargir liegen die schwarzen Schiffe von Umbar. Wir nehmen sie, bevor sie nach Minas Tirith segeln!'], ['gimli', 'Ein Zwerg auf einem Schiff. Wenn mein Vater das wüsste …']],
+    waves: [['pirate', 'pirate', 'haradrim'], ['pirate', 'haradrim', 'haradrim', 'pirate'], ['pirate', 'pirate', 'pirate', 'orc_archer']], boss: ['corsair_captain', 'pirate', 'pirate'],
+    outro: [['aragorn', 'Die Flotte ist unser. In der Kajüte des Kapitäns lag ein Säbel aus Mithril.']], legend: 'Säbel der Korsarenkönige' },
+  { id: 'schmiede', n: 'Die Schmieden von Eregion', after: 20, bg: 'eregion', map: [35, 45],
+    intro: [['celebrimbor', 'Annatar wollte, dass wir Ringe der Macht schmieden. Ich habe ihm vertraut.'], ['galadriel', 'Er ist Sauron. Rettet die Werkstätten, bevor sie in seine Hände fallen!']],
+    waves: [['adar_orc', 'adar_orc', 'orc_archer'], ['adar_orc', 'warg', 'warg'], ['adar_orc', 'adar_orc', 'mordor_troll']], boss: ['annatar', 'adar_orc', 'adar_orc'],
+    outro: [['celebrimbor', 'Die Drei habe ich verborgen. Nehmt diesen Hammer – mit ihm wurden Wunder geschmiedet.']], legend: 'Hammer der Gwaith-i-Mírdain' },
+  { id: 'suedland', n: 'Adar im Südland', after: 17, bg: 'south', map: [69, 66],
+    intro: [['bronwyn', 'Adar hat die Dörfer im Südland unterworfen. Die Menschen von Tirharad zählen auf uns.'], ['arondir', 'Ich kenne die Tunnel. Wir schlagen zu, bevor er den Berg erweckt.']],
+    waves: [['adar_orc', 'adar_orc'], ['adar_orc', 'orc_archer', 'warg'], ['adar_orc', 'adar_orc', 'adar_orc']], boss: ['adar', 'adar_orc', 'adar_orc'],
+    outro: [['arondir', 'Adar ist geflohen, aber das Südland atmet wieder. Nehmt meinen Bogen aus Silvan-Holz.']], legend: 'Arondirs Silvanbogen' },
+  { id: 'numenor', n: 'Der Untergang von Númenor', after: 20, bg: 'sea', map: [4, 63],
+    intro: [['elendil', 'Ar-Pharazôn segelt gegen die Unsterblichen Lande. Die Getreuen müssen fliehen, bevor das Meer Númenor verschlingt!'], ['isildur', 'Ich trage eine Frucht des Weißen Baumes. Sie darf nicht verloren gehen.']],
+    waves: [['kings_men', 'kings_men'], ['kings_men', 'kings_men', 'pirate'], ['kings_men', 'kings_men', 'kings_men']], boss: ['pharazon', 'kings_men', 'kings_men'],
+    outro: [['elendil', 'Neun Schiffe entkommen dem Untergang. Diese Klinge aus Andúnië soll uns in Mittelerde dienen.']], legend: 'Klinge des Hauses Andúnië' }
 ];
 
 /* ---------------- Heldenreise-Modifikatoren ---------------- */
@@ -936,3 +1014,105 @@ const RAIDS = [
   { key: 'witch_king', n: 'Der Hexenkönig', bg: 'pelennor' }, { key: 'sauron', n: 'Sauron', bg: 'doom' }
 ];
 const RAID_TIERS = [.05, .1, .2, .35, .5, .75, 1];
+
+/* ---------- Kopfgeldjagd: benannte Anführer mit Trophäen ---------- */
+const HUNTS = [
+  { id: 'golfimbul', foe: 'golfimbul', sn: 'Golfimbul', esc: ['goblin', 'wolf'], bg: 'shire', after: 0, aff: ['anfuehrer'], tr: { n: 'Golfimbuls Krone', e: { hp: 2 }, d: '+2 % LP' }, lore: 'Der Ork-Häuptling vom Berg Gram, den Bandobras Tuk vom Pferd schlug.' },
+  { id: 'grishnakh', foe: 'grishnakh', sn: 'Grishnákh', esc: ['orc', 'orc'], bg: 'amonhen', after: 6, aff: ['schattenhaft'], tr: { n: 'Grishnákhs Dolch', e: { crit: 2 }, d: '+2 % Krit' }, lore: 'Ein Ork aus Mordor, gierig nach dem „Schatz“ der Hobbits.' },
+  { id: 'mauhur', foe: 'mauhur', sn: 'Mauhúr', esc: ['uruk', 'orc_archer'], bg: 'amonhen', after: 9, aff: ['rasend'], tr: { n: 'Mauhúrs Kriegshorn', e: { spd: 2 }, d: '+2 % Tempo' }, lore: 'Er führte die Orks des Nordens an den Rand von Fangorn.' },
+  { id: 'ugluk', foe: 'ugluk', sn: 'Uglúk', esc: ['uruk', 'uruk', 'berserker'], bg: 'helm', after: 9, aff: ['gepanzert', 'anfuehrer'], tr: { n: 'Uglúks Schild', e: { def: 3 }, d: '+3 % Verteidigung' }, lore: 'Sarumans grausamster Hauptmann – „Wir sind die Kämpfer-Uruk-hai!“' },
+  { id: 'gorbag', foe: 'gorbag', sn: 'Gorbag', esc: ['orc', 'orc_archer'], bg: 'cirith', after: 11, aff: ['morgul'], tr: { n: 'Morgul-Feldzeichen', e: { mag: 3 }, d: '+3 % Magie' }, lore: 'Hauptmann aus Minas Morgul, ewiger Rivale Shagrats.' },
+  { id: 'shagrat', foe: 'shagrat', sn: 'Shagrat', esc: ['orc', 'orc', 'orc_archer'], bg: 'cirith', after: 11, aff: ['rasend', 'gepanzert'], tr: { n: 'Shagrats Hauptmannshelm', e: { atk: 3 }, d: '+3 % Angriff' }, lore: 'Herr des Turms von Cirith Ungol, der Frodos Mithrilhemd an sich nahm.' },
+  { id: 'mouth', foe: 'mouth', sn: 'Mund Saurons', esc: ['nazgul', 'orc'], bg: 'doom', after: 12, aff: ['morgul', 'anfuehrer'], tr: { n: 'Siegel des Mundes', e: { ultCharge: 4 }, d: 'Ultimate +4 %' }, lore: 'Der Bote Barad-dûrs, der seinen eigenen Namen vergessen hat.' },
+  { id: 'ulfang', foe: 'ulfang', sn: 'Ulfang', esc: ['easterling', 'easterling'], bg: 'rhun', after: 18, aff: ['uralt', 'schattenhaft'], tr: { n: 'Ulfangs Banner', e: { dodge: 2 }, d: '+2 % Ausweichen' }, lore: 'Der Ostling, der in der Schlacht der Ungezählten Tränen die Eldar verriet.' }
+];
+/* ---------- Pfad der Verzweiflung: Segen (einer aus drei nach jedem Sieg) ---------- */
+const BLESSINGS = [
+  { id: 'lembas', n: 'Lembas', ic: '❧', d: 'Alle lebenden Helden heilen 50 % LP.', now: 1 },
+  { id: 'athelas', n: 'Athelas', ic: '✿', d: 'Ein gefallener Held kehrt mit 60 % LP zurück.', now: 1, needDead: 1 },
+  { id: 'rohirrim', n: 'Zorn der Rohirrim', ic: '♞', d: '+18 % Angriff', e: { atk: .18 } },
+  { id: 'earendil', n: 'Licht Eärendils', ic: '✦', d: '+18 % Magie', e: { mag: .18 } },
+  { id: 'mithril', n: 'Mithrilhemd', ic: '⛉', d: '−15 % erlittener Schaden', p: { dmgRed: 15 } },
+  { id: 'anduril', n: 'Andúrils Flamme', ic: '✧', d: 'Treffer setzen mit 25 % in Brand', p: { burnOnHit: .25 } },
+  { id: 'horn', n: 'Horn Gondors', ic: '♪', d: '+15 % Tempo', e: { spd: .15 } },
+  { id: 'ent', n: 'Ent-Trank', ic: '❦', d: '+20 % maximale LP', e: { hp: .2 } },
+  { id: 'miruvor', n: 'Miruvor', ic: '❖', d: 'Ultimate lädt 30 % schneller', p: { ultCharge: 30 } },
+  { id: 'hobbit', n: 'Glück der Hobbits', ic: '☘', d: '+10 % Ausweichen', p: { dodge: 10 } },
+  { id: 'adler', n: 'Auge des Adlers', ic: '⚝', d: '+12 % Krit, +30 % Krit-Schaden', e: { crit: 12, critDmg: 30 } },
+  { id: 'durin', n: 'Durins Trotz', ic: '⚒', d: '15 % Dornen', p: { thorns: 15 } },
+  { id: 'westernis', n: 'Klinge von Westernis', ic: '⚔', d: '+30 % Schaden gegen Bosse', p: { bossDmg: 30 } },
+  { id: 'quelle', n: 'Quellwasser von Lórien', ic: '≈', d: 'Regeneriert 3 % LP pro Runde', p: { regenTurn: 3 } },
+  { id: 'galadriel', n: 'Galadriels Segen', ic: '☼', d: '+25 % Heilung', p: { healPct: 25 } },
+  { id: 'blut', n: 'Blutdurst', ic: '♦', d: '8 % Lebensraub', p: { lifesteal: 8 } },
+  { id: 'zwergengold', n: 'Gold der Zwerge', ic: '◆', d: '+40 % Gold am Ende des Pfades', gold: .4 }
+];
+/* ---------- Heldentaten: passieren beim normalen Spielen, Belohnung kommt automatisch ---------- */
+const FEATS = [
+  { id: 'makellos', n: 'Makellos', d: 'Besiege einen Boss, ohne dass ein Held fällt.', rw: { frags: 2 } },
+  { id: 'drache', n: 'Drachentöter', d: 'Besiege Smaug oder Glaurung, ohne dass ein Held fällt.', rw: { frags: 3, r: 4 } },
+  { id: 'blitz', n: 'Blitzsieg', d: 'Gewinne einen Kampf gegen drei oder mehr Gegner in unter 8 Sekunden.', rw: { gold: 1500 } },
+  { id: 'letzter', n: 'Der Letzte steht', d: 'Gewinne einen Kampf, in dem nur ein Held überlebt.', rw: { frags: 2 } },
+  { id: 'knapp', n: 'Gegen alle Hoffnung', d: 'Gewinne einen Bosskampf, nachdem die Gruppe unter 15 % LP war.', rw: { frags: 3 } },
+  { id: 'serie25', n: 'Unaufhaltsam', d: 'Gewinne 25 Kämpfe in Folge.', rw: { gold: 3000, frags: 2 } },
+  { id: 'serie100', n: 'Legende des Ringkriegs', d: 'Gewinne 100 Kämpfe in Folge.', rw: { frags: 6, r: 5 } },
+  { id: 'affix25', n: 'Eliteschreck', d: 'Besiege 25 Elite-Gegner mit Eigenschaften.', rw: { frags: 3 } },
+  { id: 'affix150', n: 'Bezwinger der Heerführer', d: 'Besiege 150 Elite-Gegner mit Eigenschaften.', rw: { frags: 6, r: 4 } },
+  { id: 'jaeger', n: 'Kopfgeldjäger', d: 'Besiege 4 verschiedene Kopfgeldziele.', rw: { frags: 4 } },
+  { id: 'meisterjaeger', n: 'Meisterjäger', d: 'Besiege alle 8 Kopfgeldziele.', rw: { frags: 6, r: 5 } },
+  { id: 'sterne15', n: 'Sternensammler', d: 'Sammle 15 Sterne in Kapitel-Prüfungen.', rw: { frags: 4 } },
+  { id: 'sterne60', n: 'Sternenhimmel von Varda', d: 'Sammle 60 Sterne in Kapitel-Prüfungen.', rw: { frags: 8, r: 5 } },
+  { id: 'legendaer', n: 'Wahrhaft legendär', d: 'Bestehe eine Kapitel-Prüfung auf Legendär.', rw: { frags: 4, r: 4 } },
+  { id: 'horn10', n: 'Hüter der Hornburg', d: 'Halte Helms Klamm 10 Wellen lang.', rw: { frags: 3 } },
+  { id: 'horn25', n: 'Erkenbrands Erbe', d: 'Halte Helms Klamm 25 Wellen lang.', rw: { frags: 6, r: 5 } },
+  { id: 'pfad8', n: 'Durch die Dunkelheit', d: 'Überstehe 8 Kämpfe auf dem Pfad der Verzweiflung.', rw: { frags: 3 } },
+  { id: 'pfad15', n: 'Bezwinger der Verzweiflung', d: 'Bestehe alle 15 Kämpfe des Pfades der Verzweiflung.', rw: { frags: 8, r: 5 } },
+  { id: 'mythos', n: 'Aus alten Liedern', d: 'Finde einen mythischen Gegenstand.', rw: { frags: 3 } },
+  { id: 'ringe3', n: 'Herr der Ringe', d: 'Besitze drei Ringe auf ★3 oder höher.', rw: { frags: 5 } },
+  { id: 'quests12', n: 'Weitgereist', d: 'Schließe 12 verschiedene Nebenquests ab.', rw: { frags: 5, r: 4 } }
+];
+
+/* ---------- Kriegsbanner der Gegner (statt Wappen auf jeder Figur) ---------- */
+const FOE_FLAGS = {
+  eye: { n: 'Mordor', em: 'eye', cloth: '#171217', emCol: '#ff5a20' }, hand: { n: 'Isengart', em: 'hand', cloth: '#181818', emCol: '#f2f2ee' },
+  harad: { n: 'Harad', em: 'serpent', cloth: '#7a1414', emCol: '#140e0c' }, umbar: { n: 'Umbar', em: 'ship', cloth: '#121216', emCol: '#c02424' },
+  rhun: { n: 'Rhûn', em: 'sun', cloth: '#6a1a10', emCol: '#e8b040' }, numenor: { n: 'Númenor', em: 'star', cloth: '#1a2050', emCol: '#e8c860' },
+  adar: { n: 'Adar', em: 'ring', cloth: '#2a2a2c', emCol: '#c8c0a0' }, angband: { n: 'Angband', em: 'peaks', cloth: '#0e0c0e', emCol: '#c02a1a' }
+};
+const FOE_FAC = { haradrim: 'harad', olifant: 'harad', pirate: 'umbar', corsair_captain: 'umbar', easterling: 'rhun', ulfang: 'rhun', kings_men: 'numenor', pharazon: 'numenor', adar_orc: 'adar', adar: 'adar', angband_orc: 'angband', gothmog: 'angband', balrog_minor: 'angband', morgoth: 'angband', werwolf: 'angband', nazgul: 'eye', witch_king: 'eye', khamul: 'eye', nazgul_fell: 'eye', black_rider: 'eye', mouth: 'eye', warg_rider: 'eye' };
+/* ---------- Banner der Gruppe: gesammelt, eines wird aufgestellt ---------- */
+const BANNERS = [
+  { id: 'thal', n: 'Banner von Thal', em: 'bird', cloth: '#2a4a7a', emCol: '#ece4d4', e: { dodge: 6 }, d: '+6 % Ausweichen', ch: 3 },
+  { id: 'erebor', n: 'Banner von Erebor', em: 'durin', cloth: '#1e3a6a', emCol: '#e8c860', e: { hp: 10 }, d: '+10 % LP', ch: 4 },
+  { id: 'lorien', n: 'Banner von Lothlórien', em: 'leaf', cloth: '#34523a', emCol: '#e8d070', e: { healPct: 12 }, d: '+12 % Heilung', ch: 9 },
+  { id: 'rohan', n: 'Banner von Rohan', em: 'horse', cloth: '#2e5a2a', emCol: '#f2eee2', e: { spd: 8 }, d: '+8 % Tempo', ch: 10 },
+  { id: 'gondor', n: 'Banner von Gondor', em: 'tree', cloth: '#141416', emCol: '#f4f4f0', e: { def: 10 }, d: '+10 % Verteidigung', ch: 12 },
+  { id: 'noldor', n: 'Banner der Noldor', em: 'star', cloth: '#1a2a6a', emCol: '#f2f2ff', e: { crit: 6 }, d: '+6 % Krit', ch: 20 },
+  { id: 'gondolin', n: 'Banner von Gondolin', em: 'flower', cloth: '#ece4cc', emCol: '#d0a028', e: { atk: 8 }, d: '+8 % Angriff und Magie', ch: 26 }
+];
+/* ---------- Freischaltplan: alles kommt Schritt für Schritt (at = Kapitelindex + Welle/10) ---------- */
+const UNLOCKS = [
+  { id: 'best', n: 'Bestiarium', ic: '☠', at: .2, d: 'Jeder besiegte Gegner wird mit Bild und Zähler festgehalten.' },
+  { id: 'chest', n: 'Siegestruhe', ic: '⛁', at: .4, d: 'Jeder Sieg füllt die Truhe. Ist sie voll, wartet reiche Beute.' },
+  { id: 'quests', n: 'Aufträge', ic: '✎', at: .7, d: 'Kleine Aufgaben nebenbei – alle vier erledigt gibt es einen Bonusfund.' },
+  { id: 'comps', n: 'Begleiter', ic: '❀', at: 1, d: 'Treue Gefährten wie Myrte das Pony stärken die ganze Gruppe.' },
+  { id: 'relics', n: 'Relikte', ic: '◆', at: 1, d: 'Jeder Kapitel-Boss hinterlässt ein Relikt mit dauerhaftem Bonus.' },
+  { id: 'chronik', n: 'Chronik', ic: '❦', at: 1.3, d: 'Die erlebten Kapitel zum Nachlesen.' },
+  { id: 'ach', n: 'Erfolge', ic: '♛', at: 1, d: 'Ziele für die Reise mit Gold und Ringfragmenten als Lohn.' },
+  { id: 'bonds', n: 'Bündnisse', ic: '⚭', at: 1.7, d: 'Helden aus demselben Volk stärken sich gegenseitig.' },
+  { id: 'forge', n: 'Ringschmiede', ic: '◍', at: 2, d: 'Aus Ringfragmenten schmiedest du die Ringe der Macht – die stärksten Gegenstände.' },
+  { id: 'hunt', n: 'Kopfgeldjagd', ic: '⚑', at: 2.4, d: 'Benannte Anführer jagen. Jede Erstjagd bringt eine Trophäe mit Dauerbonus.' },
+  { id: 'trialH', n: 'Kapitel-Prüfung: Heldenhaft', ic: '★', at: 2.7, d: 'Besiegte Kapitel härter wiederholen und bis zu drei Sterne verdienen.', price: 1500 },
+  { id: 'horde', n: 'Endloser Ansturm', ic: '∞', at: 3, d: 'Welle um Welle ohne Heilung – wie weit kommt deine Gruppe?', price: 1500 },
+  { id: 'feats', n: 'Heldentaten', ic: '✦', at: 3.5, d: 'Besondere Taten werden beim Spielen erkannt und sofort belohnt.' },
+  { id: 'banner', n: 'Banner', ic: '⚐', at: 4, d: 'Stelle ein Banner deines Volkes auf – es stärkt die ganze Gruppe.' },
+  { id: 'rush', n: 'Bossrausch', ic: '♛', at: 4.5, d: 'Fünf besiegte Bosse hintereinander.', price: 2500 },
+  { id: 'sets', n: 'Rüstungssets', ic: '⛉', at: 5, d: 'Set-Teile fallen bei bestimmten Bossen. Zwei oder drei Teile geben starke Boni.' },
+  { id: 'tower', n: 'Orthanc-Turm', ic: '♜', at: 5.5, d: 'Etage um Etage nach oben – jede bringt Gold und Fragmente.', price: 3000 },
+  { id: 'chaos', n: 'Chaos-Prüfung', ic: '✷', at: 6.5, d: 'Fünf Kämpfe mit verrückten Regeln.', price: 3500 },
+  { id: 'side', n: 'Nebenquests', ic: '◇', at: 7, d: 'Abenteuer abseits des Weges – mit Helden, Begleitern und legendären Waffen.' },
+  { id: 'mounts', n: 'Reittiere', ic: '♞', at: 8, d: 'Pferde und mehr tragen deine Helden in die Schlacht.' },
+  { id: 'raids', n: 'Prüfungen der Macht', ic: '⚔', at: 9, d: '45 Sekunden gegen Balrog, Smaug, den Hexenkönig und Sauron.', price: 6000 },
+  { id: 'trialL', n: 'Kapitel-Prüfung: Legendär', ic: '✪', at: 10, d: 'Die härteste Stufe jeder Kapitel-Prüfung – hier fallen mythische Schätze.', price: 6000 },
+  { id: 'helm', n: 'Helms Klamm', ic: '⚔', at: 11, d: 'Haltet das Tor der Hornburg so lange wie möglich.', price: 8000 },
+  { id: 'pfad', n: 'Pfad der Verzweiflung', ic: '☠', at: 13, d: '15 Kämpfe ohne Heilung, nach jedem Sieg ein Segen – die beste Beute im Spiel.', price: 12000 }
+];
