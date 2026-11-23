@@ -12,6 +12,15 @@ Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden 
 
 Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten). Unter **Optionen → Grafik** lässt sich zwischen *Auto*, *Hoch* (Figuren mit Szenenlicht, Kantenlicht und Bodenverdeckung) und *Normal* wählen; *Auto* schaltet bei zu niedriger Bildrate selbst herunter.
 
+## Neu in Version 14
+- **Duo-Ultimates:** 13 Heldenpaare aus der Lore (Legolas & Gimli, Frodo & Sam, Théoden & Éomer, Beren & Lúthien …) greifen nach einem Ultimate einmal pro Kampf gemeinsam an – mit goldenem Lichtbogen zwischen beiden
+- **Sagen-Bosse:** Ancalagon der Schwarze, Ungoliant und Draugluin – riesig, mit Verstärkung bei 66 % und 33 % LP, steigender Sagenstufe und mythischem Schatz beim ersten Sieg (Modi, Seite 3)
+- **Lebendige Reisekarte:** Nebel über unerforschten Gebieten, dein Banner markiert den aktuellen Ort, zwischen Kapiteln wandert die Gruppe sichtbar weiter
+- **Wetter und Tageszeit:** Regen, Gewitter mit Blitzen, Schneesturm, Ascheregen, Nebel, Abendrot und Nacht mit Fackellicht – passend zum Schauplatz
+- **Kinomomente ohne Text:** Smaugs Fall, Gandalf und der Balrog, Morgengrauen über Helms Klamm, der Untergang des Rings, die Fahrt zu den Grauen Anfurten
+- **Das Rote Buch der Westmark:** Sammelkarten für Helden, Gegner, Orte, Ringe, Banner und Schätze; volle Kapitel geben Dauerboni, besondere Karten leuchten golden
+- **Heldenruhm:** Titel von „Bekannt“ bis „Unsterblich im Lied“, sichtbar als Goldsaum, Umhangspange, goldene Funken und Lichtschein
+
 ## Neu in Version 13
 - **Mehr Herausforderung:** Elite-Gegner mit Eigenschaften (Gepanzert, Rasend, Morgul-Gift, Anführer, Schattenhaft, Uralt) – erkennbar an der Raute über der Lebensleiste
 - **Kapitel-Prüfungen** Heldenhaft und Legendär mit je drei Sternen (Sieg, kein Held gefallen, Zeit) und Sternen-Meilensteinen

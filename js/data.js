@@ -459,6 +459,7 @@ const ESK = {
   staff:   { n: 'Blitz aus Orthanc', anim: 'cast', fx: 'lightning', tgt: 'single', dmg: 1.5, stat: 'mag', w: 3, ranged: 1 },
   voice:   { n: 'Stimme Sarumans', anim: 'shout', fx: 'dark', tgt: 'all', dmg: .45, stat: 'mag', w: 1.5, cd: 3, st: [['atkDown', .6, 2], ['slow', .4, 2]] },
   summonUruk:{ n: 'Ruf nach Isengart', anim: 'shout', fx: 'dark', tgt: 'self', summon: 'uruk', w: 1.6, cd: 4 },
+  summonWolf: { n: 'Ruf des Rudels', anim: 'shout', fx: 'dark', tgt: 'self', summon: 'werwolf', w: 1.4, cd: 4 },
   summonSpider:{ n: 'Brut Kankras', anim: 'shout', fx: 'web', tgt: 'self', summon: 'spiderling', w: 1.4, cd: 4 },
   summonNaz:{ n: 'Ruf der Neun', anim: 'shout', fx: 'dark', tgt: 'self', summon: 'nazgul', w: 1.1, cd: 6 },
   summonOrc:{ n: 'Ruf der Uruks', anim: 'shout', fx: 'dark', tgt: 'self', summon: 'adar_orc', w: 1.4, cd: 4 },
@@ -561,6 +562,9 @@ const ENEMIES = {
   shagrat:    { n: 'Shagrat, Hauptmann des Turms', type: 'hum', look: { emblem: 'eye', body: 'uruk', skin: '#4a4a3a', hair: '#141210', hs: 'bald', tunic: '#262420', pants: '#1e1c18', armor: '#3a3a3a', cape: '#2a1a14', hat: 'spikehelm', hatC: '#3a3a3a', wc: '#8a8a80', glow: '#ff5a20' }, wpn: 'mace', hp: 580, atk: 24, def: 15, mag: 4, res: 10, spd: 11, sk: ['mace', 'heavy', 'warcry', 'summonOrc'], xp: 250, g: 140, tags: ['ork'], boss: 1 },
   mouth:      { n: 'Der Mund Saurons', type: 'hum', look: { body: 'man', skin: '#d8c8b8', hair: '#141414', hs: 'short', tunic: '#141418', robe: 1, cape: '#0e0e12', hat: 'spikehelm', hatC: '#2a2a2e', wc: '#4a3a5a', glow: '#ff3030', glowC: '#c060ff' }, wpn: 'staff', hp: 540, atk: 14, def: 12, mag: 24, res: 16, spd: 12, sk: ['staff', 'shriek', 'darkness', 'drain'], xp: 260, g: 150, tags: [], boss: 1 },
   ulfang:     { n: 'Ulfang der Schwarze', type: 'hum', look: { body: 'man', skin: '#9a6a4a', hair: '#0e0a08', hs: 'long', beard: 'long', bc: '#0e0a08', tunic: '#3a1a1a', pants: '#2a1414', armor: '#5a4a3a', cape: '#2a0e0e', hat: 'helm', hatC: '#4a3a2a', wc: '#b0b0a8' }, wpn: 'axe', hp: 600, atk: 25, def: 14, mag: 4, res: 10, spd: 12, sk: ['heavy', 'slash', 'warcry', 'darkMight'], xp: 270, g: 160, tags: [], boss: 1 },
+  ancalagon:  { n: 'Ancalagon der Schwarze', type: 'dragon', look: { skin: '#1c1a1e', belly: '#6a4a32', wing: '#120e12', eye: '#ff4a10', horn: '#9a8a7a', huge: 1 }, hp: 740, atk: 27, def: 20, mag: 29, res: 18, spd: 9, sk: ['firebreath', 'claw', 'tailswipe'], xp: 700, g: 450, tags: ['drache'], boss: 1 },
+  ungoliant:  { n: 'Ungoliant', type: 'spider', look: { body: '#0c0a0e', mark: '#3a2a52', eye: '#d0f0ff', size: 2 }, hp: 760, atk: 26, def: 18, mag: 27, res: 19, spd: 10, sk: ['sting', 'web', 'bite', 'summonSpider'], xp: 720, g: 460, tags: ['tier'], boss: 1 },
+  draugluin:  { n: 'Draugluin, Vater der Werwölfe', type: 'quad', look: { fur: '#2a2420', belly: '#4a3a30', eye: '#ff2a10', size: 1, mane: 1, huge: 1 }, hp: 700, atk: 28, def: 17, mag: 8, res: 15, spd: 12, sk: ['bite', 'bite', 'howl', 'summonWolf'], xp: 680, g: 440, tags: ['tier'], boss: 1 },
   nazgul_fell:{ n: 'Nazgûl auf Flugbestie', type: 'hum', look: { body: 'man', skin: '#0a0a0c', tunic: '#121216', robe: 1, cape: '#0e0e12', hat: 'spikehelm', hatC: '#3a3a42', wc: '#b8c0c8', glow: '#ff3030', noface: 1, mount: { kind: 'fell', look: { skin: '#2a2a2e', belly: '#4a4a50', wing: '#18181c', eye: '#ff3030', horn: '#5a5a60' } } }, wpn: 'mace', hp: 300, atk: 18, def: 9, mag: 18, res: 13, spd: 12, sk: ['morgul', 'shriek', 'mace'], xp: 90, g: 36, tags: ['geist'], elite: 1, fly: 1 }
 };
 
@@ -1091,7 +1095,7 @@ const BANNERS = [
 ];
 /* ---------- Freischaltplan: alles kommt Schritt für Schritt (at = Kapitelindex + Welle/10) ---------- */
 const UNLOCKS = [
-  { id: 'best', n: 'Bestiarium', ic: '☠', at: .2, d: 'Jeder besiegte Gegner wird mit Bild und Zähler festgehalten.' },
+  { id: 'best', n: 'Das Rote Buch', ic: '❧', at: .2, d: 'Sammle Karten von Helden, Gegnern, Orten, Ringen, Bannern und Schätzen. Volle Kapitel geben Dauerboni.' },
   { id: 'chest', n: 'Siegestruhe', ic: '⛁', at: .4, d: 'Jeder Sieg füllt die Truhe. Ist sie voll, wartet reiche Beute.' },
   { id: 'quests', n: 'Aufträge', ic: '✎', at: .7, d: 'Kleine Aufgaben nebenbei – alle vier erledigt gibt es einen Bonusfund.' },
   { id: 'comps', n: 'Begleiter', ic: '❀', at: 1, d: 'Treue Gefährten wie Myrte das Pony stärken die ganze Gruppe.' },
@@ -1114,5 +1118,44 @@ const UNLOCKS = [
   { id: 'raids', n: 'Prüfungen der Macht', ic: '⚔', at: 9, d: '45 Sekunden gegen Balrog, Smaug, den Hexenkönig und Sauron.', price: 6000 },
   { id: 'trialL', n: 'Kapitel-Prüfung: Legendär', ic: '✪', at: 10, d: 'Die härteste Stufe jeder Kapitel-Prüfung – hier fallen mythische Schätze.', price: 6000 },
   { id: 'helm', n: 'Helms Klamm', ic: '⚔', at: 11, d: 'Haltet das Tor der Hornburg so lange wie möglich.', price: 8000 },
+  { id: 'saga', n: 'Sagen-Bosse', ic: '☬', at: 22, d: 'Riesen aus den Liedern der Ersten Zeit: Ancalagon, Ungoliant und Draugluin.', price: 20000 },
   { id: 'pfad', n: 'Pfad der Verzweiflung', ic: '☠', at: 13, d: '15 Kämpfe ohne Heilung, nach jedem Sieg ein Segen – die beste Beute im Spiel.', price: 12000 }
+];
+
+/* ---------- Duo-Ultimates: Paare aus der Lore greifen gemeinsam an ---------- */
+const DUOS = [
+  { id: 'wettstreit', a: 'legolas', b: 'gimli', n: 'Wettstreit', d: 'Pfeile und Axt im Wechsel: 170 % Schaden an allen Feinden', dmg: 1.7, fx: 'slash', c: '#9fe07a' },
+  { id: 'bisende', a: 'frodo', b: 'sam', n: 'Bis zum Ende', d: 'Heilt die Gruppe um 25 % und gibt allen einen Schild', healAll: .25, shield: .18, c: '#ffe08a' },
+  { id: 'weisserreiter', a: 'gandalf', b: 'aragorn', n: 'Der Weiße Reiter und der König', d: '180 % Schaden an allen Feinden, Betäubung mit 30 %', dmg: 1.8, stun: .3, fx: 'light', c: '#fff4d0' },
+  { id: 'eorlingas', a: 'theoden', b: 'eomer', n: 'Der Ritt der Eorlingas', d: 'Reiterangriff: 190 % Schaden an allen Feinden', dmg: 1.9, charge: 1, fx: 'stone', c: '#e8c060' },
+  { id: 'buendnis', a: 'elrond', b: 'gilgalad', n: 'Das Letzte Bündnis', d: '170 % Magieschaden an allen, Gruppe +30 % Angriff', dmg: 1.7, stat: 'mag', buff: 'atkUp', fx: 'light', c: '#a8d4ff' },
+  { id: 'narren', a: 'merry', b: 'pippin', n: 'Narren des Tuk', d: '130 % Schaden an allen Feinden, alle werden markiert', dmg: 1.3, mark: 1, fx: 'slash', c: '#c8e080' },
+  { id: 'soehne', a: 'boromir', b: 'faramir', n: 'Söhne Denethors', d: '160 % Schaden an allen, Gruppe +50 % Verteidigung', dmg: 1.6, buff: 'defUp', fx: 'slash', c: '#d8d8e8' },
+  { id: 'lied', a: 'beren', b: 'luthien', n: 'Das Lied von Beren und Lúthien', d: 'Alle Feinde schlafen ein (Betäubung), 120 % Schaden', dmg: 1.2, stun: 1, stat: 'mag', fx: 'light', c: '#c8b0ff' },
+  { id: 'durinsvolk', a: 'thorin', b: 'balin', n: 'Durins Volk', d: '170 % Schaden an allen, Gruppe +50 % Verteidigung', dmg: 1.7, buff: 'defUp', fx: 'stone', c: '#e8b060' },
+  { id: 'elendil', a: 'elendil', b: 'isildur', n: 'Vater und Sohn', d: '220 % Schaden an allen, doppelt gegen Bosse', dmg: 2.2, boss: 2, fx: 'light', c: '#ffe8a0' },
+  { id: 'tirharad', a: 'arondir', b: 'bronwyn', n: 'Für Tirharad', d: '150 % Schaden an allen, heilt die Gruppe um 15 %', dmg: 1.5, healAll: .15, fx: 'slash', c: '#b8e0a0' },
+  { id: 'eregion', a: 'galadriel', b: 'celebrimbor', n: 'Licht von Eregion', d: '170 % Magieschaden an allen, Schild für die Gruppe', dmg: 1.7, stat: 'mag', shield: .15, fx: 'light', c: '#e8f4ff' },
+  { id: 'thal', a: 'bard', b: 'thranduil', n: 'Thal und der Waldlandkönig', d: '180 % Schaden an allen Feinden', dmg: 1.8, fx: 'slash', c: '#c8e8a0' }
+];
+function activeDuos(keys) { return DUOS.filter(d => keys.includes(d.a) && keys.includes(d.b)); }
+
+/* ---------- Wetter und Tageszeit je Schauplatz ---------- */
+const WEATHER = { shire: ['klar', 'klar', 'regen', 'abend'], weather: ['sturm', 'regen', 'nacht'], moria: ['innen'], khazad: ['innen'], rivendell: ['klar', 'abend', 'nebel'], lorien: ['klar', 'nacht'], amonhen: ['klar', 'regen', 'nebel'], helm: ['sturm', 'nacht', 'regen'], cirith: ['nacht', 'nebel'], pelennor: ['asche', 'abend', 'klar'], doom: ['asche'], snow: ['schnee', 'sturmschnee'], sea: ['klar', 'regen', 'abend'], south: ['klar', 'abend'], rhun: ['abend', 'klar'], mirkwood: ['nebel', 'nacht'], lake: ['klar', 'nebel', 'abend'], erebor: ['klar', 'asche', 'abend'], dolguldur: ['nebel', 'nacht'], eregion: ['klar', 'abend', 'regen'] };
+
+/* ---------- Heldenruhm: rein optisch, wächst mit jedem Sieg ---------- */
+const FAME = [[0, 'Unbekannt'], [25, 'Bekannt'], [100, 'Gefeiert'], [300, 'Gepriesen'], [800, 'Legendär'], [2000, 'Unsterblich im Lied']];
+
+/* ---------- Das Rote Buch der Westmark: Sammelkarten mit Kapitel-Boni ---------- */
+const BOOK = [
+  { id: 'heroes', n: 'Helden', ic: '♛', e: { hp: 3 }, d: '+3 % LP' }, { id: 'foes', n: 'Gegner', ic: '☠', e: { atk: 3 }, d: '+3 % Angriff' },
+  { id: 'places', n: 'Orte', ic: '⛰', e: { spd: 2 }, d: '+2 % Tempo' }, { id: 'rings', n: 'Ringe', ic: '◍', e: { crit: 3 }, d: '+3 % Krit' },
+  { id: 'banners', n: 'Banner', ic: '⚐', e: { def: 3 }, d: '+3 % Verteidigung' }, { id: 'treasures', n: 'Schätze', ic: '✦', e: { mag: 3 }, d: '+3 % Magie' }
+];
+
+/* ---------- Sagen-Bosse: riesige Endgegner mit Phasen ---------- */
+const SAGAS = [
+  { id: 'ancalagon', foe: 'ancalagon', sn: 'Ancalagon', bg: 'doom', after: 23, adds: ['balrog_minor'], lore: 'Der Größte aller Drachen, dessen Sturz die Türme von Thangorodrim zerbrach.' },
+  { id: 'ungoliant', foe: 'ungoliant', sn: 'Ungoliant', bg: 'dolguldur', after: 25, adds: ['spiderling', 'spiderling'], lore: 'Die Lichtfresserin, die die Zwei Bäume von Valinor vergiftete.' },
+  { id: 'draugluin', foe: 'draugluin', sn: 'Draugluin', bg: 'mirkwood', after: 24, adds: ['werwolf', 'werwolf'], lore: 'Vater der Werwölfe, Diener Saurons auf Tol-in-Gaurhoth.' }
 ];

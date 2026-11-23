@@ -208,6 +208,66 @@ function paintPano(cv, key) {
   tile(L.ground, L.HZ + yo, Math.max(60, cv.height / s - L.HZ - yo + 2));
 }
 function panoSplash(kicker, h1, h2, key, ms, extra = '') { const pr = splash(`<div class="ctitle pano"><canvas class="cpano"></canvas><div class="ct-text"><div class="kicker">${kicker}</div><h1>${h1}</h1><h2>${h2}</h2>${extra}</div></div>`, ms, 'chap panoS'); paintPano($('#splash .cpano'), key); return pr; }
+/* ---------- Kinomomente: gemalte, animierte Szenen ohne Text ---------- */
+const CINE_AT = { 3: 'smaug', 8: 'balrog', 10: 'helm', 13: 'doom', 14: 'havens' };
+function cinema(key) {
+  const pr = splash(`<div class="cine"><canvas class="cinecv"></canvas><div class="cine-bar t"></div><div class="cine-bar b"></div></div>`, 0, 'cineS'), cv = $('#splash .cinecv'), s0 = $('#splash'), close = s0.onclick;
+  const t0 = performance.now(), DUR = 5600; let done = false; setTimeout(() => { if (!done && s0.onclick === close) close && close(); }, DUR + 200); pr.then(() => { done = true; });
+  const dpr = Math.min(2, devicePixelRatio || 1); sfx('ult');
+  const frame = now => { if (done || !cv.isConnected) return; const w = cv.clientWidth * dpr, h = cv.clientHeight * dpr; if (cv.width !== Math.round(w)) { cv.width = Math.round(w); cv.height = Math.round(h); }
+    const c = cv.getContext('2d'), t = Math.min(1, (now - t0) / DUR), S = Math.min(cv.width / 160, cv.height / 90); c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = '#000'; c.fillRect(0, 0, cv.width, cv.height);
+    c.setTransform(S, 0, 0, S, (cv.width - 160 * S) / 2, (cv.height - 90 * S) / 2); c.save(); const z = 1 + t * .06; c.translate(80, 45); c.scale(z, z); c.translate(-80, -45);
+    CINE[key](c, t, now); c.restore();
+    const fade = Math.min(1, t * 8, (1 - t) * 8); c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = `rgba(0,0,0,${1 - fade})`; c.fillRect(0, 0, cv.width, cv.height); requestAnimationFrame(frame); };
+  requestAnimationFrame(frame); return pr;
+}
+const cSky = (c, cols) => { const g = c.createLinearGradient(0, 0, 0, 90); cols.forEach((col, i) => g.addColorStop(i / (cols.length - 1), col)); c.fillStyle = g; c.fillRect(-20, -20, 200, 130); };
+const cGlow = (c, x, y, r, col, a) => { const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, RIG.rgba(col, a)); g.addColorStop(1, RIG.rgba(col, 0)); c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2); };
+const cDragon = (c, x, y, sc, rot, flap, col) => { c.save(); c.translate(x, y); c.rotate(rot); c.scale(sc, sc); c.fillStyle = col; c.beginPath(); c.moveTo(-14, 0); c.quadraticCurveTo(-4, -3, 6, -1); c.lineTo(12, -3); c.lineTo(14, -1.5); c.lineTo(8, 1); c.quadraticCurveTo(0, 3, -10, 2); c.quadraticCurveTo(-20, 4, -26, 1); c.quadraticCurveTo(-18, 1.5, -14, 0); c.fill(); for (const s2 of [1, -.6]) { c.beginPath(); c.moveTo(-6, -1); c.lineTo(-2 - s2 * 2, -14 * s2 * flap - 2); c.lineTo(6, -8 * s2 * flap - 1); c.lineTo(2, -1); c.closePath(); c.fill(); } c.restore(); };
+const CINE = {
+  smaug(c, t, now) { cSky(c, ['#050812', '#141c34', '#3a2a3a']); for (let i = 0; i < 40; i++) { c.fillStyle = `rgba(255,255,255,${.3 + .3 * Math.sin(now / 500 + i)})`; c.fillRect((i * 37) % 160, (i * 13) % 40, .4, .4); }
+    c.fillStyle = '#0c1220'; c.fillRect(-20, 62, 200, 40); const fire = .6 + .4 * Math.sin(now / 120);
+    for (let i = 0; i < 9; i++) { const x = 20 + i * 14, hh = 6 + (i % 3) * 3; c.fillStyle = '#05070c'; c.fillRect(x, 62 - hh, 9, hh); c.beginPath(); c.moveTo(x - 1, 62 - hh); c.lineTo(x + 4.5, 57 - hh); c.lineTo(x + 10, 62 - hh); c.fill(); cGlow(c, x + 4.5, 60 - hh, 10, '#ff6a20', .35 * fire * (1 - Math.max(0, t - .7) * 2)); }
+    const fall = Math.max(0, (t - .5) / .5), dx = 150 - t * 90, dy = 22 + fall * fall * 46; cDragon(c, dx, dy, 1.6, fall * 1.1, Math.sin(now / 160) * (1 - fall), '#1a0806');
+    if (t < .55) cGlow(c, dx + 18, dy, 14 * (.5 + .5 * Math.sin(now / 90)), '#ff7a20', .5);
+    if (t > .38 && t < .56) { const k = (t - .38) / .12; c.strokeStyle = '#d8c8a0'; c.lineWidth = .8; c.beginPath(); c.moveTo(20 + k * (dx - 20 - 4), 70 - k * (70 - dy)); c.lineTo(20 + Math.max(0, k - .15) * (dx - 24), 70 - Math.max(0, k - .15) * (70 - dy)); c.stroke(); }
+    if (fall > .85) { const k = (fall - .85) / .15; cGlow(c, dx, 66, 40 * k, '#ffd0a0', .6 * (1 - k * .5)); c.fillStyle = `rgba(220,230,240,${.6 * (1 - k)})`; for (let i = 0; i < 20; i++) c.fillRect(dx + (i - 10) * 1.5, 64 - Math.sin(i) * 10 * k, .6, 2); }
+    c.fillStyle = 'rgba(255,140,60,.18)'; c.fillRect(-20, 62, 200, 1.2); },
+  balrog(c, t, now) { cSky(c, ['#020203', '#08060a', '#1a0a06']); cGlow(c, 120, 80, 70, '#ff4a10', .35);
+    const brk = Math.max(0, (t - .55) / .45); c.fillStyle = '#16120f'; c.fillRect(-20, 52, 92 - brk * 4, 3); if (brk < .3) c.fillRect(72, 52, 108, 3); else { c.save(); c.translate(100, 53 + (brk - .3) * 120); c.rotate((brk - .3) * .6); c.fillRect(-28, -1.5, 108, 3); c.restore(); }
+    c.fillStyle = '#0a0808'; c.fillRect(-20, 55, 60, 50); c.fillRect(140, 55, 60, 50);
+    const gx = 58, light = t > .4 ? 1 : t / .4; c.fillStyle = '#8a8a90'; c.beginPath(); c.moveTo(gx - 3, 52); c.lineTo(gx - 1.5, 38); c.lineTo(gx + 1.5, 38); c.lineTo(gx + 3, 52); c.fill(); c.beginPath(); c.arc(gx, 36.5, 1.8, 0, Math.PI * 2); c.fill(); c.strokeStyle = '#6a5a40'; c.lineWidth = .7; c.beginPath(); c.moveTo(gx + 3, 52); c.lineTo(gx + 4, 30); c.stroke(); cGlow(c, gx + 4, 30, 8 + light * 18 * (t > .45 && t < .55 ? 2 : 1), '#ffffff', .8 * light);
+    const by = 52 + (brk > .3 ? (brk - .3) * (brk - .3) * 200 : 0); c.save(); c.translate(102, by); c.fillStyle = '#0c0606'; c.beginPath(); c.moveTo(-8, 0); c.lineTo(-6, -22); c.lineTo(0, -28); c.lineTo(6, -22); c.lineTo(8, 0); c.fill(); for (const s2 of [-1, 1]) { c.beginPath(); c.moveTo(0, -20); c.quadraticCurveTo(s2 * 18, -34 - Math.sin(now / 300) * 3, s2 * 24, -18); c.quadraticCurveTo(s2 * 12, -18, 0, -14); c.fill(); } cGlow(c, 0, -26, 16, '#ff6a10', .7); for (let i = 0; i < 8; i++) { const k = ((now / 600) + i / 8) % 1; c.fillStyle = `rgba(255,${120 + i * 10},40,${1 - k})`; c.fillRect(-6 + i * 1.6, -26 - k * 14, .8, .8); } c.restore();
+    if (t > .6) { c.strokeStyle = 'rgba(255,120,40,.8)'; c.lineWidth = .6; c.beginPath(); c.moveTo(96, by - 10); c.quadraticCurveTo(80, 40, gx + 2, 50); c.stroke(); } },
+  helm(c, t, now) { const d = Math.min(1, t * 1.6); cSky(c, [`rgb(${20 + d * 200},${24 + d * 140},${40 + d * 60})`, `rgb(${30 + d * 225},${30 + d * 190},${50 + d * 90})`, '#2a2a30']);
+    const sunY = 70 - d * 40; cGlow(c, 40, sunY, 30 + d * 30, '#fff0c0', .9 * d); c.fillStyle = '#fff8e0'; c.beginPath(); c.arc(40, sunY, 5, 0, Math.PI * 2); c.fill();
+    c.globalCompositeOperation = 'lighter'; for (let i = 0; i < 9; i++) { const a = -1.3 + i * .32; c.fillStyle = `rgba(255,230,170,${.06 * d})`; c.beginPath(); c.moveTo(40, sunY); c.lineTo(40 + Math.cos(a) * 200, sunY + Math.sin(a + .1) * 200); c.lineTo(40 + Math.cos(a + .08) * 200, sunY + Math.sin(a + .18) * 200); c.fill(); } c.globalCompositeOperation = 'source-over';
+    c.fillStyle = '#1a1814'; c.beginPath(); c.moveTo(-20, 60); c.quadraticCurveTo(30, 30, 70, 52); c.quadraticCurveTo(110, 70, 180, 64); c.lineTo(180, 110); c.lineTo(-20, 110); c.fill();
+    for (let i = 0; i < 14; i++) { const k = Math.max(0, t - .35 - (i % 5) * .03), x = 34 + k * 140 + (i % 5) * 3 - Math.floor(i / 5) * 6, y = 38 + k * 32 + Math.floor(i / 5) * 4 + Math.abs(Math.sin(now / 110 + i)) * .8; if (t < .35 && i) continue; c.fillStyle = i ? '#141210' : '#f4f4ff'; c.beginPath(); c.ellipse(x, y, 3.2, 1.6, 0, 0, Math.PI * 2); c.fill(); c.fillRect(x + 2, y - 3, 1.2, 3); c.fillRect(x - 2, y, .8, 3); c.fillRect(x + 1.6, y, .8, 3); c.fillRect(x - .5, y - 4.5, 1.4, 3); if (!i) cGlow(c, x, y - 3, 10, '#ffffff', .8); } },
+  doom(c, t, now) { cSky(c, ['#1a0806', '#4a1408', '#8a2a10']); const er = Math.max(0, (t - .5) / .5);
+    c.fillStyle = '#0c0606'; c.beginPath(); c.moveTo(20, 90); c.lineTo(62, 34); c.lineTo(78, 34); c.lineTo(120, 90); c.fill(); cGlow(c, 70, 34, 14 + er * 60, '#ff6a10', .7 + er * .3);
+    c.save(); c.translate(138, 90); c.rotate(er * .5); c.fillStyle = '#060404'; c.beginPath(); c.moveTo(-6, 0); c.lineTo(-4, -60 + er * 20); c.lineTo(0, -66 + er * 20); c.lineTo(4, -60 + er * 20); c.lineTo(6, 0); c.fill(); if (er < .3) { cGlow(c, 0, -58, 6, '#ff4a10', .9); } c.restore();
+    if (t < .55) { const ry = 6 + (t / .55) * 28; cGlow(c, 70, ry, 6, '#ffd860', .8); c.strokeStyle = '#ffd860'; c.lineWidth = .9; c.beginPath(); c.ellipse(70, ry, 2, 1.2, now / 200, 0, Math.PI * 2); c.stroke(); }
+    if (er > 0) { for (let i = 0; i < 30; i++) { const a = -Math.PI / 2 + (i - 15) * .07, v = er * (40 + (i % 7) * 6); c.fillStyle = `rgba(255,${80 + (i % 5) * 30},20,${1 - er * .7})`; c.beginPath(); c.arc(70 + Math.cos(a) * v, 34 + Math.sin(a) * v + er * er * 30, 1.2, 0, Math.PI * 2); c.fill(); } c.fillStyle = `rgba(255,220,160,${Math.max(0, .5 - er)})`; c.fillRect(-20, -20, 200, 130); }
+    if (t > .72) for (let i = 0; i < 3; i++) { const k = (t - .72) / .28, x = -20 + k * 120 + i * 14, y = 18 + i * 6 + Math.sin(now / 300 + i) * 2; c.fillStyle = '#2a1a10'; c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x - 6, y - 4 - Math.sin(now / 150 + i) * 3, x - 12, y - 1); c.quadraticCurveTo(x - 6, y - 1, x, y + 1); c.quadraticCurveTo(x + 6, y - 1, x + 12, y - 1); c.quadraticCurveTo(x + 6, y - 4 - Math.sin(now / 150 + i) * 3, x, y); c.fill(); } },
+  havens(c, t, now) { cSky(c, ['#2a2a5a', '#d87a50', '#ffd8a0']); cGlow(c, 30, 56, 40, '#ffe0a0', .8); c.fillStyle = '#fff4d8'; c.beginPath(); c.arc(30, 56, 6, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#1a2a4a'; c.fillRect(-20, 58, 200, 40); c.fillStyle = 'rgba(255,220,160,.5)'; for (let i = 0; i < 18; i++) { const y = 60 + i * 1.6, w2 = 4 + i * 1.4 + Math.sin(now / 300 + i) * 1.5; c.fillRect(30 - w2 / 2, y, w2, .5); }
+    c.fillStyle = '#0c1424'; c.beginPath(); c.moveTo(130, 58); c.lineTo(180, 40); c.lineTo(180, 100); c.lineTo(120, 100); c.fill(); for (let i = 0; i < 3; i++) c.fillRect(140 + i * 10, 40 - i * 3, 3, 18 + i * 3);
+    const sx = 112 - t * 74, sc = 1 - t * .55, sy2 = 57; c.save(); c.translate(sx, sy2); c.scale(sc, sc); c.fillStyle = '#f4f0e8'; c.beginPath(); c.moveTo(-8, 0); c.quadraticCurveTo(0, 3, 9, 0); c.lineTo(7, -1.5); c.lineTo(-6, -1.5); c.closePath(); c.fill(); c.fillRect(-.3, -14, .6, 13); c.beginPath(); c.moveTo(.4, -13); c.quadraticCurveTo(6, -8, .4, -2); c.fill(); c.beginPath(); c.moveTo(-.4, -11); c.quadraticCurveTo(-4.5, -7, -.4, -3); c.fill(); c.beginPath(); c.moveTo(9, 0); c.quadraticCurveTo(11, -3, 10, -5); c.lineTo(9, -4.4); c.quadraticCurveTo(9.6, -2.6, 8, -.6); c.fill(); c.restore(); cGlow(c, sx, sy2 - 6 * sc, 12 * sc, '#ffffff', .4);
+    for (let i = 0; i < 24; i++) { c.fillStyle = `rgba(255,255,255,${Math.max(0, t - .5) * (.6 + .4 * Math.sin(now / 400 + i))})`; c.fillRect((i * 41) % 160, (i * 17) % 30, .5, .5); } }
+};
+function travelSplash(from, to) {
+  const A = STORY[from], B = STORY[to]; if (!A || !B || !A.map || !B.map) return Promise.resolve();
+  const part = PARTS.indexOf(B.part), same = A.part === B.part, pr = splash(`<div class="travel"><canvas class="trmap"></canvas></div>`, 2600, 'chap trS');
+  const cv = $('#splash .trmap'), t0 = performance.now(), from2 = same ? A.map : B.map;
+  const step = now => { if ($('#splash').hidden || !cv.isConnected) return; const k = Math.min(1, (now - t0) / 2000), e2 = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2, mx = (from2[0] + B.map[0]) / 2, my = Math.min(from2[1], B.map[1]) - 6, u = 1 - e2;
+    const pos = [u * u * from2[0] + 2 * u * e2 * mx + e2 * e2 * B.map[0], u * u * from2[1] + 2 * u * e2 * my + e2 * e2 * B.map[1]];
+    drawMap(cv, part, to, { pos }); const c = cv.getContext('2d'), sx = cv.width / 100, sy = cv.height / 75, r = Math.min(sx, sy);
+    c.save(); c.strokeStyle = 'rgba(160,40,20,.85)'; c.lineWidth = r * .7; c.setLineDash([r * 1.2, r * .8]); c.beginPath(); for (let i = 0; i <= 20; i++) { const t = e2 * i / 20, v = 1 - t; const px = v * v * from2[0] + 2 * v * t * mx + t * t * B.map[0], py = v * v * from2[1] + 2 * v * t * my + t * t * B.map[1]; i ? c.lineTo(px * sx, py * sy) : c.moveTo(px * sx, py * sy); } c.stroke(); c.restore();
+    requestAnimationFrame(step); };
+  requestAnimationFrame(() => requestAnimationFrame(step));
+  return pr;
+}
 function chapterNews(i) { if (G.story.loop) return []; return [...UNLOCKS.filter(U => U.at >= i && U.at < i + 1).map(U => U.n), ...RINGS.filter(R => R.from === i && i > 0).map(R => R.n.split(',')[0] + '-Fragmente')]; }
 function chapterTitle(ch) { const nw = chapterNews(G.story.ch); return panoSplash(esc(ch.part), `Kapitel ${G.story.ch + 1}`, esc(ch.n), chBg(ch, 0), nw.length ? 3300 : 2800, nw.length ? `<div class="ct-new">✦ Neu in diesem Kapitel: ${nw.map(esc).join(' · ')}</div>` : ''); }
 function kitLines(k) { const H = HEROES[k]; return `<li><b class="k-ult">Ultimate</b> ${esc(H.ult.n)}</li><li><b class="k-act">Aktiv</b> ${esc(H.act.n)}</li><li><b class="k-act2">Aktiv II</b> ${esc(H.act2.n)}</li>`; }
@@ -231,6 +291,7 @@ function onResult(r, kind) {
   const party = G.party.slice();
   if (r.win) {
     G.stats.wins++; addChest(kind === 'boss' ? 3 : 1);
+    for (const k of party) if (G.heroes[k]) { const before = fameRank(k); G.heroes[k].fame = (G.heroes[k].fame || 0) + (kind === 'boss' ? 3 : 1); const after = fameRank(k); if (after > before) { W.pendingParty = 1; toast(`✦ ${esc(HEROES[k].n)} ist jetzt <b>${FAME[after][1]}</b>`, 'lvl'); } }
     const rw = battleReward(kind, r.enemies.filter(e => e.xp));
     if (kind === 'boss' && r.setCh !== undefined) { const S2 = chapterSet(r.setCh); if (S2 && Math.random() < .6) rw.items.push(genSetItem(S2, r.enemies.reduce((a, e) => Math.max(a, e.lvl), 1))); }
     const lvBefore = Object.fromEntries(owned().map(k => [k, G.heroes[k].lvl]));
@@ -413,7 +474,7 @@ async function director() {
     await announceUnlocks();
     const ch = STORY[G.story.ch]; W.setBg(chBg(ch, G.story.wave));
     if (!G.story.intro) {
-      await W.wait(400); await chapterTitle(ch);
+      await W.wait(400); if (G.story.ch > 0) await travelSplash(G.story.ch - 1, G.story.ch); await chapterTitle(ch);
       if (ch.back) for (const k of ch.back) { delete G.away[k]; const hs = G.heroes[k]; if (hs) { hs.stage = Math.max(hs.stage, 2); hs.lvl = Math.max(hs.lvl, ...G.party.map(x => G.heroes[x].lvl)); } }
       await dialog(ch.intro);
       for (const k of ch.join || []) { joinHero(k); applyParty(); await joinSplash(k); }
@@ -453,6 +514,7 @@ async function director() {
       for (const k of ch.away || []) { G.away[k] = 1; toast(`${esc(HEROES[k].n)} hat die Gruppe verlassen …`, 'unlock'); }
       const relic = G.story.loop === 0 ? grantRelic(G.story.ch) : null;
       if (relic) { W.pendingParty = 1; await splash(`<div class="cdone relic"><div class="kicker">Relikt gefunden</div><canvas class="ric" data-ic="${relic.ic}" data-c="${relic.c}"></canvas><h1>${esc(relic.n)}</h1><p>Dauerhafter Gruppenbonus: <b>${esc(relic.d)}</b></p><div class="dhint">Tippen zum Fortfahren</div></div>`, 0, 'doneS'); }
+      if (G.story.loop === 0 && CINE_AT[G.story.ch]) await cinema(CINE_AT[G.story.ch]);
       const cp = chapterCompanion(G.story.ch); if (cp && !G.comps[cp.id]) { grantCompanion(cp.id); W.pendingParty = 1; await companionSplash(cp); }
       const bn = G.story.loop === 0 && BANNERS.find(b => b.ch === G.story.ch); if (bn && !(G.banners || {})[bn.id]) { G.banners = G.banners || {}; G.banners[bn.id] = 1; if (!G.banner) G.banner = bn.id; W.pendingParty = 1; save(); sfx('join'); await splash(`<div class="cdone"><div class="kicker">Neues Banner</div><canvas class="bnrbig" data-flag="${bn.id}"></canvas><h1>${esc(bn.n)}</h1><p>Aufgestellt stärkt es die ganze Gruppe: <b>${esc(bn.d)}</b></p><div class="dhint">Tippen zum Fortfahren</div></div>`, 0, 'doneS'); }
       G.stats.chapters = Math.max(G.stats.chapters, G.story.ch + 1 + G.story.loop * STORY.length);
@@ -468,7 +530,7 @@ async function director() {
 /* ---------- Menüs (Glas-Panel) ---------- */
 /* ================= Menüs: ein Bildschirm, Tabs statt Scrollen, Blättern statt Listen ================= */
 let running = null;
-const RUNS = { boss: ['Bosskampf', q => bossRematch(q.ch)], side: ['Nebenquest', q => sideRun(q.id)], raid: ['Prüfung der Macht', q => raidRun(q.key)], mode: ['Spezialmodus', q => modeRun(q.id)], trial: ['Kapitel-Prüfung', q => trialRun(q.ch, q.t)], hunt: ['Kopfgeldjagd', q => huntRun(q.id)] };
+const RUNS = { boss: ['Bosskampf', q => bossRematch(q.ch)], side: ['Nebenquest', q => sideRun(q.id)], raid: ['Prüfung der Macht', q => raidRun(q.key)], mode: ['Spezialmodus', q => modeRun(q.id)], trial: ['Kapitel-Prüfung', q => trialRun(q.ch, q.t)], hunt: ['Kopfgeldjagd', q => huntRun(q.id)], saga: ['Sagen-Boss', q => sagaRun(q.id)] };
 /* Sofort spielen: laufenden Kampf abbrechen (ohne Strafe) und direkt starten */
 function playNow(q, label) {
   if (running) { toast(`Gerade läuft: ${esc(running)}`, 'mini'); return; }
@@ -529,6 +591,7 @@ function sumEff(list) { const o = {}; for (const e of list) for (const [k, v] of
 function boonList() {
   const out = [], cp = COMPANIONS.find(c => c.id === G.companion && G.comps[c.id]);
   if (cp) out.push({ id: 'comp', ic: '❀', c: '#9fd08a', n: 'Begleiter: ' + cp.n, d: cp.d });
+  for (const d of activeDuos(G.party)) out.push({ id: 'duo', ic: '⚯', c: d.c, n: `Duo: ${d.n}`, d: `${HEROES[d.a].n} & ${HEROES[d.b].n} – ${d.d} (nach einem Ultimate, einmal pro Kampf)` });
   const BN = isUnl('banner') && G.banner && BANNERS.find(b => b.id === G.banner); if (BN) out.push({ id: 'banner', ic: '⚐', c: BN.emCol === '#141010' ? '#e8c860' : BN.emCol, bg: BN.cloth, n: BN.n, d: BN.d });
   for (const f of activeFactions(G.party).filter(f => f.tier >= 0)) out.push({ id: 'bond', ic: f.F.ic, c: f.F.c, n: `Bündnis: ${f.F.n} (${f.n})`, d: f.F.t[f.tier][2] });
   const rl = Object.keys(G.relics || {}).filter(i => RELICS[i]); if (rl.length) out.push({ id: 'relic', ic: '◆', c: '#e8bd5c', n: `${rl.length} Relikte`, d: effTxt(sumEff(rl.map(i => RELICS[i].e))), cnt: rl.length });
@@ -546,6 +609,7 @@ function renderBoons() {
   const chips = BOON_SLOTS.map(([id, u, ic, n]) => { const act = L.filter(b => b.id === id); if (!isUnl(u)) return { st: 'lk', ic, lbl: n, u, c: '#8a8a8a' }; if (!act.length) return { st: 'off', ic, lbl: n, c: '#9a9480' };
     const a = act[0], cnt = id === 'bond' ? act.length : a.cnt || 0; const lbl = id === 'comp' ? a.n.replace('Begleiter: ', '').split(' ')[0] : id === 'banner' ? a.n.replace(/^Banner (von |der )?/, '') : id === 'bond' ? (act.length > 1 ? act.length + ' Bündnisse' : a.n.replace(/^Bündnis: /, '').replace(/ \(\d+\)$/, '')) : n;
     return { st: 'on', ic: a.ic, lbl, c: a.c, bg: a.bg, cnt }; });
+  { const du = L.filter(b => b.id === 'duo'); if (du.length) chips.splice(1, 0, { st: 'on', ic: '⚯', lbl: du.length > 1 ? du.length + ' Duos' : 'Duo', c: du[0].c, cnt: du.length }); }
   for (const b of L) if (b.id === 'pfad' || b.id === 'mods') chips.push({ st: 'on', ic: b.ic, lbl: b.id === 'pfad' ? 'Segen' : 'Erschwernis', c: b.c, cnt: b.cnt || 0 });
   const sig = JSON.stringify(chips); if (renderBoons.sig === sig) return; renderBoons.sig = sig;
   const html = chips.map(b => `<button class="bo ${b.st}" ${b.st === 'lk' ? `data-lock="${b.u}"` : ''} style="--bc:${b.c};${b.bg ? `--bb:${b.bg}` : ''}" title="${esc(b.lbl)}"><span>${b.ic}</span>${b.cnt > 1 ? `<i>${b.cnt}</i>` : ''}<em class="bo-l">${esc(b.lbl)}</em></button>`).join('');
@@ -561,10 +625,10 @@ function showBoons(src) {
 }
 /* ---------- Freischaltungen: grau, Hinweis, NEU-Markierung, Ankündigung ---------- */
 const TAB_UNL = { modi: 'horde', jagd: 'hunt', chronik: 'chronik', best: 'best', reittiere: 'mounts', begleiter: 'comps', banner: 'banner', buende: 'bonds', feat: 'feats', rel: 'relics', sets: 'sets' };
-const TAB_CLEAR = { story: ['trialH', 'trialL', 'side'], modi: ['horde', 'rush', 'chaos', 'tower', 'raids', 'helm', 'pfad'], jagd: ['hunt'], chronik: ['chronik'], best: ['best'], reittiere: ['mounts'], begleiter: ['comps'], banner: ['banner'], buende: ['bonds'], sets: ['sets'], feat: ['feats'], rel: ['relics'], ach: ['ach'] };
-const NAV_NEW = { nHeroes: ['comps', 'bonds', 'banner', 'mounts'], nBag: ['sets'], nStory: ['hunt', 'trialH', 'trialL', 'horde', 'rush', 'chaos', 'tower', 'raids', 'helm', 'pfad', 'side', 'best', 'chronik'], nQuest: ['quests'], nForge: ['forge'], nAch: ['ach', 'relics', 'feats'], chest: ['chest'] };
+const TAB_CLEAR = { story: ['trialH', 'trialL', 'side'], modi: ['horde', 'rush', 'chaos', 'tower', 'raids', 'helm', 'pfad', 'saga'], jagd: ['hunt'], chronik: ['chronik'], best: ['best'], reittiere: ['mounts'], begleiter: ['comps'], banner: ['banner'], buende: ['bonds'], sets: ['sets'], feat: ['feats'], rel: ['relics'], ach: ['ach'] };
+const NAV_NEW = { nHeroes: ['comps', 'bonds', 'banner', 'mounts'], nBag: ['sets'], nStory: ['hunt', 'trialH', 'trialL', 'horde', 'rush', 'chaos', 'tower', 'raids', 'helm', 'pfad', 'saga', 'side', 'best', 'chronik'], nQuest: ['quests'], nForge: ['forge'], nAch: ['ach', 'relics', 'feats'], chest: ['chest'] };
 const NAV_LOCK = { nQuest: 'quests', nForge: 'forge', nAch: 'ach', chest: 'chest' };
-const UNL_GO = { best: () => openStory('best'), chest: () => openChest(), quests: () => openQuests(), comps: () => openHeroes('begleiter'), relics: () => openRelics(), chronik: () => openStory('chronik'), ach: () => openAch(), bonds: () => openHeroes('buende'), forge: () => openForge(0), hunt: () => openStory('jagd'), trialH: () => openStory('story', undefined, Math.max(0, G.story.ch - 1)), trialL: () => openStory('story', undefined, Math.max(0, G.story.ch - 1)), horde: () => openModes(0), rush: () => openModes(0), chaos: () => openModes(0), tower: () => openModes(0), helm: () => openModes(0), pfad: () => openModes(0), raids: () => openModes(1), feats: () => openFeats(), banner: () => openHeroes('banner'), sets: () => openSets(0), side: () => openStory('story'), mounts: () => openHeroes('reittiere') };
+const UNL_GO = { best: () => openStory('best'), chest: () => openChest(), quests: () => openQuests(), comps: () => openHeroes('begleiter'), relics: () => openRelics(), chronik: () => openStory('chronik'), ach: () => openAch(), bonds: () => openHeroes('buende'), forge: () => openForge(0), hunt: () => openStory('jagd'), trialH: () => openStory('story', undefined, Math.max(0, G.story.ch - 1)), trialL: () => openStory('story', undefined, Math.max(0, G.story.ch - 1)), horde: () => openModes(0), rush: () => openModes(0), chaos: () => openModes(0), tower: () => openModes(0), helm: () => openModes(0), pfad: () => openModes(0), raids: () => openModes(1), saga: () => openModes(2), feats: () => openFeats(), banner: () => openHeroes('banner'), sets: () => openSets(0), side: () => openStory('story'), mounts: () => openHeroes('reittiere') };
 function lockHint(id) { const U = UNLOCKS.find(u => u.id === id); if (!U) return; sfx('click'); toast(`🔒 <b>${esc(U.n)}</b> wird freigeschaltet ab ${unlWhen(id)}.`, 'unlock'); }
 function gate(id) { if (!isUnl(id)) { lockHint(id); return false; } if (G.unlNew && G.unlNew[id]) { delete G.unlNew[id]; save(); setTimeout(updateHud, 0); } return true; }
 function applyLocks() {
@@ -706,6 +770,7 @@ function openHero(k, tab = openHero.tab || 'werte') {
   let right = '';
   if (tab === 'werte') right = `
     <div class="hi-top"><span class="role r-${C.role}">${ROLES[C.role].n}</span><span class="muted">${esc(C.n)} · ${esc(C.sub)}</span></div>
+    ${(() => { const fr = fameRank(k), f = G.heroes[k].fame || 0, nx = FAME[fr + 1]; return `<div class="m-fame"><b>✦ ${FAME[fr][1]}</b><span>Ruhm ${fmt(f)}${nx ? ' / ' + fmt(nx[0]) : ''}</span><div class="bar"><i style="width:${nx ? Math.min(100, (f - FAME[fr][0]) / (nx[0] - FAME[fr][0]) * 100) : 100}%"></i></div></div>`; })()}
     <div class="m-pow"><div class="power">⚡ ${fmt(st.power)}<small>Kampfkraft</small></div><div class="lvl"><span>Gruppenstufe ${G.team.lvl}</span><div class="bar"><i style="width:${G.team.xp / xpNeed(G.team.lvl) * 100}%"></i></div></div></div>
     <div class="stats">${[['Leben', st.hp], [magic ? 'Magie' : 'Angriff', magic ? st.mag : st.atk], ['Verteid.', st.def], ['Tempo', st.spd], ['Krit', st.crit + ' %']].map(([n, v]) => `<div><small>${n}</small><b>${typeof v === 'number' ? fmt(v) : v}</b></div>`).join('')}</div>
     ${(() => { const rg = ringOf(k); return `<div class="m-mount m-hring ${rg ? '' : 'lk'}" style="--rc:${rg ? rg.R.c : '#888'}">${rg ? `<canvas data-ring="${rg.R.id}"></canvas>` : '<div class="ic empty"></div>'}<div><b>◍ ${rg ? esc(rg.R.n) + ' ' + '★'.repeat(rg.stars) : 'Kein Ring'}</b><small>${rg ? ringEff(rg.R, rg.stars) : 'Schmiede Ringe aus Fragmenten'}</small></div><button class="btn small ${rg ? '' : 'gold'}" id="toForge">Schmiede</button></div>`; })()}
@@ -822,10 +887,21 @@ function mapBase(w, h) {
   for (let i = 0; i < 70; i++) { const side = i % 4, t = R(), x = side === 0 ? t * w : side === 1 ? w : side === 2 ? t * w : 0, y = side === 0 ? 0 : side === 1 ? t * h : side === 2 ? h : t * h, rr = (1.5 + R() * 3.5) * r; g = c.createRadialGradient(x, y, 0, x, y, rr); g.addColorStop(0, 'rgba(40,22,8,.55)'); g.addColorStop(1, 'rgba(40,22,8,0)'); c.fillStyle = g; c.fillRect(x - rr, y - rr, rr * 2, rr * 2); }
   mapBase.k = key; mapBase.cv = cv; return cv;
 }
-function drawMap(cv, part, sel) {
-  const dpr = Math.min(2, devicePixelRatio || 1), W0 = cv.clientWidth, H0 = cv.clientHeight; cv.width = W0 * dpr; cv.height = H0 * dpr;
+function mapFog(w, h) {
+  const fc = document.createElement('canvas'); fc.width = w; fc.height = h; const f = fc.getContext('2d'), sx = w / 100, sy = h / 75, r = Math.min(sx, sy);
+  f.fillStyle = 'rgba(52,44,34,.6)'; f.fillRect(0, 0, w, h); let sd = 3; const R = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 40; i++) { const x = R() * w, y = R() * h, rr = (6 + R() * 12) * r, g = f.createRadialGradient(x, y, 0, x, y, rr); g.addColorStop(0, 'rgba(230,220,200,.12)'); g.addColorStop(1, 'rgba(230,220,200,0)'); f.fillStyle = g; f.fillRect(x - rr, y - rr, rr * 2, rr * 2); }
+  f.globalCompositeOperation = 'destination-out';
+  const hole = (p, rr) => { const x = p[0] * sx, y = p[1] * sy, g = f.createRadialGradient(x, y, rr * .35, x, y, rr); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); f.fillStyle = g; f.fillRect(x - rr, y - rr, rr * 2, rr * 2); };
+  STORY.forEach((C, i) => { const st = chapterStatus(i); if (st !== 'locked') hole(C.map, r * (st === 'cur' ? 13 : 15)); });
+  SIDE.forEach(sd => { if (G.side[sd.id] || sideUnlocked(sd)) hole(sd.map, r * 8); });
+  return fc;
+}
+function drawMap(cv, part, sel, travel) {
+  const dpr = Math.min(2, devicePixelRatio || 1), W0 = cv.clientWidth, H0 = cv.clientHeight; if (cv.width !== Math.round(W0 * dpr) || cv.height !== Math.round(H0 * dpr)) { cv.width = Math.round(W0 * dpr); cv.height = Math.round(H0 * dpr); }
   const c = cv.getContext('2d'), sx = cv.width / 100, sy = cv.height / 75, X = x => x * sx, Y = y => y * sy, r = Math.min(sx, sy);
   c.drawImage(mapBase(cv.width, cv.height), 0, 0);
+  if (!G.story.loop) { const fk = cv.width + 'x' + cv.height + ':' + G.story.ch + ':' + Object.keys(G.side || {}).length; if (drawMap.fk !== fk) { drawMap.fk = fk; drawMap.fog = mapFog(cv.width, cv.height); } c.drawImage(drawMap.fog, 0, 0); }
   const idx = STORY.map((ch, i) => i).filter(i => STORY[i].part === PARTS[part]), col = PART_COL[part];
   c.setLineDash([r * 1.4, r * .9]); c.lineWidth = r * .55; c.strokeStyle = col; c.beginPath();
   idx.forEach((i, j) => { const p = STORY[i].map; j ? c.lineTo(X(p[0]), Y(p[1])) : c.moveTo(X(p[0]), Y(p[1])); }); c.stroke(); c.setLineDash([]);
@@ -847,6 +923,10 @@ function drawMap(cv, part, sel) {
     c.fillStyle = 'rgba(255,248,230,.85)'; c.fillRect(lx - tw / 2 - r * .6, ly - r * 1.4, tw + r * 1.2, r * 2.8); c.fillStyle = '#2a1a0a'; c.fillText(lbl, lx, ly);
     cv._hits.push({ i, x: x / dpr, y: y / dpr, r: Math.max(22, R / dpr + 8) });
   });
+  { const cur = STORY[G.story.ch], here = travel ? travel.pos : cur && cur.part === PARTS[part] ? cur.map : null;
+    if (here) { const x = X(here[0]), y = Y(here[1]), BN = G.banner && BANNERS.find(b => b.id === G.banner), k = r * .2, t = performance.now();
+      c.save(); c.globalAlpha = .35 + .25 * Math.sin(t / 300); c.strokeStyle = '#fff2c0'; c.lineWidth = r * .5; c.beginPath(); c.arc(x, y, r * (4.4 + Math.sin(t / 300)), 0, Math.PI * 2); c.stroke(); c.restore();
+      c.save(); c.translate(x + r * 2.2, y - r * .6); c.scale(k, k); RIG.flag(c, { em: BN ? BN.em : 'star', cloth: BN ? BN.cloth : '#8a1e1a', emCol: BN ? BN.emCol : '#f0d070', t, w: 11, h: 15, pole: 30 }); c.restore(); } }
 }
 function chapterCard(i) {
   const C = STORY[i], st = chapterStatus(i), joins = [...(C.join || []), ...Object.values(C.mid || {}).flat(), ...(C.end || [])].filter((k, j, a) => a.indexOf(k) === j);
@@ -891,7 +971,7 @@ function openStory(tab = openStory.tab || 'story', part, sel) {
     s.querySelectorAll('[data-part]').forEach(b => b.onclick = () => { sfx('click'); openStory('story', +b.dataset.part); });
   }, { tabs: STORY_TABS, tab, onTab: t => openStory(t) });
 }
-const STORY_TABS = [['story', 'Geschichte'], ['modi', 'Modi'], ['jagd', 'Jagd'], ['chronik', 'Chronik'], ['best', 'Bestiarium']];
+const STORY_TABS = [['story', 'Geschichte'], ['modi', 'Modi'], ['jagd', 'Jagd'], ['chronik', 'Chronik'], ['best', 'Rotes Buch']];
 const ACH_TABS = [['ach', 'Erfolge'], ['feat', 'Heldentaten'], ['rel', 'Relikte']];
 const achTab = t => t === 'rel' ? openRelics() : t === 'feat' ? openFeats() : openAch();
 function speaker(id) { if (id === 'narr') return ''; if (id.startsWith('e:')) return ENEMIES[id.slice(2)]?.n || ''; return HEROES[id]?.n || id; }
@@ -900,30 +980,43 @@ function openChronik(page = openChronik.page) {
   const max = G.story.loop ? STORY.length - 1 : G.story.ch, np = max + 1; page = openChronik.page = clampPg(page ?? max, np);
   const C = STORY[page], done = chapterStatus(page) === 'done', boss = C.boss.find(k => ENEMIES[k].boss) || C.boss[0];
   const lines = [...(C.intro || []), ...(done ? (C.outro || []) : [])].filter(l => l && l[1]).slice(0, 9);
-  openSheet('Reise', `<div class="m-chron"><div class="cc-art"><canvas data-card="${boss}" data-enemy="1" data-bust="1"></canvas></div><div class="m-book"><small>${esc(C.part)} · Kapitel ${page + 1}</small><h3>${esc(C.n)}</h3><div class="m-lines">${lines.map(([who, t]) => `<p>${speaker(who) ? `<b>${esc(speaker(who))}:</b> ` : ''}${esc(t)}</p>`).join('')}</div>${done ? '<span class="m-seal">✓ Kapitel abgeschlossen</span>' : '<span class="m-seal cur">▶ Die Geschichte geht weiter …</span>'}</div></div>`, null,
+  openSheet('Reise', `<div class="m-chron"><div class="cc-art"><canvas data-card="${boss}" data-enemy="1" data-bust="1"></canvas></div><div class="m-rbook"><small>${esc(C.part)} · Kapitel ${page + 1}</small><h3>${esc(C.n)}</h3><div class="m-lines">${lines.map(([who, t]) => `<p>${speaker(who) ? `<b>${esc(speaker(who))}:</b> ` : ''}${esc(t)}</p>`).join('')}</div>${done ? '<span class="m-seal">✓ Kapitel abgeschlossen</span>' : '<span class="m-seal cur">▶ Die Geschichte geht weiter …</span>'}</div></div>`, null,
     { tabs: STORY_TABS, tab: 'chronik', onTab: t => openStory(t), pages: np, page, onPage: p => openChronik(p) });
 }
+function openBook(cat = openBook.cat || 'heroes', page = 0) {
+  if (!gate('best')) return; openBook.cat = cat;
+  const L = bookCards(cat), per = innerHeight > innerWidth ? 9 : 12, np = pages(L.length, per); page = clampPg(page, np); const B = BOOK.find(b => b.id === cat), got = L.filter(c => c.seen).length;
+  const card = c => { const art = cat === 'heroes' ? `<canvas data-card="${c.k}" data-bust="1" class="${c.seen ? '' : 'sil'}"></canvas>` : cat === 'foes' ? `<canvas data-card="${c.k}" data-enemy="1" data-bust="1" class="${c.seen ? '' : 'sil'}"></canvas>` : cat === 'places' ? `<canvas class="bk-pl ${c.seen ? '' : 'sil'}" data-place="${c.k}"></canvas>` : cat === 'rings' ? `<canvas data-ring="${c.k}" class="${c.seen ? '' : 'sil'}"></canvas>` : cat === 'banners' ? `<canvas data-flag="${c.k}" class="${c.seen ? '' : 'sil'}"></canvas>` : `<div class="bk-ic ${c.seen ? '' : 'sil'}">${icHtml({ r: c.r, icon: c.icon })}</div>`;
+    return `<div class="bk-c ${c.seen ? '' : 'lk'} ${c.gold ? 'gold' : ''}">${art}<b>${c.seen ? esc(c.n) : '???'}</b>${cat === 'foes' && c.seen ? `<small>${fmt(c.cnt)}× besiegt</small>` : ''}</div>`; };
+  openSheet('Reise', `<div class="m-rbook"><div class="bk-cats">${BOOK.map(b => { const l2 = bookCards(b.id), g2 = l2.filter(c => c.seen).length; return `<button class="bk-cat ${b.id === cat ? 'on' : ''} ${g2 === l2.length ? 'done' : ''}" data-cat="${b.id}"><span>${b.ic}</span>${b.n}<i>${g2}/${l2.length}</i></button>`; }).join('')}</div>
+    <div class="bk-info">${got === L.length ? '✓ ' : ''}${B.n} vollständig: <b>${B.d}</b> für alle Helden · ${got}/${L.length}</div><div class="bk-grid ${per === 9 ? 'p' : ''}">${L.slice(page * per, page * per + per).map(card).join('')}</div></div>`, s => {
+    s.querySelectorAll('[data-cat]').forEach(b => b.onclick = () => { sfx('click'); openBook(b.dataset.cat, 0); });
+    paintFlags(s); if (typeof paintRings === 'function') paintRings(s);
+    requestAnimationFrame(() => s.querySelectorAll('canvas[data-place]').forEach(cv => paintPano(cv, cv.dataset.place)));
+  }, { tabs: STORY_TABS, tab: 'best', onTab: t => openStory(t), pages: np, page, onPage: p => openBook(cat, p) });
+}
 function openBestiary(page = openBestiary.page) {
-  if (!gate('best')) return;
+  if (!gate('best')) return; return openBook();
   const keys = Object.keys(ENEMIES), seen = keys.filter(k => (G.bestiary || {})[k]).length, per = 16, np = pages(keys.length, per); page = openBestiary.page = clampPg(page, np);
   openSheet('Reise', `<div class="m-best">${keys.slice(page * per, page * per + per).map(k => { const n = (G.bestiary || {})[k] || 0, E = ENEMIES[k]; return `<div class="m-be ${n ? '' : 'lk'} ${E.boss ? 'boss' : ''}"><canvas data-card="${k}" data-enemy="1" data-bust="1" class="${n ? '' : 'sil'}"></canvas><b>${n ? esc(E.n) : '???'}</b><small>${n ? `${E.boss ? 'Boss · ' : ''}${fmt(n)}× besiegt` : 'Noch nicht begegnet'}</small></div>`; }).join('')}</div>`, null,
     { tabs: STORY_TABS, tab: 'best', onTab: t => openStory(t), pages: np, page, onPage: p => openBestiary(p), extra: `<span class="muted small">${seen}/${keys.length}</span>` });
 }
 function openModes(page = openModes.page || 0) {
   if (!isUnl('horde') && !isUnl('tower')) return lockHint('horde');
-  const f = towerFloor(), tr = towerReward(f); page = openModes.page = clampPg(page, 2);
+  const f = towerFloor(), tr = towerReward(f); page = openModes.page = clampPg(page, 3);
   const lockTile = (cls, art, n, id) => `<div class="m-tile ${cls} lk">${art}<b>${esc(n)}</b><small>🔒 Ab ${unlWhen(id)}<br><em>${esc(UNLOCKS.find(u => u.id === id).d.split('.')[0])}.</em></small>${UNLOCKS.find(u => u.id === id).price ? `<button class="btn small" data-unl="${id}">🔓 Früher ◆${fmt(UNLOCKS.find(u => u.id === id).price)}</button>` : ''}</div>`;
   const tile = (cls, art, n, sub, data, label, dis) => `<div class="m-tile ${cls}">${art}<b>${n}</b><small>${sub}</small><button class="btn small gold" ${data} ${dis ? 'disabled' : ''}>${label}</button></div>`;
   const tiles = page === 0 ? [
     ...MODES.map(M => isUnl(M.id) ? tile('mode ' + M.id, `<span class="m-ic">${M.ic}</span>`, esc(M.n), `${esc(M.d.split('.')[0])}.<br><em>Rekord: ${(G.modes || {})[M.id] || 0}</em>`, `data-mode="${M.id}"`, '▶ Spielen', false) : lockTile('mode ' + M.id, `<span class="m-ic">${M.ic}</span>`, M.n, M.id)),
     isUnl('tower') ? tile('tower', '<span class="m-ic">♜</span>', 'Orthanc-Turm', `Etage ${f} · Stufe ${towerLvl(f)} · <em>◆${fmt(tr.gold)}${tr.frags ? ' · ◈ ' + tr.frags : ''}</em>`, 'id="tw"', '▶ Etage ' + f, false) : lockTile('tower', '<span class="m-ic">♜</span>', 'Orthanc-Turm', 'tower')
-  ] : RAIDS.map(R => { if (!isUnl('raids')) return lockTile('raid', `<canvas data-card="${R.key}" data-enemy="1" data-bust="1" class="sil"></canvas>`, R.n, 'raids'); const st = G.raid[R.key] || { best: 0, tiers: 0 }; return tile('raid', `<canvas data-card="${R.key}" data-enemy="1" data-bust="1"></canvas>`, esc(R.n), `45 Sek. · Bestwert ${Math.round(st.best * 100)} %<br><em>Stufe ${st.tiers}/${RAID_TIERS.length}</em>`, `data-raid="${R.key}"`, '▶ Spielen', false); });
+  ] : page === 2 ? [...SAGAS.map(S => { if (!isUnl('saga')) return lockTile('raid saga', `<canvas data-card="${S.foe}" data-enemy="1" data-bust="1" class="sil"></canvas>`, S.sn, 'saga'); const rk = (G.sagas || {})[S.id] || 0; return tile('raid saga', `<canvas data-card="${S.foe}" data-enemy="1" data-bust="1"></canvas>`, esc(S.sn), `Sagenstufe ${rk + 1} · St. ${sagaLvl(S)}<br><em>${rk ? '✓ besiegt' : 'Mythischer Schatz beim ersten Sieg'}</em>`, `data-saga="${S.id}"`, '▶ Herausfordern', false); }), `<div class="m-tile info"><span class="m-ic">☬</span><b>Sagen-Bosse</b><small>Riesen aus der Ersten Zeit. Bei 66 % und 33 % LP rufen sie Verstärkung.</small></div>`] : RAIDS.map(R => { if (!isUnl('raids')) return lockTile('raid', `<canvas data-card="${R.key}" data-enemy="1" data-bust="1" class="sil"></canvas>`, R.n, 'raids'); const st = G.raid[R.key] || { best: 0, tiers: 0 }; return tile('raid', `<canvas data-card="${R.key}" data-enemy="1" data-bust="1"></canvas>`, esc(R.n), `45 Sek. · Bestwert ${Math.round(st.best * 100)} %<br><em>Stufe ${st.tiers}/${RAID_TIERS.length}</em>`, `data-raid="${R.key}"`, '▶ Spielen', false); });
   openSheet('Reise', `<div class="m-tiles ${page === 0 ? 'six' : 'four'}">${tiles.join('')}</div>`, s => {
     s.querySelectorAll('[data-unl]').forEach(b => b.onclick = () => { const U = UNLOCKS.find(u => u.id === b.dataset.unl); buyEarly('u:' + U.id, U.price, U.n, () => { G.unlSeen = G.unlSeen || {}; G.unlSeen[U.id] = 1; save(); openModes(openModes.page); }); });
     s.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => playNow({ type: 'mode', id: b.dataset.mode }, MODES.find(m => m.id === b.dataset.mode).n));
     s.querySelectorAll('[data-raid]').forEach(b => b.onclick = () => playNow({ type: 'raid', key: b.dataset.raid }, 'Prüfung: ' + RAIDS.find(r => r.key === b.dataset.raid).n));
     const tw = s.querySelector('#tw'); if (tw) tw.onclick = () => playNow({ type: 'tower' }, 'Orthanc-Turm Etage ' + f);
-  }, { tabs: STORY_TABS, tab: 'modi', onTab: t => openStory(t), pages: 2, page, onPage: p => openModes(p) });
+    s.querySelectorAll('[data-saga]').forEach(b => b.onclick = () => playNow({ type: 'saga', id: b.dataset.saga }, 'Sage: ' + SAGAS.find(x => x.id === b.dataset.saga).sn));
+  }, { tabs: STORY_TABS, tab: 'modi', onTab: t => openStory(t), pages: 3, page, onPage: p => openModes(p) });
 }
 /* ---------- Kopfgeldjagd ---------- */
 function openHunts(page = openHunts.page || 0) {
@@ -935,6 +1028,21 @@ function openHunts(page = openHunts.page || 0) {
     s.querySelectorAll('[data-hunt]').forEach(b => b.onclick = () => { const H = HUNTS.find(h => h.id === b.dataset.hunt); playNow({ type: 'hunt', id: H.id }, 'Kopfgeld: ' + H.sn); });
     s.querySelectorAll('[data-unlhunt]').forEach(b => b.onclick = () => { const H = HUNTS.find(h => h.id === b.dataset.unlhunt); buyEarly('hunt:' + H.id, huntPrice(H), 'Kopfgeld: ' + H.sn, () => openHunts()); });
   }, { tabs: STORY_TABS, tab: 'jagd', onTab: t => openStory(t), pages: np, page, onPage: p => openHunts(p) });
+}
+function sagaLvl(S) { return Math.max(STORY[S.after].lvl + 6 + G.story.loop * LOOP_LVL, (G.team?.lvl || 1) - 5) + ((G.sagas || {})[S.id] || 0) * 3; }
+async function sagaRun(id) {
+  const S = SAGAS.find(x => x.id === id), prevBg = W.bgKey, rk = (G.sagas || {})[id] || 0, lvl = sagaLvl(S), first = !rk; G.queue = null; G.sagas = G.sagas || {}; save();
+  W.setBg(S.bg); await panoSplash(`Sagen-Boss · Stufe ${rk + 1}`, esc(S.sn), esc(S.lore), S.bg, 2600);
+  applyParty(); W.restoreHeroes(); await W.walk(900); await bossSplash(S.foe);
+  const r = await W.fight([S.foe], lvl, 'boss', { saga: S, aff: [rk >= 2 ? rollAfx(Math.min(2, Math.floor(rk / 2)), [S.foe, 'x']) : null] });
+  if (r.aborted) { W.setBg(prevBg); return; }
+  onResult(r, 'boss');
+  if (r.win) { G.sagas[id] = rk + 1; G.stats.bosses++; track('bosses', 1);
+    const items = [genItem(lvl + 2, first ? 5 : topRarity(.2, .8))], gold = Math.round((600 + lvl * 30) * (1 + G.story.loop * .25)), frags = first ? 6 : 3;
+    G.gold += gold; grantFragments(frags); items.forEach(addItem); if (G.settings.autoEquip) autoEquip(); save(); applyParty(); updateHud(); trackFeats();
+    await splash(`<div class="cdone"><div class="kicker">Sage bezwungen · Stufe ${rk + 1}</div><canvas class="mcv" data-card="${S.foe}" data-enemy="1" data-bust="1"></canvas><h1>${esc(S.sn)} ist gefallen</h1><p>◆ ${fmt(gold)} · ◈ ${frags}</p><div class="loot1">${items.map(it => `${icHtml(it)}<b style="color:${RARITY[it.r].c}">${esc(it.name)}</b>`).join('')}</div><div class="dhint">Tippen zum Fortfahren</div></div>`, 0, 'doneS');
+  } else toast(`${esc(S.sn)} ist zu mächtig. Werdet stärker und fordert die Sage erneut heraus.`, 'unlock');
+  W.setBg(prevBg); updateHud();
 }
 async function huntRun(id) {
   const H = HUNTS.find(h => h.id === id), prevBg = W.bgKey, rk = huntRank(id), lvl = huntLvl(H), first = rk === 0; G.queue = null; G.hunts = G.hunts || {}; save();

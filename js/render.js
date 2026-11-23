@@ -97,9 +97,9 @@ const RIG = (() => {
     if (type === 'hum' && look.mount) { const B = BODY[look.body] || BODY.man; return { h: -MOUNT_SADDLE[look.mount.kind] * (look.mount.kind === 'fell' ? 1 : .86) + B.th + B.nk + B.hh + 2, big: 0, w: 13 }; }
     if (type === 'hum') { const B = BODY[look.body] || BODY.man; return { h: B.ll + B.th + B.nk + B.hh + 2, big: !!B.big, w: B.big ? 20 : 8 }; }
     if (type === 'quad') return look.huge ? { h: 34, big: 1, w: 22 } : { h: look.size ? 18 : 15, big: 0, w: look.size ? 12 : 10 };
-    if (type === 'spider') return look.size ? { h: 30, big: 1, w: 22 } : { h: 14, big: 0, w: 10 };
+    if (type === 'spider') return look.size === 2 ? { h: 44, big: 1, w: 32 } : look.size ? { h: 30, big: 1, w: 22 } : { h: 14, big: 0, w: 10 };
     if (type === 'worm') return { h: 70, big: 1, w: 18 };
-    if (type === 'dragon') return { h: 50, big: 1, w: 30 };
+    if (type === 'dragon') return look.huge ? { h: 76, big: 1, w: 46 } : { h: 50, big: 1, w: 30 };
     return { h: 58, big: 1, w: 26 };
   }
 
@@ -160,6 +160,8 @@ const RIG = (() => {
       const bot = Math.min(-.6, hipY + B.ll * .78);
       g.fill(() => { c.moveTo(sB[0] + .5, top + .4); c.lineTo(sF[0] - 1, top + .2); c.quadraticCurveTo(cx - 1, (top + bot) / 2, cx - B.tw / 2 - 1.2 - sway * .3, bot); c.quadraticCurveTo(cx - B.tw / 2 - 3 - sway, bot - 1 + Math.sin(gt / 300) * .6, cx - B.tw / 2 - 4.2 - sway * 1.2, bot - 2.2); c.quadraticCurveTo(cx - B.tw / 2 - 2.2 - sway * .6, (top + bot) / 2, sB[0] - .6, top + 1); c.closePath(); }, g.lin(cx, top, cx - 6, bot, [L.cape, sh(L.cape, -.3)]), ow);
       if ((L.wear || 0) > .5) { const wv = Math.min(1, (L.wear - .5) / .35); c.strokeStyle = rgba(sh(L.cape, -.6), .8 * wv); c.lineWidth = .22; c.beginPath(); for (let i = 0; i < 5; i++) { const t2 = i / 4, hx = cx - B.tw / 2 - 1.2 - sway * .3 - t2 * (3 + sway * .9), hy = bot - t2 * 2.2; c.moveTo(hx, hy); c.lineTo(hx - .25 + (i % 2) * .4, hy - .9 - (i % 3) * .4); } c.stroke(); }
+      if ((L.fame || 0) >= 2) { c.strokeStyle = '#e8c060'; c.lineWidth = .42; c.beginPath(); c.moveTo(cx - B.tw / 2 - 1.2 - sway * .3, bot); c.quadraticCurveTo(cx - B.tw / 2 - 3 - sway, bot - 1 + Math.sin(gt / 300) * .6, cx - B.tw / 2 - 4.2 - sway * 1.2, bot - 2.2); c.stroke(); }
+      if ((L.fame || 0) >= 3) { g.ell(sF[0] - .7, top + .7, .6, .6, g.rad(sF[0] - .9, top + .5, .8, ['#fff4c0', '#d8a830', '#8a6018']), .2); }
       c.save(); c.lineCap = 'round'; for (let i = 0; i < 3; i++) { const fx = sB[0] - .2 - i * 1.15; c.strokeStyle = rgba(sh(L.cape, -.55), .42); c.lineWidth = .38; c.beginPath(); c.moveTo(fx + .7, top + 2 + i); c.quadraticCurveTo(fx - .5 - sway * .2, (top + bot) / 2 + i, fx - 1.1 - sway * (.5 + i * .25), bot - 1.1 - i * .25); c.stroke(); c.strokeStyle = rgba(sh(L.cape, .35), .22); c.lineWidth = .2; c.beginPath(); c.moveTo(fx + 1.1, top + 2.4 + i); c.quadraticCurveTo(fx - .1 - sway * .2, (top + bot) / 2 + i, fx - .6 - sway * (.5 + i * .25), bot - 1 - i * .25); c.stroke(); } c.restore();
     }
     // hinterer Arm
@@ -246,7 +248,6 @@ const RIG = (() => {
     if (acc.includes('brooch')) { const bx = cx + B.tw / 2 - 1.4, by = top + 1.1; g.fill(() => { c.moveTo(bx, by - .9); c.quadraticCurveTo(bx + .9, by, bx, by + 1.1); c.quadraticCurveTo(bx - .9, by, bx, by - .9); }, g.lin(bx, by - 1, bx, by + 1, ['#b8e8a0', '#3a8a3a']), .25); g.limb([[bx, by + 1.1], [bx, by + 1.6]], .25, '#d8dce4', 0); }
     if (acc.includes('horn')) { c.lineCap = 'round'; c.strokeStyle = OL; c.lineWidth = 1.6; c.beginPath(); c.moveTo(cx - B.tw / 2 + .4, hipY - 2.6); c.quadraticCurveTo(cx - B.tw / 2 - 2.2, hipY - .6, cx - B.tw / 2 - 1.2, hipY + 1.6); c.stroke(); c.strokeStyle = g.lin(0, hipY - 3, 0, hipY + 2, ['#f4ecd8', '#a88a58']); c.lineWidth = 1; c.stroke(); }
     if (acc.includes('pouch')) g.rr(cx - B.tw / 2 - .6, hipY - 2.2, 1.8, 2.2, .5, '#6a4628', .3);
-    if (L.mark) { c.fillStyle = L.mark; c.beginPath(); c.ellipse(cx + .4, top + 3.4, 1, 1.2, 0, 0, TAU); c.fill(); for (let i = -1; i <= 1; i++) { c.fillRect(cx + .4 + i * .7 - .2, top + 1.4, .45, 1.4); } }
     const GR = L.gear || {};
     if (GR.a && GR.a.r >= 3) { const tc = GR.a.r >= 4 ? '#ffe08a' : '#d8c0ff'; c.strokeStyle = tc; c.lineWidth = .32; c.beginPath(); c.moveTo(cx - B.tw * .42, top + .7); c.lineTo(cx + .3, top + B.th * .36); c.lineTo(cx + B.tw * .44, top + .7); c.stroke(); c.strokeStyle = rgba(tc, .6); c.lineWidth = .22; c.beginPath(); c.moveTo(cx - B.tw * .38, hipY - 2); c.lineTo(cx + B.tw * .38, hipY - 2); c.stroke(); }
     if (GR.a && GR.a.r >= 4) { const pr = .55 + .25 * Math.sin(gt / 320); g.glow(cx + .3, top + B.th * .46, 2.6, '#ff9a30', pr); g.fill(() => { const ex = cx + .3, ey = top + B.th * .46; c.moveTo(ex, ey - 1); c.lineTo(ex + .7, ey); c.lineTo(ex, ey + 1); c.lineTo(ex - .7, ey); c.closePath(); }, '#fff2c0', .2); }
@@ -649,7 +650,7 @@ const RIG = (() => {
 
   /* ---------- Spinnen ---------- */
   function drawSpider(c, L, anim, el, gt) {
-    const g = P(c), k = L.size ? 2.2 : 1, col = L.body, legC = sh(col, -.1), hair = sh(col, .35);
+    const g = P(c), k = L.size === 2 ? 3.2 : L.size ? 2.2 : 1, col = L.body, legC = sh(col, -.1), hair = sh(col, .35);
     let lean = 0, bob = Math.sin(gt / 520) * .25 * k, gait = 0, ph = 0, raise = 0, fall = 0, fang = .15 + Math.max(0, Math.sin(gt / 380)) * .15;
     if (anim === 'walk') { gait = 1; ph = el / 320 * TAU; bob = Math.sin(ph * 2) * .3 * k; }
     if (anim === 'attack' || anim === 'shoot' || anim === 'throw') { const q = clamp01(el / animTime('attack')); lean = (Math.sin(q * Math.PI) * 4.5 - (q < .25 ? q * 5 : 0)) * k * .6; raise = Math.sin(q * Math.PI); fang = .2 + raise * .8; }
@@ -911,7 +912,7 @@ const RIG = (() => {
     if (type === 'spider') return drawSpider(c, look, anim, el, gt);
     if (type === 'worm') return drawWorm(c, look, anim, el, gt);
     if (type === 'olifant') return drawOlifant(c, look, anim, el, gt);
-    if (type === 'dragon') return drawDragon(c, look, anim, el, gt);
+    if (type === 'dragon') { if (look.huge) { c.save(); c.scale(1.5, 1.5); drawDragon(c, look, anim, el, gt); c.restore(); return; } return drawDragon(c, look, anim, el, gt); }
     if (look.mount && anim !== 'dead') return drawMounted(c, look, anim, el, gt);
     const p = poseAt(anim, el, look.wpn || 'sword', gt);
     if (anim === 'dead') {
