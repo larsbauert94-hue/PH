@@ -182,7 +182,7 @@ class World {
   }
   restoreHeroes() { for (const h of this.heroes) { if (!alive(h)) { h.fade = 1; } h.hp = h.maxHp; h.statuses = []; h.cd = {}; h.threat = 0; h.atb = 0; h.usedRevive = 0; h.usedReviveAlly = 0; h.holdAnim = null; h.anim = { n: 'idle', el: 0 }; } }
   /* Laufenden Kampf ohne Folgen beenden (für „Sofort spielen“) */
-  levelFx(lv) { for (const h of this.heroes) if (alive(h)) { this.fxs.push({ k: 'pillar', x: h.x + h.ox, y: h.y + h.oy, c: '#ffe080', t: 0, dur: 900 }); this.burst(h.x + h.ox, h.y + h.oy - h.h * .5, 'holy', 12, .8, .9); } this.flash('#ffe9a8', 350); this.h.banner?.(`Gruppenstufe ${lv}!`, 'ult'); }
+  levelFx(lv) { for (const h of this.heroes) if (alive(h)) { this.fxs.push({ k: 'pillar', x: h.x + h.ox, y: h.y + h.oy, c: '#ffe080', t: 0, dur: 900 }); this.burst(h.x + h.ox, h.y + h.oy - h.h * .5, 'holy', 12, .8, .9); } this.flash('#ffe9a8', 350); }
   gearUp(u) { this.burst(u.x + u.ox, u.y + u.oy - u.h * .5, 'holy', 14, .9, .7); this.fxs.push({ k: 'pillar', x: u.x + u.ox, y: u.y + u.oy, c: '#ffe080', t: 0, dur: 650 }); }
   abort() {
     if (!this.fighting) { this.abortNext = true; return; }
@@ -207,7 +207,6 @@ class World {
     if (kind === 'boss') { const bz = this.enemies.find(e => e.boss) || this.enemies[0]; this.cine = { t: this.time, dur: 2100 }; this.focus(bz, 1.34, 1600); this.setAnim(bz, 'shout'); sfx('crit'); await this.wait(350); this.shake(5); this.flash('#ff3a1a', 450); this.fxs.push({ k: 'ring', x: bz.x, y: bz.y - 2, r: 80, c: '#ffd0a0', t: 0, dur: 750 }); this.fxs.push({ k: 'ring', x: bz.x, y: bz.y - 2, r: 46, c: '#ff8a50', t: 0, dur: 520 }); this.burst(bz.x, bz.y - 3, 'stone', 28, 1.9, .5); await this.wait(1100); }
     if (this.abortNext) { this.abortNext = false; this.enemies.forEach(e => { e.fade = 0; e.hp = 0; }); return { win: false, aborted: true, enemies: [], dmgPct: 0 }; }
     this.applyStartPassives(); this.leaderAura();
-    for (const e of this.enemies) if (e.afx) e.afx.forEach((a, j) => this.wait(j * 380).then(() => this.num(e, ELITE_AFX[a].n, ELITE_AFX[a].c, 1.1)));
     if (opts.bless) opts.bless(this);
     const ch = opts.chaos;
     if (ch === 'schnell') this.all().forEach(u => u.spd = Math.round(u.spd * 1.7));
@@ -274,13 +273,13 @@ class World {
       u.phased = 1;
       if (u.transform) await this.transformUnit(u);
       else if (PHASE2[u.key]) await this.phaseTwo(u);
-      else { addS(u, 'enrage', 99, 0, this); this.h.banner?.(`${u.name} gerät in Raserei!`, 'foe'); this.flash('#ff3a1a', 400); this.shake(3); sfx('crit'); await this.wait(600); }
+      else { addS(u, 'enrage', 99, 0, this); this.flash('#ff3a1a', 400); this.shake(3); sfx('crit'); await this.wait(600); }
     }
     return false;
   }
   async phaseTwo(u) {
     const P2 = PHASE2[u.key];
-    this.h.banner?.(P2.msg, 'warn'); this.flash('#ff3a1a', 500); this.shake(4); sfx('ult'); this.focus(u, 1.24, 1300);
+    this.flash('#ff3a1a', 500); this.shake(4); sfx('ult'); this.focus(u, 1.24, 1300);
     addS(u, 'enrage', 99, 0, this);
     if (P2.fly) { addS(u, 'fly', 99, 0, this); u.flyY = 1; }
     if (P2.add) u.skills = [...u.skills, ...P2.add.map(id => ESK[id])];
@@ -294,7 +293,7 @@ class World {
   }
   async transformUnit(u) {
     const T = u.transform, E = ENEMIES[T.to];
-    this.h.banner?.(T.msg, 'foe'); this.flash('#ffffff', 700); this.shake(4); sfx('ult'); this.focus(u, 1.3, 1400);
+    this.flash('#ffffff', 700); this.shake(4); sfx('ult'); this.focus(u, 1.3, 1400);
     for (let i = 0; i < 4; i++) { this.burst(u.x, u.y - 20, 'fire', 14, 1.6, .5); await this.wait(120); }
     Object.assign(u, { key: T.to, name: E.n, type: E.type, look: Object.assign({ wpn: E.wpn }, E.look), wpn: E.wpn, skills: E.sk.map(id => ESK[id]) });
     const D = RIG.dims(u.type, u.look); u.h = D.h; u.big = D.big; u.w = D.w;
@@ -366,9 +365,8 @@ class World {
     if (isUlt) u.energy = 0;
     if (sk.cd) u.cd[sk.n] = sk.cd;
     if (u.side === 'hero' && !isUlt) u.energy = Math.min(100, u.energy + 14 * (1 + (u.p.ultCharge || 0) / 100));
-    if (sk.charge) { u.charging = true; this.h.banner?.(`⚠ ${u.name} sammelt Kraft!`, 'warn'); this.flash('#ff2a1a', 300); sfx('crit'); }
-    else if (sk.mega) { this.h.banner?.(`${u.name}: ${sk.n}`, 'foe'); this.focus(u, 1.26, 1000); this.shake(4); this.flash('#ff5a1a', 450); }
-    else if (!sk.basic) this.h.banner?.(isUlt ? `${u.name}: ${sk.n}` : sk.n, u.side === 'enemy' ? 'foe' : isUlt ? 'ult' : '', u);
+    if (sk.charge) { u.charging = true; this.flash('#ff2a1a', 300); sfx('crit'); this.fxs.push({ k: 'ring', x: u.x + u.ox, y: u.y + u.oy - u.h * .5, r: 26, c: '#ff5a3a', t: 0, dur: 700 }); }
+    else if (sk.mega) { this.focus(u, 1.26, 1000); this.shake(4); this.flash('#ff5a1a', 450); }
     if (isUlt && u.side === 'hero') {
       this.combo = this.time - (this.lastUlt ?? -1e9) < 3800 ? (this.combo || 1) + 1 : 1; this.lastUlt = this.time;
       if (this.combo >= 2) { sk = Object.assign({}, sk, { comboMul: 1 + .25 * (this.combo - 1) }); this.h.combo?.(this.combo); }
@@ -501,7 +499,7 @@ class World {
     if (t.side === 'hero' && this.fstat) { let hp = 0, mx = 0; for (const h of this.heroes) { hp += Math.max(0, h.hp); mx += h.maxHp; } this.fstat.minTeam = Math.min(this.fstat.minTeam, hp / (mx || 1)); }
     if (tp.thorns && dmg > 0 && alive(a)) { const r = Math.max(1, Math.round(dmg * tp.thorns / 100)); a.hp = Math.max(0, a.hp - r); this.num(a, r, '#f0b070'); if (a.hp <= 0) this.die(a); }
     if (dmg > 0 && alive(t)) { const proc = (k, s, dur) => { if (ap[k] && Math.random() < ap[k]) addS(t, s, dur, 0, this); }; proc('burnOnHit', 'burn', 3); proc('poisonOnHit', 'poison', 3); proc('slowOnHit', 'slow', 2); proc('stunOnHit', 'stun', 1); }
-    if (ap.doubleHit && !sk.isDouble && Math.random() < ap.doubleHit && alive(t)) { this.num(t, 'Doppelt', '#ffe080'); this.hit(a, t, Object.assign({}, sk, { isDouble: 1 }), mult * .6); }
+    if (ap.doubleHit && !sk.isDouble && Math.random() < ap.doubleHit && alive(t)) { this.hit(a, t, Object.assign({}, sk, { isDouble: 1 }), mult * .6); }
     if (t.hp <= 0) this.die(t);
     if (alive(t) && tp.counter && (sk.anim === 'melee' || sk.anim === 'spin') && Math.random() < tp.counter && alive(a)) return -2;
     return dmg;
@@ -527,8 +525,8 @@ class World {
     if (u.p?.reviveSelf && !u.usedRevive) { u.usedRevive = 1; u.hp = Math.round(u.maxHp * u.p.reviveSelf); this.num(u, 'Unbeugsam', '#ffe080'); this.burst(u.x, u.y - u.h * .5, 'holy', 14, 1, .6); return; }
     u.hp = 0; u.statuses = []; u.charging = false; this.setAnim(u, 'dead'); sfx('die');
     if (this.fstat && this.fighting) { if (u.side === 'hero') this.fstat.fallen++; else if (u.afx) this.fstat.afxKills++; }
-    if (u.afx && u.afx.includes('anfuehrer') && !this.enemies.some(e => e !== u && alive(e) && e.afx && e.afx.includes('anfuehrer'))) { for (const e of this.enemies) rmS(e, 'fuehrung'); this.h.banner?.('Der Anführer ist gefallen!', 'ult'); }
-    if (u.key === 'balrog' && this.arena === 'bridge') { u.falling = this.time; this.bridgeBreak = { x: u.x + u.ox, t: this.time }; this.shake(6); for (let i = 0; i < 24; i++) this.parts.push({ x: u.x + u.ox + rnd(-14, 14), y: 100 + rnd(-6, 24), vx: rnd(-.8, .8), vy: rnd(-1.2, .2), g: .05, t: 0, life: rnd(700, 1300), c: pick(['#5a5650', '#3e3a36', '#24201e']), s: 1.8 }); this.h.banner?.('Die Brücke bricht!', 'warn'); }
+    if (u.afx && u.afx.includes('anfuehrer') && !this.enemies.some(e => e !== u && alive(e) && e.afx && e.afx.includes('anfuehrer'))) { for (const e of this.enemies) rmS(e, 'fuehrung'); }
+    if (u.key === 'balrog' && this.arena === 'bridge') { u.falling = this.time; this.bridgeBreak = { x: u.x + u.ox, t: this.time }; this.shake(6); for (let i = 0; i < 24; i++) this.parts.push({ x: u.x + u.ox + rnd(-14, 14), y: 100 + rnd(-6, 24), vx: rnd(-.8, .8), vy: rnd(-1.2, .2), g: .05, t: 0, life: rnd(700, 1300), c: pick(['#5a5650', '#3e3a36', '#24201e']), s: 1.8 }); }
     if (u.side === 'enemy' && this.fighting && this.enemies.every(e => !alive(e) || e === u)) { this.slowUntil = this.time + 750; this.cine = { t: this.time, dur: 1500 }; this.focus(u, 1.24, 1000); this.flash('#fff4d0', 380); this.fxs.push({ k: 'rays', x: u.x + u.ox, y: u.y + u.oy - u.h * .5, t: 0, dur: 1300 }); }
     if (u.side === 'enemy') { this.h.kill?.(u); const n = u.big ? 34 : 18; for (let i = 0; i < n; i++) this.parts.push({ x: u.x + u.ox + rnd(-u.w, u.w) * .6, y: u.y + u.oy - rnd(0, u.h), vx: rnd(-.25, .25), vy: -rnd(.15, .6), g: -.002, t: 0, life: rnd(700, 1300), c: pick(['#ff9a40', '#ffcf70', '#c04a20', '#4a3a3a']), s: Math.random() < .4 ? 1.6 : 1, glow: Math.random() < .7 }); }
     this.burst(u.x, u.y - u.h * .5, u.side === 'enemy' ? 'dark' : 'slash', 10, 1);
@@ -632,7 +630,7 @@ class World {
     const back = this.heroes.length ? Math.min(...this.heroes.map(h => h.x)) : this.cx - 80, anim = this.walking ? 'walk' : 'idle', el = gt % 1000;
     if (cp.kind === 'eagle') { const x = this.cx - 40 + Math.sin(gt / 2600) * 60, y = 30 + Math.sin(gt / 900) * 5; ctx.save(); ctx.translate(x, y); RIG.drawEagle(ctx, cp.look, gt); ctx.restore(); return; }
     if (cp.kind === 'ghosts') { for (let i = 0; i < 3; i++) { ctx.save(); ctx.globalAlpha = .38; ctx.shadowColor = 'rgba(160,255,210,.9)'; ctx.shadowBlur = 8 * this.s; ctx.translate(back - 16 - i * 9, 98 + i * 11); RIG.draw(ctx, 'hum', Object.assign({ wpn: 'sword' }, ENEMIES.dead_soldier.look), anim, el, gt + i * 500); ctx.restore(); } return; }
-    if (cp.kind === 'sled') { ctx.save(); ctx.translate(back - 20, 120); const P = RIG.P(ctx); P.rr(-10, -4, 10, 4, 1, '#7a5a3a', .4); for (let i = 0; i < 2; i++) { ctx.save(); ctx.translate(4 + i * 7, -i * 2); ctx.scale(.45, .45); RIG.draw(ctx, 'quad', Object.assign({ eye: '#2a1a1a' }, cp.look), anim, el, gt + i * 300); ctx.restore(); } ctx.restore(); return; }
+    if (cp.kind === 'sled') { ctx.save(); ctx.translate(back - 26, 119); RIG.sled(ctx, cp.look, anim, el, gt); ctx.restore(); return; }
     ctx.save(); ctx.translate(back - 22, 117); RIG.draw(ctx, 'quad', Object.assign({ horse: 1, pony: cp.kind === 'pony', eye: '#2a1a12' }, cp.look), anim, el, gt); ctx.restore();
   }
   drawAtmosBack(ctx, gt) {

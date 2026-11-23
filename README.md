@@ -12,6 +12,20 @@ Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden 
 
 Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten). Unter **Optionen → Grafik** lässt sich zwischen *Auto*, *Hoch* (Figuren mit Szenenlicht, Kantenlicht und Bodenverdeckung) und *Normal* wählen; *Auto* schaltet bei zu niedriger Bildrate selbst herunter.
 
+## Neu in Version 13
+- **Mehr Herausforderung:** Elite-Gegner mit Eigenschaften (Gepanzert, Rasend, Morgul-Gift, Anführer, Schattenhaft, Uralt) – erkennbar an der Raute über der Lebensleiste
+- **Kapitel-Prüfungen** Heldenhaft und Legendär mit je drei Sternen (Sieg, kein Held gefallen, Zeit) und Sternen-Meilensteinen
+- **Kopfgeldjagd:** Golfimbul, Grishnákh, Mauhúr, Uglúk, Gorbag, Shagrat, der Mund Saurons, Ulfang – mit steigender Jagdstufe und Trophäen als Dauerbonus
+- **Acht neue Nebenquests** mit exklusiven legendären Waffen: Wetterspitze, Kammer von Mazarbul, Jagd auf Gollum, Schlacht von Fornost, Korsaren von Umbar, Schmieden von Eregion, Adar im Südland, Untergang von Númenor
+- **Helms Klamm** (Tor halten, Rammbock-Trolle, Gandalf im Morgengrauen) und **Pfad der Verzweiflung** (15 Kämpfe, Segen wählen, gefallene Helden bleiben zurück)
+- **Mythische Gegenstände** (Gurthang, Aranrúth, Dramborleg, Silmaril …) nur aus den härtesten Herausforderungen
+- **Heldentaten**, die beim normalen Spielen erkannt und sofort belohnt werden
+- **Banner statt Wappen:** Gegner einer Fraktion stellen ein Kriegsbanner auf; die eigene Gruppe sammelt Banner (Thal, Erebor, Lórien, Rohan, Gondor, Noldor, Gondolin) und stellt eines für einen Gruppenbonus auf
+- **Freischaltplan:** alles wird Schritt für Schritt freigeschaltet, gesperrte Dinge sind grau mit Hinweis, Neues wird angekündigt und mit NEU markiert
+- **Bonusleiste** mit Begleiter, Banner, Bündnissen, Relikten, Trophäen, Ringen und Sets – oben links im Querformat, unter den Helden im Hochformat
+- **Neue Grafik:** anatomisch gezeichnete Pferde und Ponys mit Mähne, Schweif und Sattelzeug, echte Wölfe und Warge, Radagasts Kaninchenschlitten, Gwaihir mit Federschwingen
+- **Weniger Text im Kampf:** keine Fähigkeitsnamen mehr, Story-Dialoge optional (Optionen)
+
 ## Neu in Version 12.3
 - **Fehlerprüfung über das ganze Spiel:** alle Spezialmodi, Prüfungen der Macht, Orthanc-Turm, Nebenquests, Bossrevanchen, Ringschmiede, alle 44 Helden in allen Stufen und alle 20 Kulissen automatisch durchgespielt – ohne Fehler
 - **Grammatik der Beute korrigiert:** „Elbische Brosche“, „Alter Kriegshammer“, „Gondorischer Zauberstab“ statt falscher Endungen; vorhandene Gegenstände werden beim Laden automatisch berichtigt; Werte mit deutschem Komma („+42,8 % Krit-Schaden“)

@@ -148,7 +148,7 @@ function speakerInfo(s) {
   return { name: HEROES[s].n, art: `<canvas data-card="${s}" data-bust="1"></canvas>`, col: ROLE_COL[CLASSES[HEROES[s].cls].role] };
 }
 function dialog(lines) {
-  if (!lines || !lines.length) return Promise.resolve();
+  if (!lines || !lines.length || !G.settings.dialogs) return Promise.resolve();
   return new Promise(res => {
     W.hold = true; const box = $('#dialog'); let i = 0, typing = null, auto = null;
     const autoGo = txt => { clearTimeout(auto); if (G.settings.autoText !== false) auto = setTimeout(() => box.onclick && box.onclick(), Math.max(2200, txt.length * 52)); };
@@ -429,7 +429,7 @@ async function director() {
         G.story.mids[mk] = 1; save();
       }
       applyParty(); await W.walk(1500);
-      const kind = isEliteWave(w) ? 'elite' : 'normal'; waveCard(w, kind);
+      const kind = isEliteWave(w) ? 'elite' : 'normal'; if (kind === 'elite') waveCard(w, kind);
       const grp = chapterWaves()[w], r = await W.fight(grp, waveLvl(w), kind, { aff: storyAfx(grp, kind) });
       if (r.aborted) continue;
       onResult(r, kind);
@@ -679,15 +679,15 @@ function openHeroes(tab = openHeroes.tab || 'team', page = openHeroes.page) {
 function mountPrice(m) { return 1200 + m.ch * 260; }
 function buyMount(m, after) { if (G.gold < mountPrice(m)) { toast(`Dafür brauchst du ◆ ${fmt(mountPrice(m))} Gold.`, 'mini'); return; } G.gold -= mountPrice(m); G.mounts = G.mounts || {}; G.mounts[m.id] = 1; save(); sfx('join'); toast(`<b>${esc(m.n)}</b> früher freigeschaltet!`, 'lvl'); W.pendingParty = 1; refreshLooks(); updateHud(); after && after(); }
 function footLook(k) { const L = heroLook(k); delete L.mount; return L; }
-function paintMounts(root) { root.querySelectorAll('canvas[data-mount]').forEach(cv => { const m = MOUNTS.find(x => x.id === cv.dataset.mount); requestAnimationFrame(() => { const dpr = Math.min(2, devicePixelRatio || 1); cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; const c = cv.getContext('2d'), g = c.createRadialGradient(cv.width / 2, cv.height * .55, 2, cv.width / 2, cv.height / 2, cv.width * .7); g.addColorStop(0, 'rgba(232,189,92,.3)'); g.addColorStop(1, 'rgba(10,13,18,0)'); c.fillStyle = g; c.fillRect(0, 0, cv.width, cv.height); const sc = cv.height / 34; c.setTransform(sc, 0, 0, sc, cv.width / 2 - 2 * sc, cv.height * .9); RIG.draw(c, 'quad', Object.assign({ horse: 1, pony: m.kind === 'pony' ? 1 : 0, eye: '#2a1a12' }, m.look), 'idle', 0, 500); }); }); }
+function paintMounts(root) { root.querySelectorAll('canvas[data-mount]').forEach(cv => { const m = MOUNTS.find(x => x.id === cv.dataset.mount); requestAnimationFrame(() => { const dpr = Math.min(2, devicePixelRatio || 1); cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; const c = cv.getContext('2d'), g = c.createRadialGradient(cv.width / 2, cv.height * .55, 2, cv.width / 2, cv.height / 2, cv.width * .7); g.addColorStop(0, 'rgba(232,189,92,.3)'); g.addColorStop(1, 'rgba(10,13,18,0)'); c.fillStyle = g; c.fillRect(0, 0, cv.width, cv.height); const sc = Math.min(cv.height / 40, cv.width / 42); c.setTransform(sc, 0, 0, sc, cv.width / 2 - 4 * sc, cv.height * .93); RIG.draw(c, 'quad', Object.assign({ horse: 1, pony: m.kind === 'pony' ? 1 : 0, eye: '#2a1a12' }, m.look), 'idle', 0, 500); }); }); }
 function paintComps(root) { paintMounts(root); if (typeof paintRings === 'function') paintRings(root); root.querySelectorAll('canvas[data-comp]').forEach(c => { const cp = COMPANIONS.find(x => x.id === c.dataset.comp); requestAnimationFrame(() => compArt(c, cp)); }); }
 function compArt(cv, cp) {
   const dpr = Math.min(2, devicePixelRatio || 1); cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; const c = cv.getContext('2d');
   const g = c.createRadialGradient(cv.width / 2, cv.height / 2, 2, cv.width / 2, cv.height / 2, cv.width * .7); g.addColorStop(0, 'rgba(232,189,92,.35)'); g.addColorStop(1, 'rgba(10,13,18,1)'); c.fillStyle = g; c.fillRect(0, 0, cv.width, cv.height);
-  const sc = cv.height / 34; c.setTransform(sc, 0, 0, sc, cv.width / 2, cv.height * .86);
+  const hz = cp.kind === 'pony' || cp.kind === 'horse', sc = hz ? Math.min(cv.height / 40, cv.width / 42) : cv.height / 34; c.setTransform(sc, 0, 0, sc, cv.width / 2 - (hz ? 4 * sc : 0), cv.height * (hz ? .93 : .86));
   if (cp.kind === 'eagle') { c.translate(0, -14); RIG.drawEagle(c, cp.look, 400); }
   else if (cp.kind === 'ghosts') { c.globalAlpha = .7; c.scale(.8, .8); RIG.draw(c, 'hum', Object.assign({ wpn: 'sword' }, ENEMIES.dead_soldier.look), 'idle', 0, 400); }
-  else if (cp.kind === 'sled') { c.scale(.8, .8); RIG.draw(c, 'quad', Object.assign({ eye: '#2a1a1a' }, cp.look), 'idle', 0, 400); }
+  else if (cp.kind === 'sled') { c.scale(.95, .95); c.translate(-6, -2); RIG.sled(c, cp.look, 'idle', 0, 400); }
   else RIG.draw(c, 'quad', Object.assign({ horse: 1, pony: cp.kind === 'pony', eye: '#2a1a12' }, cp.look), 'idle', 0, 400);
 }
 function setLines(k) {
@@ -1141,7 +1141,7 @@ function openSettings() {
   const S = G.settings;
   const tg = (id, on, label) => `<div class="opt"><span>${label}</span><button class="btn small ${on ? 'on' : ''}" id="${id}">${on ? 'An' : 'Aus'}</button></div>`;
   openSheet('Optionen', `<div class="m-opts"><div>
-    ${tg('o-mus', S.music !== false, 'Musik')}${tg('o-snd', S.sound, 'Soundeffekte')}${tg('o-eq', S.autoEquip, 'Beste Ausrüstung automatisch')}${tg('o-party', S.autoParty, 'Gruppe automatisch')}${tg('o-ult', S.autoUlt !== false, 'Ultimates automatisch')}${tg('o-txt', S.autoText !== false, 'Dialoge automatisch weiter')}<div class="opt"><span>Effekte</span><span class="seg">${[['voll', 'Voll'], ['sanft', 'Sanft']].map(([v, l]) => `<button class="btn small ${(S.fx || 'voll') === v ? 'on' : ''}" data-fx="${v}">${l}</button>`).join('')}</span></div>
+    ${tg('o-mus', S.music !== false, 'Musik')}${tg('o-snd', S.sound, 'Soundeffekte')}${tg('o-eq', S.autoEquip, 'Beste Ausrüstung automatisch')}${tg('o-party', S.autoParty, 'Gruppe automatisch')}${tg('o-ult', S.autoUlt !== false, 'Ultimates automatisch')}<div class="opt"><span>Story-Dialoge</span><span class="seg">${[['aus', 'Aus'], ['an', 'An'], ['auto', 'Auto']].map(([v, l]) => `<button class="btn small ${(!S.dialogs ? 'aus' : S.autoText !== false ? 'auto' : 'an') === v ? 'on' : ''}" data-dlg="${v}">${l}</button>`).join('')}</span></div><div class="opt"><span>Effekte</span><span class="seg">${[['voll', 'Voll'], ['sanft', 'Sanft']].map(([v, l]) => `<button class="btn small ${(S.fx || 'voll') === v ? 'on' : ''}" data-fx="${v}">${l}</button>`).join('')}</span></div>
     <div class="opt"><span>Grafik</span><span class="seg">${[['auto', 'Auto'], ['hoch', 'Hoch'], ['normal', 'Normal']].map(([v, l]) => `<button class="btn small ${(S.gfx || 'auto') === v ? 'on' : ''}" data-gfx="${v}">${l}</button>`).join('')}</span></div></div>
     <div><h3 class="sect">Spielstand</h3><p class="muted small">Mit dem Code stellst du deinen Fortschritt wieder her, auch auf einem anderen Gerät.</p>
     <div class="opt"><button class="btn small" id="o-exp">Code kopieren</button><button class="btn small" id="o-imp">Code einfügen</button><button class="btn small danger" id="o-del">Neu beginnen</button></div>
@@ -1151,7 +1151,7 @@ function openSettings() {
     s.querySelectorAll('[data-gfx]').forEach(b => b.onclick = () => { S.gfx = b.dataset.gfx; W.lowFps = false; W._pf = null; save(); openSettings(); });
     s.querySelector('#o-ult').onclick = () => { S.autoUlt = S.autoUlt === false; save(); openSettings(); };
     s.querySelectorAll('[data-fx]').forEach(b => b.onclick = () => { S.fx = b.dataset.fx; document.body.classList.toggle('fx-soft', S.fx === 'sanft'); save(); openSettings(); });
-    s.querySelector('#o-txt').onclick = () => { S.autoText = S.autoText === false; save(); openSettings(); };
+    s.querySelectorAll('[data-dlg]').forEach(b => b.onclick = () => { const v = b.dataset.dlg; S.dialogs = v !== 'aus'; S.autoText = v === 'auto'; save(); openSettings(); }); if (s.querySelector('#o-txt')) s.querySelector('#o-txt').onclick = () => { S.autoText = S.autoText === false; save(); openSettings(); };
     s.querySelector('#o-snd').onclick = () => { S.sound = !S.sound; save(); openSettings(); };
     s.querySelector('#o-mus').onclick = () => { S.music = S.music === false; save(); MUSIC.sync(); openSettings(); };
     const ta = s.querySelector('#o-code');
