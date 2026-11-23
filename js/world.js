@@ -235,7 +235,7 @@ class World {
   checkEnd() { if (!this.fighting) return null; if (this.enemies.every(e => !alive(e))) return 'win'; if (this.heroes.every(h => !alive(h))) return 'lose'; if (this.raidEnd && this.time >= this.raidEnd) return 'time'; return null; }
   async finish(res) {
     this.fighting = false; this.busy = true;
-    if (res === 'win' || res === 'time') { this.heroes.filter(alive).forEach(h => { h.holdAnim = 'victory'; this.setAnim(h, 'victory'); }); sfx('win'); }
+    if (res === 'win' || res === 'time') { this.heroes.filter(alive).forEach((h, i) => { h.holdAnim = 'victory'; this.setAnim(h, 'victory'); this.wait(150 + i * 120).then(() => { const gx = h.x + h.ox, gy = h.y + h.oy - h.h; this.burst(gx, gy, h.wpn === 'staff' ? 'holy' : 'buff', 8, .7, 1); if (h.wpn === 'staff') this.fxs.push({ k: 'ring', x: gx, y: gy, r: 14, c: h.look.glowC || '#fff4c0', t: 0, dur: 500 }); }); }); sfx('win'); }
     else sfx('lose');
     await this.wait(1300);
     this.heroes.forEach(h => { h.holdAnim = null; if (alive(h)) this.setAnim(h, 'idle'); });
@@ -370,6 +370,7 @@ class World {
     if (u.side === 'hero' && !isUlt) u.energy = Math.min(100, u.energy + 14 * (1 + (u.p.ultCharge || 0) / 100));
     if (sk.charge) { u.charging = true; this.flash('#ff2a1a', 300); sfx('crit'); this.fxs.push({ k: 'ring', x: u.x + u.ox, y: u.y + u.oy - u.h * .5, r: 26, c: '#ff5a3a', t: 0, dur: 700 }); }
     else if (sk.mega) { this.focus(u, 1.26, 1000); this.shake(4); this.flash('#ff5a1a', 450); }
+    if (isUlt && u.side === 'hero') this.ultFx(u);
     if (isUlt && u.side === 'hero') {
       this.combo = this.time - (this.lastUlt ?? -1e9) < 3800 ? (this.combo || 1) + 1 : 1; this.lastUlt = this.time;
       if (this.combo >= 2) { sk = Object.assign({}, sk, { comboMul: 1 + .25 * (this.combo - 1) }); this.h.combo?.(this.combo); }
@@ -460,6 +461,18 @@ class World {
     }
     if (isUlt && u.side === 'hero' && this.fighting) { this.duoUsed = this.duoUsed || {}; const D = DUOS.find(d => !this.duoUsed[d.id] && ((d.a === u.key && this.heroes.some(h => h.key === d.b && alive(h))) || (d.b === u.key && this.heroes.some(h => h.key === d.a && alive(h))))); if (D) { this.duoUsed[D.id] = 1; await this.duo(u, this.heroes.find(h => h.key === (D.a === u.key ? D.b : D.a)), D); } }
     if (alive(u) && u.anim.n !== 'idle' && u.anim.n !== 'dead') await this.wait(140);
+  }
+  ultFx(u) {
+    const k = u.key, w = u.wpn, foes = this.foesOf(u), x = u.x + u.ox, y = u.y + u.oy - u.h * .55, gc = u.look.glowC || '#fff4c0';
+    const kind = ['gandalf', 'fremder', 'saruman'].includes(k) ? 'licht' : k === 'galadriel' ? 'koenigin' : u.look.mount && ['theoden', 'eomer', 'eowyn'].includes(k) ? 'ritt' : w === 'bow' ? 'pfeile' : ['axe', 'hammer', 'club', 'mace'].includes(w) ? 'beben' : w === 'spear' ? 'lanze' : w === 'staff' ? 'sterne' : 'bogen';
+    if (kind === 'licht') { this.flash('#ffffff', 520); this.fxs.push({ k: 'rays', x, y, t: 0, dur: 1100 }); for (const r of [40, 70, 100]) this.fxs.push({ k: 'ring', x, y, r, c: '#fffbe8', t: 0, dur: 600 + r * 4 }); }
+    else if (kind === 'koenigin') { this.flash('#7affb0', 600); this.fxs.push({ k: 'pillar', x: u.x + u.ox, y: u.y + u.oy, c: '#9affc8', t: 0, dur: 1200 }); this.fxs.push({ k: 'ring', x, y, r: 90, c: '#7affb0', t: 0, dur: 1000 }); this.shake(3); }
+    else if (kind === 'ritt') this.charge = { t: this.time };
+    else if (kind === 'pfeile') this.fxs.push({ k: 'rain', foes: foes.map(f => [f.x + f.ox, f.y + f.oy]), c: '#fff2c8', t: 0, dur: 900 });
+    else if (kind === 'sterne') this.fxs.push({ k: 'rain', star: 1, foes: foes.map(f => [f.x + f.ox, f.y + f.oy]), c: gc, t: 0, dur: 1000 });
+    else if (kind === 'beben') { this.shake(7); for (const f of foes) { this.fxs.push({ k: 'crack', x: f.x + f.ox, y: f.y + f.oy, t: 0, dur: 900, under: 1 }); this.burst(f.x + f.ox, f.y + f.oy - 2, 'stone', 12, 1.4, .8); } }
+    else if (kind === 'lanze') for (const f of foes) this.fxs.push({ k: 'bolt', x, y, tx: f.x + f.ox, ty: f.y + f.oy - f.h * .5, t: 0, dur: 420 });
+    else this.fxs.push({ k: 'arc', x: (foes[0] ? foes[0].x + foes[0].ox : x + 40), y: y + 4, c: k === 'aragorn' ? '#ffb060' : gc, t: 0, dur: 650 });
   }
   async duo(a, b, D) {
     this.cine = { t: this.time, dur: 1500 }; this.slowUntil = this.time + 650; this.flash(D.c, 380); sfx('ult'); this.shake(3);
@@ -757,7 +770,7 @@ class World {
     } else if (w === 'abend') {
       const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, 'rgba(255,120,60,.22)'); g.addColorStop(.55, 'rgba(255,90,80,.10)'); g.addColorStop(1, 'rgba(60,20,60,.16)'); ctx.fillStyle = g; ctx.fillRect(-20, -20, LW + 40, H + 40);
     } else if (w === 'nacht') {
-      ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = '#3c4878'; ctx.fillRect(-20, -20, LW + 40, H + 40); ctx.globalCompositeOperation = 'source-over'; tint('#060a1e', .18); ctx.globalCompositeOperation = 'lighter';
+      ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = ['weather', 'dolguldur', 'cirith', 'mirkwood'].includes(this.bgKey) ? '#9aa6cc' : '#6a78aa'; ctx.fillRect(-20, -20, LW + 40, H + 40); ctx.globalCompositeOperation = 'source-over'; tint('#060a1e', .06); ctx.globalCompositeOperation = 'lighter';
       for (let i = 0; i < 30; i++) { const x = (i * 83.1 + sd) % LW, y = (i * 29.3) % 40, tw = .4 + .6 * Math.abs(Math.sin(gt / 700 + i)); ctx.fillStyle = `rgba(230,240,255,${.5 * tw})`; ctx.fillRect(x, y, .5, .5); }
       for (const h of this.heroes) if (alive(h)) { const fl = .85 + Math.sin(gt / 90 + h.x) * .08 + Math.sin(gt / 37 + h.y) * .05, x = h.x + h.ox, y = h.y + h.oy - h.h * .45, g = ctx.createRadialGradient(x, y, 0, x, y, 26 * fl); g.addColorStop(0, 'rgba(255,170,80,.22)'); g.addColorStop(1, 'rgba(255,150,60,0)'); ctx.fillStyle = g; ctx.fillRect(x - 28, y - 28, 56, 56); }
       const mx = LW * .78, g2 = ctx.createRadialGradient(mx, 16, 0, mx, 16, 30); g2.addColorStop(0, 'rgba(220,230,255,.35)'); g2.addColorStop(1, 'rgba(220,230,255,0)'); ctx.fillStyle = g2; ctx.fillRect(mx - 30, -14, 60, 60); ctx.fillStyle = 'rgba(240,244,255,.9)'; ctx.beginPath(); ctx.arc(mx, 16, 3.2, 0, Math.PI * 2); ctx.fill();
@@ -918,6 +931,8 @@ class World {
     else if (f.k === 'rays') { ctx.globalCompositeOperation = 'lighter'; ctx.translate(f.x, f.y); ctx.rotate(this.time / 1100); const a = Math.sin(Math.min(1, k * 1.4) * Math.PI); for (let i = 0; i < 14; i++) { ctx.rotate(Math.PI / 7); const len = 70 + (i % 3) * 26, g = ctx.createLinearGradient(0, 0, len, 0); g.addColorStop(0, `rgba(255,244,210,${.55 * a})`); g.addColorStop(1, 'rgba(255,244,210,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(len, -3 - (i % 3) * 2.5); ctx.lineTo(len, 3 + (i % 3) * 2.5); ctx.fill(); } const g2 = ctx.createRadialGradient(0, 0, 0, 0, 0, 26); g2.addColorStop(0, `rgba(255,255,240,${.8 * a})`); g2.addColorStop(1, 'rgba(255,240,200,0)'); ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(0, 0, 26, 0, Math.PI * 2); ctx.fill(); }
     else if (f.k === 'light') { ctx.globalCompositeOperation = 'lighter'; const a = (1 - k) * (1 - k) * (f.a || .25), g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r); g.addColorStop(0, RIG.rgba(f.c, a)); g.addColorStop(.5, RIG.rgba(f.c, a * .35)); g.addColorStop(1, RIG.rgba(f.c, 0)); ctx.fillStyle = g; ctx.fillRect(f.x - f.r, f.y - f.r, f.r * 2, f.r * 2); }
     else if (f.k === 'slash') { ctx.globalCompositeOperation = 'lighter'; ctx.translate(f.x, f.y); ctx.scale(f.dir, 1); const st = -1.6 + k * .9, en = st + 2.2 * Math.min(1, k * 2.2); ctx.lineCap = 'round'; for (const [w, col] of [[3.2, 'rgba(160,200,255,.35)'], [1.4, 'rgba(255,255,255,.95)']]) { ctx.globalAlpha = 1 - k; ctx.strokeStyle = col; ctx.lineWidth = w * (1 - k * .6); ctx.beginPath(); ctx.arc(0, 0, f.r, st, en); ctx.stroke(); } }
+    else if (f.k === 'rain') { ctx.globalCompositeOperation = 'lighter'; for (const [fx2, fy2] of f.foes) for (let i = 0; i < 7; i++) { const d = ((k * 1.6 + i / 7) % 1), px = fx2 + (i - 3) * 3.4 + d * 6, py = fy2 - 60 + d * 62; if (f.star) { ctx.fillStyle = RIG.rgba(f.c, 1 - d * .6); ctx.beginPath(); ctx.arc(px, py, 1.1, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = RIG.rgba(f.c, .25); ctx.beginPath(); ctx.arc(px, py, 3, 0, Math.PI * 2); ctx.fill(); } else { ctx.strokeStyle = RIG.rgba(f.c, .9 - d * .4); ctx.lineWidth = .5; ctx.beginPath(); ctx.moveTo(px - 2.4, py - 7); ctx.lineTo(px, py); ctx.stroke(); } } }
+    else if (f.k === 'arc') { ctx.globalCompositeOperation = 'lighter'; const a0 = -2.4 + k * 2.6, R2 = 22; for (const [lw, al] of [[6, .25], [2.4, .7], [.8, 1]]) { ctx.strokeStyle = RIG.rgba(f.c, al * (1 - k)); ctx.lineWidth = lw; ctx.beginPath(); ctx.arc(f.x - 6, f.y + 6, R2, a0 - 1.2, a0); ctx.stroke(); } }
     else if (f.k === 'link') { ctx.globalCompositeOperation = 'lighter'; const A = [f.a.x + f.a.ox, f.a.y + f.a.oy - f.a.h * .6], B = [f.b.x + f.b.ox, f.b.y + f.b.oy - f.b.h * .6], al = Math.sin(Math.min(1, k * 1.4) * Math.PI), mx = (A[0] + B[0]) / 2, my = Math.min(A[1], B[1]) - 14; for (const [w, a2] of [[5, .22], [2.2, .6], [.8, 1]]) { ctx.strokeStyle = RIG.rgba(f.c, a2 * al); ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(...A); ctx.quadraticCurveTo(mx, my, ...B); ctx.stroke(); } for (let i = 0; i < 6; i++) { const t = (k * 2 + i / 6) % 1, u2 = 1 - t, x = u2 * u2 * A[0] + 2 * u2 * t * mx + t * t * B[0], y = u2 * u2 * A[1] + 2 * u2 * t * my + t * t * B[1]; ctx.fillStyle = RIG.rgba(f.c, al); ctx.beginPath(); ctx.arc(x, y, 1.2, 0, Math.PI * 2); ctx.fill(); } }
     else if (f.k === 'bolt') { ctx.globalCompositeOperation = 'lighter'; ctx.lineJoin = 'round'; const pts = f.pts || (f.pts = Array.from({ length: 9 }, (_, i) => [f.x + (f.tx - f.x) * i / 8 + (i && i < 8 ? rnd(-4, 4) : 0), f.y + (f.ty - f.y) * i / 8 + (i && i < 8 ? rnd(-3, 3) : 0)])); if (Math.random() < .3) f.pts = null; for (const [w, col] of [[3, 'rgba(100,170,255,.4)'], [1, '#ffffff']]) { ctx.globalAlpha = 1 - k * .7; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(...p) : ctx.moveTo(...p)); ctx.stroke(); } }
     else if (f.k === 'ring') { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = (1 - k) * .9; ctx.strokeStyle = f.c; ctx.lineWidth = 1.4 * (1 - k) + .3; ctx.beginPath(); ctx.ellipse(f.x, f.y, 2 + RIG.easeOut(k) * f.r, (2 + RIG.easeOut(k) * f.r) * .45, 0, 0, Math.PI * 2); ctx.stroke(); }

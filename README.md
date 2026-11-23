@@ -12,6 +12,17 @@ Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden 
 
 Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten). Unter **Optionen → Grafik** lässt sich zwischen *Auto*, *Hoch* (Figuren mit Szenenlicht, Kantenlicht und Bodenverdeckung) und *Normal* wählen; *Auto* schaltet bei zu niedriger Bildrate selbst herunter.
 
+## Neu in Version 15
+- **Ziele:** neuer erster Reiter im Reise-Menü mit allem, was sich gerade lohnt – Story, Sagen, Nebenquests, Kopfgeld, offene Sterne, Turm – jeweils mit ▶ und ↻5
+- **Auto-Wiederholen:** Nebenquests, Kopfgeld, Prüfungen und Sagen 5× hintereinander; „Nächster Schritt“ zeigt den Stand und stoppt auf Tipp; endet automatisch nach einer Niederlage
+- **Gefahren-Ampel** (Leicht / Fordernd / Gefährlich) auf Zielen, Jagd-, Sagen- und Questkarten
+- **Beutel räumt sich selbst auf:** überholte Gegenstände werden verwertet (abschaltbar in den Optionen); Legendäres, Mythisches und Sets bleiben immer
+- **Zeigefinger-Hinweis** auf den richtigen Knopf nach jeder Freischaltung
+- **Automatische Sicherung** nach jedem Kapitel (die letzten drei), wiederherstellbar in den Optionen
+- **Ultimates mit eigener Inszenierung:** Lichtexplosion (Gandalf), dunkle Königin (Galadriel), Pfeilregen, Erdbeben, Blitzlanzen, Sternenfall, Flammenbogen, Reiterangriff; Siegesfunken nach jedem Kampf
+- **Neue Wahrzeichen:** Amon Sûl, Forodwaith mit eingefrorenem Schiff, Wachturm von Ostirith, Tempel von Rhûn, Dol Guldur
+- **Neue Helden des Ersten Zeitalters:** Túrin Turambar, Fingon, Finrod Felagund, Húrin und Eärendil – über vier neue Sagen-Nebenquests in Teil V
+
 ## Neu in Version 14
 - **Duo-Ultimates:** 13 Heldenpaare aus der Lore (Legolas & Gimli, Frodo & Sam, Théoden & Éomer, Beren & Lúthien …) greifen nach einem Ultimate einmal pro Kampf gemeinsam an – mit goldenem Lichtbogen zwischen beiden
 - **Sagen-Bosse:** Ancalagon der Schwarze, Ungoliant und Draugluin – riesig, mit Verstärkung bei 66 % und 33 % LP, steigender Sagenstufe und mythischem Schatz beim ersten Sieg (Modi, Seite 3)
