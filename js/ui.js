@@ -95,7 +95,7 @@ function updateHud() {
   if ($('#syn').dataset.v !== syn) { $('#syn').innerHTML = syn; $('#syn').dataset.v = syn; }
   const cs = chestState(); $('#chestFill').style.height = (cs.n / CHEST_MAX * 100) + '%'; $('#chest').classList.toggle('ready', cs.ready); $('#chestT').textContent = cs.n + '/' + CHEST_MAX;
   const qc = questsClaimable(); $('#qBadge').hidden = !qc; $('#qBadge').textContent = qc;
-  $('#gold').textContent = fmt(G.gold); $('#mith').textContent = fmt(fragTotal()); const fc = forgeableCount(); $('#fBadge').hidden = !fc; $('#fBadge').textContent = fc;
+  updateHud.gs = updateHud.gs ?? G.gold; { const d = G.gold - updateHud.gs; updateHud.gs = Math.abs(d) < 2 ? G.gold : updateHud.gs + Math.round(d * .25); } $('#gold').textContent = fmt(updateHud.gs); $('#mith').textContent = fmt(fragTotal()); { const nn = G.inv.filter(x => x.nw).length; $('#bBadge').hidden = !nn; $('#bBadge').textContent = nn > 9 ? '9+' : nn; } const fc = forgeableCount(); $('#fBadge').hidden = !fc; $('#fBadge').textContent = fc;
   $('#power').textContent = fmt(G.party.reduce((a, k) => a + heroStats(k).power, 0));
   const cc = claimableCount(); $('#achBadge').hidden = !cc; $('#achBadge').textContent = cc; $('#nextP').classList.toggle('dim', $('#toasts').children.length > 0);
   if (G.team) { const el = waveLvl(Math.min(G.story.wave, WAVES)), d = G.team.lvl - el, v = `<span class="${d >= 0 ? 'ok' : d >= -3 ? 'mid' : 'bad'}">Gruppe St. ${G.team.lvl}</span> · Gegner St. ${el}`; if ($('#lvc').dataset.v !== v) { $('#lvc').innerHTML = v; $('#lvc').dataset.v = v; } }
@@ -136,7 +136,7 @@ function suggestGear(items) {
 function lootPop(items, gold) {
   const box = $('#loot');
   if (gold) { const e = document.createElement('div'); e.className = 'lp gold'; e.textContent = `+${fmt(gold)} ◆`; box.appendChild(e); setTimeout(() => e.remove(), 2200); }
-  items.forEach((it, i) => setTimeout(() => { while (box.children.length >= (innerHeight > innerWidth ? 3 : 4)) box.firstChild.remove(); const e = document.createElement('div'); e.className = 'lp'; e.style.setProperty('--rc', RARITY[it.r].c); e.innerHTML = `${icHtml(it)}<span>${esc(it.name)}</span>`; box.appendChild(e); paintCards(e); if (it.r >= 3) sfx('loot'); setTimeout(() => e.remove(), 2600); }, 250 + i * 300));
+  items.forEach((it, i) => setTimeout(() => { while (box.children.length >= (innerHeight > innerWidth ? 2 : 4)) box.firstChild.remove(); const e = document.createElement('div'); e.className = 'lp'; e.style.setProperty('--rc', RARITY[it.r].c); e.innerHTML = `${icHtml(it)}<span>${esc(it.name)}</span>`; box.appendChild(e); paintCards(e); if (it.r >= 3) sfx('loot'); setTimeout(() => e.remove(), 2600); }, 250 + i * 300));
 }
 
 /* ---------- Dialoge & Splashes ---------- */
@@ -373,7 +373,7 @@ async function director() {
         G.story.mids[mk] = 1; save();
       }
       applyParty(); await W.walk(1500);
-      const kind = isEliteWave(w) ? 'elite' : 'normal';
+      const kind = isEliteWave(w) ? 'elite' : 'normal'; waveCard(w, kind);
       const r = await W.fight(chapterWaves()[w], waveLvl(w), kind);
       if (r.aborted) continue;
       onResult(r, kind);
@@ -446,12 +446,27 @@ function unitInfo(u, cx, cy) {
   box.style.left = Math.max(8, Math.min(app.width - bw - 8, cx - app.left - bw / 2)) + 'px'; box.style.top = Math.max(8, Math.min(app.height - bh - 8, cy - app.top - bh - 18)) + 'px';
   clearTimeout(unitInfo.t); unitInfo.t = setTimeout(() => { box.hidden = true; }, 4200);
 }
+/* Münzen fliegen vom besiegten Gegner zum Goldzähler */
+function flyCoins(u, n) {
+  if (!W || document.body.classList.contains('splash-open')) return;
+  const app = $('#app').getBoundingClientRect(), tgt = $('.res .g').getBoundingClientRect(), p0 = W.screenPos(u.x + u.ox, u.y + u.oy - u.h * .5);
+  const tx = tgt.left + 14 - app.left, ty = tgt.top + tgt.height / 2 - app.top;
+  for (let i = 0; i < n; i++) {
+    const c = document.createElement('i'); c.className = 'coin'; const sx = p0.x - app.left + (Math.random() - .5) * 26, sy = p0.y - app.top + (Math.random() - .5) * 20;
+    c.style.left = sx + 'px'; c.style.top = sy + 'px'; $('#app').appendChild(c);
+    const dl = i * 55, mx = (sx + tx) / 2 + (Math.random() - .5) * 120, my = Math.min(sy, ty) - 40 - Math.random() * 60;
+    const a = c.animate([{ transform: 'translate(-50%,-50%) scale(.4)', opacity: 0 }, { transform: `translate(calc(-50% + ${(mx - sx) * .5}px),calc(-50% + ${(my - sy)}px)) scale(1.15)`, opacity: 1, offset: .35 }, { transform: `translate(calc(-50% + ${tx - sx}px),calc(-50% + ${ty - sy}px)) scale(.7)`, opacity: 1 }], { duration: 760 + Math.random() * 180, delay: 220 + dl, easing: 'cubic-bezier(.45,.05,.55,.95)', fill: 'backwards' });
+    a.onfinish = () => { c.remove(); const g = $('.res .g'); g.classList.remove('bump'); void g.offsetWidth; g.classList.add('bump'); };
+  }
+}
+function waveCard(w, kind) { const el = $('#wave'); el.className = 'wave ' + kind; el.innerHTML = `<small>${esc(STORY[G.story.ch].n)}</small><b>Welle ${w + 1} von ${WAVES}</b>${kind === 'elite' ? '<em>Elite</em>' : w === WAVES - 1 ? '<em>Letzte Welle</em>' : ''}`; el.hidden = false; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); clearTimeout(waveCard.t); waveCard.t = setTimeout(() => { el.hidden = true; }, 1900); }
 function refreshLooks() { for (const u of W.heroes) { const L = heroLook(u.key), sig = JSON.stringify(L.gear || null); if (u._gsig !== undefined && u._gsig !== sig && alive(u)) W.gearUp(u); u._gsig = sig; u.look = L; } }
 function openSheet(title, html, after, o = {}) {
   cancelAnimationFrame(artRaf);
   const s = $('#sheet');
   const tabs = o.tabs ? `<div class="m-tabs">${o.tabs.map(([id, n, badge]) => `<button class="m-tab ${o.tab === id ? 'on' : ''}" data-tab="${id}">${n}${badge ? `<i>${badge}</i>` : ''}</button>`).join('')}</div>` : '';
   const pg = o.pages > 1 ? `<div class="m-pg"><button class="m-pb" data-pg="-1" ${o.page <= 0 ? 'disabled' : ''}>‹</button><span>${o.page + 1}/${o.pages}</span><button class="m-pb" data-pg="1" ${o.page >= o.pages - 1 ? 'disabled' : ''}>›</button></div>` : '';
+  const vk = title + '|' + (o.tab || '') + '|' + (o.page || 0), fresh = vk !== openSheet.vk || !s.classList.contains('open'); openSheet.vk = vk; s.classList.toggle('anim', fresh);
   s.innerHTML = `<div class="sh-head"><h2>${title}</h2>${tabs}<div class="m-hr">${o.extra || ''}${pg}<button class="x" aria-label="Schließen">✕</button></div></div><div class="sh-body fit">${html}</div>`;
   s.hidden = false; requestAnimationFrame(() => s.classList.add('open')); document.body.classList.add('sheet-open');
   s.querySelector('.x').onclick = closeSheet;
@@ -621,10 +636,11 @@ function openBag(f = openBag.f || 'all', page = openBag.page, sel = openBag.sel)
   const det = it ? `<div class="m-idet" style="--rc:${RARITY[it.r].c}"><div class="m-ih">${icHtml(it)}<div><b style="color:${RARITY[it.r].c}">${esc(it.name)}${it.enh ? ' +' + it.enh : ''}</b><small>${RARITY[it.r].n} · ${SLOTS[it.slot]}${it.slot === 'weapon' ? ' · ' + WCLS[it.base] : ''} · St. ${it.lvl}</small></div></div>
     <ul>${itemLines(it).map(l => `<li>${esc(l)}</li>`).join('')}</ul>${it.passive ? `<p class="leg">${esc(it.passive)}</p>` : ''}
     <div class="m-ia">${(() => { const b = bestHeroFor(it); return b ? `<button class="btn small gold" data-eqb="${b.k}">Anlegen: ${esc(HEROES[b.k].n)} <span class="pos">+${fmt(b.d)} ⚡</span></button>` : ''; })()}${by ? `<span class="m-worn">Getragen von ${esc(HEROES[by].n)}</span>` : ''}<div class="m-ia2 one"><button class="btn small ghost" data-sv="${it.id}" ${by ? 'disabled' : ''}>Zerlegen<small>◆${fmt(itemValue(it))}</small></button></div></div></div>` : '<div class="m-idet"><p class="muted">Noch keine Gegenstände. Sie fallen in Kämpfen.</p></div>';
-  openSheet('Beutel', `<div class="m-bag"><div class="m-items">${list.slice(page * per, page * per + per).map(x => `<button class="m-it ${x.id === it?.id ? 'sel' : ''} ${x.r >= 4 ? 'leg' : ''}" data-it="${x.id}" style="--rc:${RARITY[x.r].c}">${icHtml(x)}<b>${esc(x.name)}</b>${equippedBy(x.id) ? '<i>●</i>' : bestHeroFor(x) ? '<i class="up">▲</i>' : ''}</button>`).join('')}</div>${det}</div>`, s => {
+  openSheet('Beutel', `<div class="m-bag"><div class="m-items">${list.slice(page * per, page * per + per).map(x => `<button class="m-it ${x.id === it?.id ? 'sel' : ''} ${x.r >= 4 ? 'leg' : ''}" data-it="${x.id}" style="--rc:${RARITY[x.r].c}">${icHtml(x)}<b>${esc(x.name)}</b>${x.nw ? '<em class="nw">NEU</em>' : ''}${equippedBy(x.id) ? '<i>●</i>' : bestHeroFor(x) ? '<i class="up">▲</i>' : ''}</button>`).join('')}</div>${det}</div>`, s => {
     s.querySelectorAll('[data-it]').forEach(b => b.onclick = () => { sfx('click'); openBag(f, page, +b.dataset.it); });
     s.querySelectorAll('[data-eqb]').forEach(b => b.onclick = () => { const hk = b.dataset.eqb; equip(hk, it); W.pendingParty = 1; refreshLooks(); sfx('level'); toast(`${esc(HEROES[hk].n)}: <b style="color:${RARITY[it.r].c}">${esc(it.name)}</b> angelegt`, 'lvl'); openBag(f, page, it.id); });
-    s.querySelectorAll('[data-sv]').forEach(b => b.onclick = () => { const v = salvage(itemById(+b.dataset.sv)); save(); toast(`+${fmt(v)} ◆`, 'mini'); openBag(f, page, null); });
+    list.slice(page * per, page * per + per).forEach(x => { if (x.nw) x.nw = 0; }); save();
+    s.querySelectorAll('[data-sv]').forEach(b => b.onclick = () => { const x = itemById(+b.dataset.sv); if (x.r >= 3 && !b.dataset.armed) { b.dataset.armed = 1; b.classList.add('danger'); b.innerHTML = 'Wirklich zerlegen?<small>nochmal tippen</small>'; setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.classList.remove('danger'); b.innerHTML = `Zerlegen<small>◆${fmt(itemValue(x))}</small>`; } }, 3000); return; } const v = salvage(x); save(); toast(`+${fmt(v)} ◆`, 'mini'); openBag(f, page, null); });
     const sv = s.querySelector('#salv'); if (sv) sv.onclick = () => { let g = 0; G.inv.filter(x => x.r <= 1 && !equippedBy(x.id)).forEach(x => g += salvage(x)); save(); toast(`Zerlegt: +${fmt(g)} ◆`, 'mini'); openBag(f, 0, null); };
   }, { tabs: [['all', 'Alle'], ['weapon', 'Waffen'], ['armor', 'Rüstung'], ['trinket', 'Schmuck'], ['sets', 'Sets']], tab: f, onTab: t => openBag(t, 0, null), pages: np, page, onPage: p => openBag(f, p, null), extra: '<button class="btn small" id="salv" title="Alle gewöhnlichen, nicht angelegten Teile zerlegen">Aufräumen</button>' });
 }
@@ -811,7 +827,7 @@ function openSettings() {
   const S = G.settings;
   const tg = (id, on, label) => `<div class="opt"><span>${label}</span><button class="btn small ${on ? 'on' : ''}" id="${id}">${on ? 'An' : 'Aus'}</button></div>`;
   openSheet('Optionen', `<div class="m-opts"><div>
-    ${tg('o-mus', S.music !== false, 'Musik')}${tg('o-snd', S.sound, 'Soundeffekte')}${tg('o-eq', S.autoEquip, 'Beste Ausrüstung automatisch')}${tg('o-party', S.autoParty, 'Gruppe automatisch')}${tg('o-ult', S.autoUlt !== false, 'Ultimates automatisch')}${tg('o-txt', S.autoText !== false, 'Dialoge automatisch weiter')}
+    ${tg('o-mus', S.music !== false, 'Musik')}${tg('o-snd', S.sound, 'Soundeffekte')}${tg('o-eq', S.autoEquip, 'Beste Ausrüstung automatisch')}${tg('o-party', S.autoParty, 'Gruppe automatisch')}${tg('o-ult', S.autoUlt !== false, 'Ultimates automatisch')}${tg('o-txt', S.autoText !== false, 'Dialoge automatisch weiter')}<div class="opt"><span>Effekte</span><span class="seg">${[['voll', 'Voll'], ['sanft', 'Sanft']].map(([v, l]) => `<button class="btn small ${(S.fx || 'voll') === v ? 'on' : ''}" data-fx="${v}">${l}</button>`).join('')}</span></div>
     <div class="opt"><span>Grafik</span><span class="seg">${[['auto', 'Auto'], ['hoch', 'Hoch'], ['normal', 'Normal']].map(([v, l]) => `<button class="btn small ${(S.gfx || 'auto') === v ? 'on' : ''}" data-gfx="${v}">${l}</button>`).join('')}</span></div></div>
     <div><h3 class="sect">Spielstand</h3><p class="muted small">Mit dem Code stellst du deinen Fortschritt wieder her, auch auf einem anderen Gerät.</p>
     <div class="opt"><button class="btn small" id="o-exp">Code kopieren</button><button class="btn small" id="o-imp">Code einfügen</button><button class="btn small danger" id="o-del">Neu beginnen</button></div>
@@ -820,6 +836,7 @@ function openSettings() {
     <p class="muted small">Inoffizielles Fan-Spiel nach J.R.R. Tolkien und „Die Ringe der Macht“. Grafiken, Texte und Mechaniken sind eigene Umsetzungen.</p></div></div>`, s => {
     s.querySelectorAll('[data-gfx]').forEach(b => b.onclick = () => { S.gfx = b.dataset.gfx; W.lowFps = false; W._pf = null; save(); openSettings(); });
     s.querySelector('#o-ult').onclick = () => { S.autoUlt = S.autoUlt === false; save(); openSettings(); };
+    s.querySelectorAll('[data-fx]').forEach(b => b.onclick = () => { S.fx = b.dataset.fx; document.body.classList.toggle('fx-soft', S.fx === 'sanft'); save(); openSettings(); });
     s.querySelector('#o-txt').onclick = () => { S.autoText = S.autoText === false; save(); openSettings(); };
     s.querySelector('#o-snd').onclick = () => { S.sound = !S.sound; save(); openSettings(); };
     s.querySelector('#o-mus').onclick = () => { S.music = S.music === false; save(); MUSIC.sync(); openSettings(); };
@@ -849,7 +866,7 @@ function appDelta(dx, dy) { return document.body.classList.contains('rot') ? [dy
 function boot() {
   const has = load();
   if (!has) { newProfile(); for (const k of STORY[0].join) joinHero(k); save(); }
-  W = new World($('#world'), { banner, combo: comboFx, ultUsed: () => track('ults', 1), crit: () => track('crits', 1), kill: u => { G.bestiary = G.bestiary || {}; G.bestiary[u.key] = (G.bestiary[u.key] || 0) + 1; if (u.tags?.includes('ork')) track('orcs', 1); if (u.tags?.includes('tier')) track('beasts', 1); } });
+  W = new World($('#world'), { banner, combo: comboFx, ultUsed: () => track('ults', 1), crit: () => track('crits', 1), kill: u => { if (u.gold) flyCoins(u, u.boss ? 9 : u.elite ? 5 : 3); G.bestiary = G.bestiary || {}; G.bestiary[u.key] = (G.bestiary[u.key] || 0) + 1; if (u.tags?.includes('ork')) track('orcs', 1); if (u.tags?.includes('tier')) track('beasts', 1); } });
   layoutMode();
   W.speed = G.settings.speed || 1;
   W.bgKey = STORY[G.story.ch].bg;
@@ -860,7 +877,9 @@ function boot() {
   setInterval(updateHud, 100); updateHud();
   $('#title').hidden = false; document.body.classList.add('titled');
   $('#tContinue').textContent = has ? `Weiterspielen · Kapitel ${G.story.ch + 1}` : 'Reise beginnen';
-  $('#tContinue').onclick = async () => { if (started) return; started = true; ac(); MUSIC.sync(); sfx('join'); $('#title').classList.add('out'); document.body.classList.remove('titled'); setTimeout(() => $('#title').hidden = true, 600); W.walking = false; W.heroes.forEach(h => W.setAnim(h, 'idle')); if (!G.seenHelp) { await introHelp(); G.seenHelp = 1; save(); } director(); };
+  const titleBgs = ['shire', 'eregion', 'pelennor', 'mirkwood', 'sea', 'erebor', 'helm', 'doom']; let tbi = titleBgs.indexOf(W.bgKey); const tbt = setInterval(() => { if (started) { clearInterval(tbt); return; } tbi = (tbi + 1) % titleBgs.length; W.setBg(titleBgs[tbi]); }, 5200);
+  document.body.classList.toggle('fx-soft', G.settings.fx === 'sanft');
+  $('#tContinue').onclick = async () => { if (started) return; started = true; clearInterval(tbt); W.setBg(STORY[G.story.ch].bg); ac(); MUSIC.sync(); sfx('join'); $('#title').classList.add('out'); document.body.classList.remove('titled'); setTimeout(() => $('#title').hidden = true, 600); W.walking = false; W.heroes.forEach(h => W.setAnim(h, 'idle')); if (!G.seenHelp) { await introHelp(); G.seenHelp = 1; save(); } director(); };
   $('#nHeroes').onclick = () => { sfx('click'); openHeroes(); };
   $('#nBag').onclick = () => { sfx('click'); openBag(); };
   $('#nStory').onclick = () => { sfx('click'); openStory(); };

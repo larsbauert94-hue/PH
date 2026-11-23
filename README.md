@@ -12,6 +12,14 @@ Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden 
 
 Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten). Unter **Optionen → Grafik** lässt sich zwischen *Auto*, *Hoch* (Figuren mit Szenenlicht, Kantenlicht und Bodenverdeckung) und *Normal* wählen; *Auto* schaltet bei zu niedriger Bildrate selbst herunter.
 
+## Neu in Version 11.2
+- **Belohnungen spürbar:** Münzen fliegen von besiegten Gegnern zum Goldzähler, der hochzählt und aufleuchtet
+- **NEU-Markierungen** für seltene Fundstücke im Beutel, Zähler am Beutel-Knopf
+- **Menüs:** Karten gleiten beim Öffnen gestaffelt herein, aktiver Tab mit Leuchtstrich; Zerlegen epischer/legendärer Teile braucht einen zweiten Tipp
+- **Wellen-Ansage** „Welle 3 von 8“ mit Elite-/Letzte-Welle-Hinweis
+- **Titelbildschirm:** wechselnde Kulissen, glänzendes Logo, aufsteigende Glut
+- **Option „Effekte: Sanft“** für weniger Beben und Blitze
+
 ## Neu in Version 11.1
 - **Nächster Schritt:** leuchtender Knopf mit der sinnvollsten Aktion (Ring schmieden, Truhe öffnen, Aufträge/Erfolge abholen, Held entwickeln) – ein Tipp führt hin
 - **Figuren antippen:** Info-Karte mit Stufe, Leben, Zuständen, Fähigkeiten und Bestiarium

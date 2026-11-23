@@ -211,7 +211,7 @@ function equip(key, it) { const prev = equippedBy(it.id); if (prev) G.heroes[pre
 function unequip(key, slot) { G.heroes[key].eq[slot] = null; save(); }
 function salvage(it) { if (equippedBy(it.id)) return 0; const v = itemValue(it); G.gold += v; G.inv = G.inv.filter(i => i.id !== it.id); return v; }
 function enhance(it) { const c = enhCost(it); if (G.gold < c || it.enh >= 10) return false; G.gold -= c; it.enh++; G.stats.maxEnh = Math.max(G.stats.maxEnh, it.enh); save(); return true; }
-function addItem(it) { G.inv.push(it); if (it.r === 3) G.stats.epics++; if (it.r === 4) G.stats.legends++; }
+function addItem(it) { if (it.r >= 2) it.nw = 1; G.inv.push(it); if (it.r === 3) G.stats.epics++; if (it.r === 4) G.stats.legends++; }
 function powerDiff(k, it) { const hs = G.heroes[k], prev = hs.eq[it.slot], before = heroStats(k).power; hs.eq[it.slot] = it.id; const after = heroStats(k).power; hs.eq[it.slot] = prev; return after - before; }
 function autoEquip(keys = G.party) {
   let n = 0; const ch = []; autoEquip.last = ch;

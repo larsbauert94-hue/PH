@@ -525,8 +525,11 @@ class World {
     for (let i = 0; i < n; i++) this.parts.push({ x: x + rnd(-2, 2), y: y + rnd(-2, 2), vx: rnd(-spread, spread), vy: rnd(-spread, spread) - up, g: up ? -.004 : .035, t: 0, life: rnd(350, 750), c: pick(c), s: Math.random() < .3 ? 1.6 : 1, glow });
   }
   num(u, txt, c, sc = 1) { this.nums.push({ x: u.x + u.ox + rnd(-4, 4), y: u.y + u.oy - u.h - 10, txt: String(txt), c, sc, t: 0 }); }
-  shake(v) { this.shakeV = Math.max(this.shakeV, v); }
+  fxMul() { return (typeof G !== 'undefined' && G && G.settings.fx === 'sanft') ? .3 : 1; }
+  shake(v) { this.shakeV = Math.max(this.shakeV, v * this.fxMul()); }
   flash(c, dur = 300) { this.flashV = { c, t: 0, dur }; }
+  /* Weltpunkt → Bildschirmpunkt (für Münzen, die zum Zähler fliegen) */
+  screenPos(wx, wy) { const r = this.cv.getBoundingClientRect(), z = this.cam.z, s = this.s, sc = s * z, tx = this.ox0 + (-(this.LW / 2) * (z - 1) - (this.cam.x - this.LW / 2) * (z - 1)) * s, ty = (-(LH / 2) * (z - 1) - (this.cam.y - LH / 2) * (z - 1)) * s; return { x: r.left + (wx * sc + tx) * r.width / this.cv.width, y: r.top + (wy * sc + ty) * r.height / this.cv.height }; }
   focus(u, z = 1.08, ms = 700) { this.cam.tz = z; this.cam.tx = u.x; this.cam.ty = u.y - u.h * .5; const id = (this._camId = (this._camId || 0) + 1); this.wait(ms).then(() => { if (this._camId === id) { this.cam.tz = 1.14; this.cam.tx = this.cx; this.cam.ty = 92; } }); }
   setAnim(u, n) { if (!alive(u) && n !== 'dead') return; u.anim = { n, el: 0 }; }
   moveTo(u, tx, ty, dur) { return new Promise(res => { u.move = { fx: u.ox, fy: u.oy, tx: tx - u.x, ty: ty - u.y, t: 0, dur, res }; }); }
@@ -598,7 +601,7 @@ class World {
     // Vignette
     const vg = ctx.createRadialGradient(this.cv.width / 2, this.cv.height * .55, this.cv.height * .4, this.cv.width / 2, this.cv.height * .55, this.cv.width * .75);
     vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.5)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, this.cv.width, this.cv.height);
-    if (this.flashV) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .5 * Math.pow(1 - this.flashV.t / this.flashV.dur, 2); ctx.fillStyle = this.flashV.c; ctx.fillRect(0, 0, this.cv.width, this.cv.height); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; }
+    if (this.flashV) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .5 * this.fxMul() * Math.pow(1 - this.flashV.t / this.flashV.dur, 2); ctx.fillStyle = this.flashV.c; ctx.fillRect(0, 0, this.cv.width, this.cv.height); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; }
     if (this.fade > 0) { ctx.globalAlpha = Math.sin(this.fade * Math.PI); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, this.cv.width, this.cv.height); ctx.globalAlpha = 1; }
   }
   drawCompanion(ctx, gt) {
