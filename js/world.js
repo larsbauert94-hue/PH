@@ -22,6 +22,7 @@ const LIGHT = {
   snow: { c: '210,235,255', a: .3, from: 'right', grade: ['#e0f0ff', '#4a6080'] }, sea: { c: '200,230,255', a: .26, from: 'right', grade: ['#a8c8f0', '#1a2a40'] },
   south: { c: '255,210,150', a: .3, from: 'right', grade: ['#ffd8a0', '#4a2a10'] }, rhun: { c: '255,190,220', a: .26, from: 'left', grade: ['#e0a0c0', '#20142a'] },
   khazad: { c: '140,220,255', a: .32, from: 'left', grade: ['#5a8ab0', '#0a1018'] }, eregion: { c: '255,180,110', a: .32, from: 'right', grade: ['#ffc080', '#2a1410'] },
+  rivendell: { c: '255,226,180', a: .3, from: 'right', grade: ['#ffe2b0', '#2a3a28'] }, lorien: { c: '240,245,210', a: .3, from: 'left', grade: ['#f4f0c0', '#2e3a20'] },
   mirkwood: { c: '200,255,170', a: .22, from: 'left', grade: ['#4a6a3a', '#060c06'] }, lake: { c: '255,225,190', a: .28, from: 'right', grade: ['#f0d8b0', '#1a2a38'] },
   erebor: { c: '255,200,120', a: .34, from: 'right', grade: ['#ffc070', '#2a1a10'] }, dolguldur: { c: '150,255,180', a: .3, from: 'left', grade: ['#3a6a4a', '#060a08'] }
 };
@@ -152,13 +153,14 @@ class World {
   ambient(dt) {
     const T = BACKGROUNDS[this.bgKey] || {}; const kind = T.parts;
     if (!kind || kind === 'none') return;
-    const rate = { rain: .5, snow: .15, embers: .07, fireflies: .03, leaves: .04, ash: .06, spray: .05 }[kind] || 0;
+    const rate = { goldleaves: .06, rain: .5, snow: .15, embers: .07, fireflies: .03, leaves: .04, ash: .06, spray: .05 }[kind] || 0;
     if (Math.random() < rate * dt / 16) {
       const p = { t: 0, life: 4500, x: Math.random() * this.LW, y: -2, vx: 0, vy: .5, amb: kind };
       if (kind === 'rain') Object.assign(p, { vx: -.6, vy: 3.2, life: 900, c: '#8a9ab0' });
       if (kind === 'snow') Object.assign(p, { vx: -.15, vy: .35, c: '#ffffff' });
       if (kind === 'embers') Object.assign(p, { y: LH, vy: -.45, vx: rnd(-.2, .2), c: pick(['#ff6a1a', '#ffb040', '#ff3a10']) });
       if (kind === 'fireflies') Object.assign(p, { y: rnd(50, 115), vy: rnd(-.1, .1), vx: rnd(-.15, .15), c: '#e8ff80', life: 3000 });
+      if (kind === 'goldleaves') Object.assign(p, { amb: 'leaves', vx: rnd(.1, .4), vy: rnd(.25, .5), c: pick(['#f0d060', '#e8b040', '#fff0a0', '#d89a30']) });
       if (kind === 'leaves') Object.assign(p, { vx: .3, vy: .4, c: pick(['#6a9a3a', '#a8a040']) });
       if (kind === 'ash') Object.assign(p, { vx: .15, vy: .25, c: '#8a8088' });
       if (kind === 'spray') Object.assign(p, { y: 80, vy: -.4, vx: rnd(-.3, .3), g: .02, life: 900, c: '#c8e0f0' });
@@ -183,7 +185,7 @@ class World {
   }
   async fight(group, lvl, kind, opts = {}) {
     if (this.abortNext) { this.abortNext = false; return { win: false, aborted: true, enemies: [], dmgPct: 0 }; }
-    this.raid = !!opts.raid; this.raidEnd = 0;
+    this.raid = !!opts.raid; this.raidEnd = 0; this.decals = [];
     this.enemies = []; this.parts = this.parts.filter(p => p.amb);
     this.arena = group.includes('balrog') ? 'bridge' : null; this.bridgeBreak = null;
     if (opts.keepHp) { for (const h of this.heroes) { h.statuses = []; h.cd = {}; h.threat = 0; h.atb = 0; h.holdAnim = null; if (alive(h)) h.anim = { n: 'idle', el: 0 }; } } else this.restoreHeroes();
@@ -362,7 +364,7 @@ class World {
     if (isUlt && u.side === 'hero' && ['theoden', 'eomer', 'eowyn'].includes(u.key)) { this.charge = { t: this.time }; this.shake(3); }
     if (isUlt) { this.hitstop = 140; this.cine = { t: this.time }; this.slowUntil = this.time + 420; this.speedFx = { x: u.x, y: u.y - u.h * .5, t: this.time, c: u.side === 'hero' ? '255,236,180' : '255,90,60' }; this.focus(u, 1.26, 1100); sfx('ult'); this.flash(u.side === 'hero' ? '#ffe9a8' : '#ff3a1a', 500); this.fxs.push({ k: 'pillar', x: u.x, y: u.y, c: '#ffe080', t: 0, dur: 800 }); this.shake(2); this.h.ult?.(u, sk); await this.wait(500); }
     const hits = sk.hits || 1, hitSet = new Set(), counters = [];
-    const doHit = (t, mult = 1) => { const r = this.hit(u, t, sk, mult); if (r > 0) hitSet.add(t); if (r === -2) counters.push(t); };
+    const doHit = (t, mult = 1) => { const r = this.hit(u, t, sk, mult); if (r > 0) { hitSet.add(t); if (sk.fx === 'fire' && Math.random() < .5) this.decal('scorch', t.x + t.ox + rnd(-4, 4), t.y + t.oy + rnd(-1, 2), 7 + rnd(0, 4)); } if (r === -2) counters.push(t); };
     if (sk.dmg) {
       if (sk.anim === 'melee' || sk.anim === 'spin') {
         const dir = u.side === 'hero' ? 1 : -1;
@@ -557,6 +559,7 @@ class World {
     tile(L.mid, .35, YO, L.HZ + 4);
     this.drawLandmark(ctx, gt, L, true);
     tile(L.ground, 1, L.HZ + YO, LH - L.HZ - YO + 4);
+    this.drawDecals(ctx);
     if (this.hq()) this.drawRays(ctx, gt, L);
     this.drawArena(ctx, gt, L);
     this.drawAtmos(ctx, gt);
@@ -694,14 +697,26 @@ class World {
       ctx.fillStyle = 'rgba(255,240,220,.08)'; ctx.fillRect(x0, top, x1 - x0, 1.2); }
     ctx.restore();
   }
+  drawDecals(ctx) {
+    if (!this.decals || !this.decals.length) return; ctx.save();
+    for (const d of this.decals) { const age = (this.time - d.t) / 1000, a = Math.min(1, age * 6); ctx.save(); ctx.globalAlpha = a; ctx.translate(d.x, d.y); ctx.scale(1, .34);
+      if (d.k === 'crater') { let g = ctx.createRadialGradient(0, 0, 0, 0, 0, d.r); g.addColorStop(0, 'rgba(14,10,8,.55)'); g.addColorStop(.65, 'rgba(30,22,16,.35)'); g.addColorStop(.85, 'rgba(200,180,150,.12)'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, d.r, 0, Math.PI * 2); ctx.fill();
+        let sd = d.seed; const R = () => { sd = (sd * 9301 + 49297) % 233280; return sd / 233280; }; ctx.strokeStyle = 'rgba(10,6,4,.5)'; ctx.lineWidth = .9; ctx.beginPath(); for (let i = 0; i < 6; i++) { const an = R() * Math.PI * 2; ctx.moveTo(Math.cos(an) * d.r * .5, Math.sin(an) * d.r * .5); ctx.lineTo(Math.cos(an + R() * .4) * d.r * (1 + R() * .4), Math.sin(an) * d.r * (1 + R() * .4)); } ctx.stroke();
+        if (age < 3) { ctx.globalCompositeOperation = 'lighter'; const gl = ctx.createRadialGradient(0, 0, 0, 0, 0, d.r * .6); gl.addColorStop(0, `rgba(255,120,40,${.35 * (1 - age / 3)})`); gl.addColorStop(1, 'rgba(255,80,20,0)'); ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(0, 0, d.r * .6, 0, Math.PI * 2); ctx.fill(); ctx.globalCompositeOperation = 'source-over'; } }
+      else if (d.k === 'scorch') { const g = ctx.createRadialGradient(0, 0, 0, 0, 0, d.r); g.addColorStop(0, 'rgba(18,10,6,.6)'); g.addColorStop(.7, 'rgba(40,20,10,.3)'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, d.r, 0, Math.PI * 2); ctx.fill(); if (age < 4) { ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(255,110,30,${.5 * (1 - age / 4)})`; for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(Math.cos(i * 1.7 + d.seed) * d.r * .5, Math.sin(i * 2.3) * d.r * .5, .6, 0, Math.PI * 2); ctx.fill(); } ctx.globalCompositeOperation = 'source-over'; } }
+      ctx.restore(); }
+    ctx.restore();
+  }
   drawLandmark(ctx, gt, L, front = false) {
     const lm = RIG.landmark(this.bgKey, this.s); if (!lm || lm.front !== front) return;
     const k = lm.k, w = lm.w * k, h = lm.h * k, span = this.LW + w + 60; let X = this.LW * .6 - w / 2 - ((this.scroll * .05) % span + span) % span; if (X < -w - 30) X += span;
     const bobY = this.bgKey === 'sea' ? Math.sin(gt / 900) * 1.2 : 0, rot = this.bgKey === 'sea' ? Math.sin(gt / 1300) * .025 : 0;
     const Y = L.HZ + YO - h + lm.base * k + 2 + bobY; ctx.save(); ctx.translate(X + w / 2, Y + h); ctx.rotate(rot); ctx.translate(-w / 2, -h); ctx.scale(k, k); ctx.drawImage(lm.cv, 0, 0, lm.w, lm.h); if (lm.anim) lm.anim(ctx, 0, 0, gt); ctx.restore();
   }
+  decal(k, x, y, r) { this.decals = this.decals || []; this.decals.push({ k, x, y, r, seed: Math.random() * 1000, t: this.time }); if (this.decals.length > 14) this.decals.shift(); }
   impact(t, dir, heavy) {
     const x = t.x + t.ox, y = t.y + t.oy - t.h * .5, n = heavy ? 16 : 9;
+    if (heavy) this.decal('crater', t.x + t.ox + rnd(-3, 3), t.y + t.oy + rnd(-1, 2), (t.big ? 13 : 8) + rnd(0, 3));
     for (let i = 0; i < n; i++) { const a = (dir > 0 ? 0 : Math.PI) + rnd(-1.1, 1.1), sp = rnd(1.2, heavy ? 3.4 : 2.4); this.parts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - .4, g: .05, t: 0, life: rnd(180, 360), c: pick(['#fff6d0', '#ffd27a', '#ffffff']), s: 1, streak: 1 }); }
     this.fxs.push({ k: 'burst', x, y, r: heavy ? 16 : 10, c: '#ffffff', t: 0, dur: 150 });
     if (heavy) { this.fxs.push({ k: 'crack', x: t.x + t.ox, y: t.y + t.oy, r: t.big ? 30 : 20, t: 0, dur: 1100, seed: Math.random() * 1000 }); this.burst(t.x + t.ox, t.y + t.oy - 1, 'stone', 12, 1.4, .35); this.shake(2.5); }
@@ -730,6 +745,7 @@ class World {
   }
   drawUnit(u, gt) {
     const ctx = this.ctx, x = u.x + u.ox + u.kb, y = u.y + u.oy;
+    if (alive(u) && u.look) u.look.wear = Math.max(0, 1 - u.hp / u.maxHp);
     const fly = (hasS(u, 'fly') ? 14 + Math.sin(gt / 260) * 3 : 0) - (u.falling ? Math.pow(Math.min(1.6, (this.time - u.falling) / 700), 2) * 70 : 0);
     if (this.hq()) {
       const img = this.litSprite(u, gt);

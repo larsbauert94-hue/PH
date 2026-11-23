@@ -12,6 +12,12 @@ Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden 
 
 Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten). Unter **Optionen → Grafik** lässt sich zwischen *Auto*, *Hoch* (Figuren mit Szenenlicht, Kantenlicht und Bodenverdeckung) und *Normal* wählen; *Auto* schaltet bei zu niedriger Bildrate selbst herunter.
 
+## Neu in Version 12.1
+- **Wappen mittig als Wappenschild** auf der Brust (heraldischer Grund in Lore-Farbe, Metallrand); bei langen Bärten tiefer, bei Zwergen als Gürtelschnalle; Schilde mit schlichtem Buckel
+- **Ausdrucksstärkere Gesichter:** Augenhöhlen, Wangenknochen, Lippen, Nasenrücken, Falten bei Älteren (Gandalf, Théoden, Balin, Círdan …), zornige Brauen im Kampf, geschlossene Augen bei Gefallenen
+- **Neue Kulissen:** Bruchtal mit dem Letzten Heimeligen Haus und Wasserfällen, Lothlórien mit Mallorn-Bäumen, Fletts und Elbenlampen; Kapitel wechseln mittendrin die Kulisse (Bruchtal → Moria, Lórien → Amon Hen); fallende goldene Blätter
+- **Kampfspuren:** Krater und Brandflecken bleiben während des Kampfs liegen; angeschlagene Figuren zeigen Kratzer, Schmutz und einen ausgefransten Umhang
+
 ## Neu in Version 12
 - **Erkennungszeichen:** Wappen auf Brust und Schild nach der Lore – Weißer Baum von Gondor, Pferd von Rohan, Stern der Noldor, Durins Krone, Mallorn-Blatt, Glorfindels Goldene Blume, Thrushs Vogel von Thal; Gegner mit Weißer Hand (Isengard) und Lidlosem Auge (Mordor)
 - **Berühmte Klingen leuchten:** Stich, Andúril, Orcrist, Narsil, Aeglos, Ringil, Angrist, Hadhafang u. a.

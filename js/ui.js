@@ -235,7 +235,7 @@ function onResult(r, kind) {
 }
 async function bossRematch(ch) {
   const C = STORY[ch], prevBg = W.bgKey; G.queue = null; save();
-  W.setBg(C.bg); await splash(`<div class="ctitle"><div class="kicker">Erneuter Bosskampf</div><h1>Kapitel ${ch + 1}</h1><h2>${esc(C.n)}</h2></div>`, 1600, 'chap');
+  W.setBg(chBg(C)); await splash(`<div class="ctitle"><div class="kicker">Erneuter Bosskampf</div><h1>Kapitel ${ch + 1}</h1><h2>${esc(C.n)}</h2></div>`, 1600, 'chap');
   applyParty(); await W.walk(1000);
   const lvl = C.lvl + 3 + G.story.loop * LOOP_LVL, r = await W.fight(C.boss, lvl, 'boss'); r.setCh = ch;
   onResult(r, 'boss'); if (r.win) { G.stats.bosses++; track('bosses', 1); } else toast('Der Boss war zu stark. Werdet stärker und versucht es erneut.', 'unlock');
@@ -288,7 +288,7 @@ async function modeRun(id) {
   if (id === 'horde') {
     for (;;) {
       const grp = pool.waves[Math.floor(Math.random() * pool.waves.length)], lvl = base + Math.floor(n / 2);
-      if (n % 5 === 0) W.setBg(STORY[pool.bosses[Math.floor(Math.random() * pool.bosses.length)]].bg);
+      if (n % 5 === 0) W.setBg(chBg(STORY[pool.bosses[Math.floor(Math.random() * pool.bosses.length)]], Math.floor(Math.random() * 8)));
       banner(`Welle ${n + 1}`, 'ult'); await W.walk(700);
       const r = await W.fight(n % 5 === 4 ? [...grp, ...grp].slice(0, 5) : grp, lvl, n % 5 === 4 ? 'elite' : 'normal', { keepHp: 1 }); onResult(r, 'normal');
       if (!r.win) break; n++; healParty(.08);
@@ -298,7 +298,7 @@ async function modeRun(id) {
   } else if (id === 'rush') {
     const order = pool.bosses.slice().sort(() => Math.random() - .5).slice(0, 5);
     for (const ci of order) {
-      const C = STORY[ci]; W.setBg(C.bg); await W.walk(700); const bk = C.boss.find(k => ENEMIES[k].boss) || C.boss[0]; await bossSplash(bk);
+      const C = STORY[ci]; W.setBg(chBg(C)); await W.walk(700); const bk = C.boss.find(k => ENEMIES[k].boss) || C.boss[0]; await bossSplash(bk);
       const r = await W.fight(C.boss, base + 2 + n, 'boss', { keepHp: 1 }); r.setCh = ci; onResult(r, 'boss');
       if (!r.win) break; n++; healParty(.3); if (Math.random() < .35) fr++;
     }
@@ -355,7 +355,7 @@ async function towerRun() {
 }
 async function director() {
   while (true) {
-    const ch = STORY[G.story.ch]; W.setBg(ch.bg);
+    const ch = STORY[G.story.ch]; W.setBg(chBg(ch, G.story.wave));
     if (!G.story.intro) {
       await W.wait(400); await chapterTitle(ch);
       if (ch.back) for (const k of ch.back) { delete G.away[k]; const hs = G.heroes[k]; if (hs) { hs.stage = Math.max(hs.stage, 2); hs.lvl = Math.max(hs.lvl, ...G.party.map(x => G.heroes[x].lvl)); } }
@@ -459,6 +459,7 @@ function flyCoins(u, n) {
     a.onfinish = () => { c.remove(); const g = $('.res .g'); g.classList.remove('bump'); void g.offsetWidth; g.classList.add('bump'); };
   }
 }
+function chBg(C, w = 99) { let b = C.bg; for (const [w0, k] of Object.entries(C.bgAt || {})) if (w >= +w0) b = k; return b; }
 function waveCard(w, kind) { const el = $('#wave'); el.className = 'wave ' + kind; el.innerHTML = `<small>${esc(STORY[G.story.ch].n)}</small><b>Welle ${w + 1} von ${WAVES}</b>${kind === 'elite' ? '<em>Elite</em>' : w === WAVES - 1 ? '<em>Letzte Welle</em>' : ''}`; el.hidden = false; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); clearTimeout(waveCard.t); waveCard.t = setTimeout(() => { el.hidden = true; }, 1900); }
 function refreshLooks() { for (const u of W.heroes) { const L = heroLook(u.key), sig = JSON.stringify(L.gear || null); if (u._gsig !== undefined && u._gsig !== sig && alive(u)) W.gearUp(u); u._gsig = sig; u.look = L; } }
 function openSheet(title, html, after, o = {}) {
@@ -877,9 +878,9 @@ function boot() {
   setInterval(updateHud, 100); updateHud();
   $('#title').hidden = false; document.body.classList.add('titled');
   $('#tContinue').textContent = has ? `Weiterspielen · Kapitel ${G.story.ch + 1}` : 'Reise beginnen';
-  const titleBgs = ['shire', 'eregion', 'pelennor', 'mirkwood', 'sea', 'erebor', 'helm', 'doom']; let tbi = titleBgs.indexOf(W.bgKey); const tbt = setInterval(() => { if (started) { clearInterval(tbt); return; } tbi = (tbi + 1) % titleBgs.length; W.setBg(titleBgs[tbi]); }, 5200);
+  const titleBgs = ['shire', 'rivendell', 'pelennor', 'lorien', 'sea', 'erebor', 'helm', 'doom']; let tbi = titleBgs.indexOf(W.bgKey); const tbt = setInterval(() => { if (started) { clearInterval(tbt); return; } tbi = (tbi + 1) % titleBgs.length; W.setBg(titleBgs[tbi]); }, 5200);
   document.body.classList.toggle('fx-soft', G.settings.fx === 'sanft');
-  $('#tContinue').onclick = async () => { if (started) return; started = true; clearInterval(tbt); W.setBg(STORY[G.story.ch].bg); ac(); MUSIC.sync(); sfx('join'); $('#title').classList.add('out'); document.body.classList.remove('titled'); setTimeout(() => $('#title').hidden = true, 600); W.walking = false; W.heroes.forEach(h => W.setAnim(h, 'idle')); if (!G.seenHelp) { await introHelp(); G.seenHelp = 1; save(); } director(); };
+  $('#tContinue').onclick = async () => { if (started) return; started = true; clearInterval(tbt); W.setBg(chBg(STORY[G.story.ch], G.story.wave)); ac(); MUSIC.sync(); sfx('join'); $('#title').classList.add('out'); document.body.classList.remove('titled'); setTimeout(() => $('#title').hidden = true, 600); W.walking = false; W.heroes.forEach(h => W.setAnim(h, 'idle')); if (!G.seenHelp) { await introHelp(); G.seenHelp = 1; save(); } director(); };
   $('#nHeroes').onclick = () => { sfx('click'); openHeroes(); };
   $('#nBag').onclick = () => { sfx('click'); openBag(); };
   $('#nStory').onclick = () => { sfx('click'); openStory(); };
