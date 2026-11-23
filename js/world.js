@@ -39,8 +39,8 @@ class World {
   }
   /* ---------- Layout ---------- */
   resize() {
-    const r = this.cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
-    const cw = r.width || 800, ch = r.height || 450;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const cw = this.cv.clientWidth || 800, ch = this.cv.clientHeight || 450;
     this.LW = clamp(Math.round(LH * cw / ch), 200, 360);
     this.cv.width = Math.round(cw * dpr); this.cv.height = Math.round(ch * dpr);
     this.s = this.cv.height / LH; this.ox0 = (this.cv.width - this.LW * this.s) / 2; if (this.cam) { this.cam.x = this.cam.tx = this.LW / 2; }
@@ -569,7 +569,7 @@ class World {
       const k = n.t / 1000, pop = k < .15 ? RIG.easeOut(k / .15) * 1.35 : 1.35 - Math.min(.35, (k - .15) * 1.5);
       ctx.globalAlpha = k > .7 ? (1 - k) / .3 : 1;
       ctx.font = `700 ${(n.sc > 1 ? 9.5 : 6.4) * pop}px Cinzel, Georgia, serif`; ctx.lineWidth = 1.4; ctx.strokeStyle = 'rgba(10,6,12,.9)';
-      const y = n.y - RIG.easeOut(Math.min(1, k * 1.3)) * 12;
+      const y = Math.max(n.x > this.LW * .6 ? 60 : n.x > this.LW * .3 ? 30 : 48, n.y - RIG.easeOut(Math.min(1, k * 1.3)) * 12);
       ctx.strokeText(n.txt, n.x, y);
       if (n.sc > 1) { const gg = ctx.createLinearGradient(0, y - 5, 0, y + 5); gg.addColorStop(0, '#fffbe0'); gg.addColorStop(.5, '#ffd34a'); gg.addColorStop(1, '#ff9a2a'); ctx.fillStyle = gg; ctx.shadowColor = 'rgba(255,190,60,.9)'; ctx.shadowBlur = 6 * this.s; } else ctx.fillStyle = n.c;
       ctx.fillText(n.txt, n.x, y); ctx.shadowBlur = 0;

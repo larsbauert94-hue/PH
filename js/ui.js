@@ -60,7 +60,7 @@ const MUSIC = (() => {
 })();
 
 /* ---------- Kleine Helfer ---------- */
-function toast(html, cls = '') { const t = document.createElement('div'); t.className = 'toast ' + cls; t.innerHTML = html; $('#toasts').appendChild(t); setTimeout(() => t.classList.add('out'), 2600); setTimeout(() => t.remove(), 3200); }
+function toast(html, cls = '') { const box = $('#toasts'); while (box.children.length >= (innerHeight < 390 || innerHeight > innerWidth ? 1 : 2)) box.firstChild.remove(); const t = document.createElement('div'); t.className = 'toast ' + cls; t.innerHTML = html; $('#toasts').appendChild(t); setTimeout(() => t.classList.add('out'), 2600); setTimeout(() => t.remove(), 3200); }
 function heroCol(k) { return ROLE_COL[roleOf(k)]; }
 function stars(n) { return '<span class="stars">' + [0, 1, 2].map(i => `<i class="${i <= n ? 'on' : ''}">★</i>`).join('') + '</span>'; }
 function paintCards(root = document) {
@@ -135,7 +135,7 @@ function suggestGear(items) {
 function lootPop(items, gold) {
   const box = $('#loot');
   if (gold) { const e = document.createElement('div'); e.className = 'lp gold'; e.textContent = `+${fmt(gold)} ◆`; box.appendChild(e); setTimeout(() => e.remove(), 2200); }
-  items.forEach((it, i) => setTimeout(() => { const e = document.createElement('div'); e.className = 'lp'; e.style.setProperty('--rc', RARITY[it.r].c); e.innerHTML = `${icHtml(it)}<span>${esc(it.name)}</span>`; box.appendChild(e); paintCards(e); if (it.r >= 3) sfx('loot'); setTimeout(() => e.remove(), 2600); }, 250 + i * 300));
+  items.forEach((it, i) => setTimeout(() => { while (box.children.length >= (innerHeight > innerWidth ? 3 : 4)) box.firstChild.remove(); const e = document.createElement('div'); e.className = 'lp'; e.style.setProperty('--rc', RARITY[it.r].c); e.innerHTML = `${icHtml(it)}<span>${esc(it.name)}</span>`; box.appendChild(e); paintCards(e); if (it.r >= 3) sfx('loot'); setTimeout(() => e.remove(), 2600); }, 250 + i * 300));
 }
 
 /* ---------- Dialoge & Splashes ---------- */
@@ -165,9 +165,9 @@ function dialog(lines) {
 }
 function splash(html, ms = 0, cls = '') {
   return new Promise(res => {
-    const s = $('#splash'); s.className = 'splash ' + cls; s.innerHTML = html; s.hidden = false; paintCards(s); paintComps(s);
+    const s = $('#splash'); s.className = 'splash ' + cls; s.innerHTML = html; s.hidden = false; document.body.classList.add('splash-open'); paintCards(s); paintComps(s);
     W.hold = true;
-    const close = () => { s.classList.add('out'); setTimeout(() => { s.hidden = true; s.classList.remove('out'); W.hold = false; res(); }, 300); };
+    const close = () => { s.classList.add('out'); setTimeout(() => { s.hidden = true; s.classList.remove('out'); document.body.classList.remove('splash-open'); W.hold = false; res(); }, 300); };
     if (ms) setTimeout(close, ms); else { s.onclick = () => { s.onclick = null; sfx('click'); close(); }; }
   });
 }
@@ -180,7 +180,7 @@ function pickChest(title, mith) {
   ].sort(() => Math.random() - .5);
   const show = o => o.k === 'item' ? `${icHtml(o.it)}<b style="color:${RARITY[o.it.r].c}">${esc(o.it.name)}</b>` : o.k === 'mith' ? `<span class="pk-big">✧ ${o.v}</span><b>Mithril</b>` : `<span class="pk-big">◆ ${fmt(o.v)}</span><b>Gold + ${esc(o.it.name)}</b>`;
   return new Promise(res => {
-    const s = $('#splash'); s.className = 'splash doneS'; s.hidden = false; W.hold = true; s.onclick = null;
+    const s = $('#splash'); s.className = 'splash doneS'; s.hidden = false; document.body.classList.add('splash-open'); W.hold = true; s.onclick = null;
     s.innerHTML = `<div class="cdone pick"><div class="kicker">Kapitel abgeschlossen · ✧ ${mith} Mithril</div><h1>${esc(title)}</h1><p>Wähle eine der drei Truhen!</p><div class="pk">${opts.map((o, i) => `<button class="pkc" data-i="${i}"><span class="pk-lid">?</span><div class="pk-in">${show(o)}</div></button>`).join('')}</div><div class="dhint" hidden>Tippen zum Fortfahren</div></div>`;
     paintCards(s);
     s.querySelectorAll('.pkc').forEach(b => b.onclick = e => {
@@ -189,7 +189,7 @@ function pickChest(title, mith) {
       if (o.k === 'mith') G.mithril += o.v; if (o.k === 'gold') { G.gold += o.v; addItem(o.it); } if (o.k === 'item') addItem(o.it);
       if (G.settings.autoEquip) autoEquip(); save(); updateHud();
       b.classList.add('open', 'mine'); setTimeout(() => s.querySelectorAll('.pkc').forEach(x => x.classList.add('open')), 650);
-      setTimeout(() => { s.querySelector('.dhint').hidden = false; s.onclick = () => { s.onclick = null; s.classList.add('out'); setTimeout(() => { s.hidden = true; s.classList.remove('out'); W.hold = false; res(); }, 300); }; }, 900);
+      setTimeout(() => { s.querySelector('.dhint').hidden = false; s.onclick = () => { s.onclick = null; s.classList.add('out'); setTimeout(() => { s.hidden = true; s.classList.remove('out'); document.body.classList.remove('splash-open'); W.hold = false; res(); }, 300); }; }, 900);
     });
   });
 }
@@ -428,7 +428,7 @@ function openSheet(title, html, after, o = {}) {
   paintCards(s); after && after(s);
   if (!s._swipe) { s._swipe = 1; let x0 = 0, y0 = 0, t0 = 0;
     s.addEventListener('pointerdown', e => { x0 = e.clientX; y0 = e.clientY; t0 = Date.now(); });
-    s.addEventListener('pointerup', e => { const dx = e.clientX - x0, dy = e.clientY - y0; if (Date.now() - t0 < 600 && Math.abs(dx) > 70 && Math.abs(dy) < 45 && !e.target.closest('canvas#map')) { const b = s.querySelector(`.m-pb[data-pg="${dx < 0 ? 1 : -1}"]:not(:disabled)`); if (b) b.click(); } });
+    s.addEventListener('pointerup', e => { const [dx, dy] = appDelta(e.clientX - x0, e.clientY - y0); if (Date.now() - t0 < 600 && Math.abs(dx) > 70 && Math.abs(dy) < 45 && !e.target.closest('canvas#map')) { const b = s.querySelector(`.m-pb[data-pg="${dx < 0 ? 1 : -1}"]:not(:disabled)`); if (b) b.click(); } });
   }
 }
 function closeSheet() { cancelAnimationFrame(artRaf); const s = $('#sheet'); s.classList.remove('open'); document.body.classList.remove('sheet-open'); setTimeout(() => { if (!s.classList.contains('open')) s.hidden = true; }, 260); }
@@ -491,7 +491,7 @@ function openHeroes(tab = openHeroes.tab || 'team', page = openHeroes.page) {
     };
     const ap = s.querySelector('#autoP'); if (ap) ap.onclick = () => { G.settings.autoParty = !G.settings.autoParty; if (G.settings.autoParty) { autoParty(); W.pendingParty = 1; buildHud(); } save(); openHeroes(); };
   }, { tabs: [['team', 'Team'], ['helden', `Alle ${own.length}/${Object.keys(HEROES).length}`], ['reittiere', 'Reittiere'], ['begleiter', 'Begleiter'], ['buende', 'Bündnisse']], tab, onTab: t => openHeroes(t, 0), pages: np, page, onPage: p => openHeroes(tab, p),
-    extra: tab === 'team' || tab === 'helden' ? `<button class="btn small gold" id="optAll">⚡ Optimieren</button><button class="btn small ${G.settings.autoParty ? 'on' : ''}" id="autoP" title="Gruppe automatisch aufstellen">Auto</button>` : '' });
+    extra: tab === 'team' || tab === 'helden' ? `<button class="btn small gold" id="optAll" title="Beste Ausrüstung für alle anlegen">⚡<span class="lbl"> Optimieren</span></button><button class="btn small ${G.settings.autoParty ? 'on' : ''}" id="autoP" title="Gruppe automatisch aufstellen">Auto</button>` : '' });
 }
 function footLook(k) { const L = heroLook(k); delete L.mount; return L; }
 function paintMounts(root) { root.querySelectorAll('canvas[data-mount]').forEach(cv => { const m = MOUNTS.find(x => x.id === cv.dataset.mount); requestAnimationFrame(() => { const dpr = Math.min(2, devicePixelRatio || 1); cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr; const c = cv.getContext('2d'), g = c.createRadialGradient(cv.width / 2, cv.height * .55, 2, cv.width / 2, cv.height / 2, cv.width * .7); g.addColorStop(0, 'rgba(232,189,92,.3)'); g.addColorStop(1, 'rgba(10,13,18,0)'); c.fillStyle = g; c.fillRect(0, 0, cv.width, cv.height); const sc = cv.height / 34; c.setTransform(sc, 0, 0, sc, cv.width / 2 - 2 * sc, cv.height * .9); RIG.draw(c, 'quad', Object.assign({ horse: 1, pony: m.kind === 'pony' ? 1 : 0, eye: '#2a1a12' }, m.look), 'idle', 0, 500); }); }); }
@@ -561,14 +561,14 @@ function openHero(k, tab = openHero.tab || 'werte') {
 /* ---------- Beutel: Raster links, Details rechts ---------- */
 /* ---------- Sets: Übersicht, Fortschritt und wo man sie farmt ---------- */
 function setSource(S) {
-  if (S.ch !== undefined) { const ok = chapterStatus(S.ch) === 'done'; return { t: `Boss von Kapitel ${S.ch + 1}: ${STORY[S.ch].n}`, ok, lbl: ok ? '▶ Boss farmen' : `🔒 ab Kapitel ${S.ch + 1}`, go: () => playNow({ type: 'boss', ch: S.ch }, 'Bosskampf: ' + STORY[S.ch].n) }; }
+  if (S.ch !== undefined) { const ok = chapterStatus(S.ch) === 'done'; return { t: `Kapitelboss ${S.ch + 1} · ${STORY[S.ch].n}`, ok, lbl: ok ? '▶ Boss farmen' : `🔒 ab Kapitel ${S.ch + 1}`, go: () => playNow({ type: 'boss', ch: S.ch }, 'Bosskampf: ' + STORY[S.ch].n) }; }
   if (S.src === 'tower') return { t: 'Orthanc-Turm: 35 % pro bezwungener Etage', ok: true, lbl: '▶ Turm', go: () => playNow({ type: 'tower' }, 'Orthanc-Turm') };
   if (S.src === 'horde') return { t: 'Endloser Ansturm: Chance alle 5 Wellen', ok: modeUnlocked(), lbl: modeUnlocked() ? '▶ Ansturm' : '🔒 ab Kapitel 4', go: () => playNow({ type: 'mode', id: 'horde' }, 'Endloser Ansturm') };
   return { t: 'Prüfungen der Macht: ab Stufe 2', ok: modeUnlocked(), lbl: modeUnlocked() ? '▶ Prüfungen' : '🔒 ab Kapitel 4', go: () => openStory('modi') };
 }
 function openSets(page = openSets.page) {
   const per = 6, np = pages(SETS.length, per); page = openSets.page = clampPg(page, np);
-  openSheet('Beutel', `<div class="m-sets">${SETS.slice(page * per, page * per + per).map((S, i) => { const o = setOwned(S.id), n = Object.keys(o).length, src = setSource(S); return `<div class="m-set ${n >= 3 ? 'full' : ''}" style="--sc:${S.c}"><div class="m-sh"><b>${esc(S.n)}</b><span>${n}/3</span></div><div class="m-sp">${['weapon', 'armor', 'trinket'].map(sl => o[sl] ? icHtml(o[sl]) : `<div class="ic empty" title="${SLOTS[sl]}"></div>`).join('')}</div><small class="${n >= 2 ? 'on' : ''}">2 Teile: ${esc(S.d2)}</small><small class="${n >= 3 ? 'on' : ''}">3 Teile: ${esc(S.d3)}</small><div class="m-src">${esc(src.t)}</div><button class="btn small ${src.ok ? 'gold' : ''}" data-farm="${page * per + i}" ${src.ok ? '' : 'disabled'}>${src.lbl}</button></div>`; }).join('')}</div>`, s => {
+  openSheet('Beutel', `<div class="m-sets">${SETS.slice(page * per, page * per + per).map((S, i) => { const o = setOwned(S.id), n = Object.keys(o).length, src = setSource(S); return `<div class="m-set ${n >= 3 ? 'full' : ''}" style="--sc:${S.c}"><div class="m-sh"><b>${esc(S.n)}</b><span>${n}/3</span></div><div class="m-sp">${['weapon', 'armor', 'trinket'].map(sl => o[sl] ? icHtml(o[sl]) : `<div class="ic empty" title="${SLOTS[sl]}"></div>`).join('')}</div><small class="${n >= 2 ? 'on' : ''}">2 Teile: ${esc(S.d2)}</small><small class="${n >= 3 ? 'on' : ''}">3 Teile: ${esc(S.d3)}</small><div class="m-src" title="${esc(src.t)}">${esc(src.t)}</div><button class="btn small ${src.ok ? 'gold' : ''}" data-farm="${page * per + i}" ${src.ok ? '' : 'disabled'}>${src.lbl}</button></div>`; }).join('')}</div>`, s => {
     s.querySelectorAll('[data-farm]').forEach(b => b.onclick = () => setSource(SETS[+b.dataset.farm]).go());
   }, { tabs: [['all', 'Alle'], ['weapon', 'Waffen'], ['armor', 'Rüstung'], ['trinket', 'Schmuck'], ['sets', 'Sets']], tab: 'sets', onTab: t => t === 'sets' ? openSets() : openBag(t, 0, null), pages: np, page, onPage: p => openSets(p) });
 }
@@ -661,7 +661,7 @@ function openStory(tab = openStory.tab || 'story', part, sel) {
       root.querySelectorAll('[data-side]').forEach(b => b.onclick = () => playNow({ type: 'side', id: b.dataset.side }, SIDE.find(x => x.id === b.dataset.side).n));
     };
     wire(s);
-    cv.onclick = e => { const rc = cv.getBoundingClientRect(), x = e.clientX - rc.left, y = e.clientY - rc.top; const h = (cv._hits || []).map(h => ({ ...h, d: Math.hypot(h.x - x, h.y - y) })).filter(h => h.d < h.r).sort((a, b) => a.d - b.d)[0]; if (h) { sfx('click'); sel = h.i; drawMap(cv, part, sel); const d = s.querySelector('#chDetail'); d.innerHTML = typeof sel === 'string' ? sideCard(SIDE.find(x => 'side:' + x.id === sel)) : chapterCard(sel); paintCards(d); wire(d); } };
+    cv.onclick = e => { const x = e.offsetX, y = e.offsetY; const h = (cv._hits || []).map(h => ({ ...h, d: Math.hypot(h.x - x, h.y - y) })).filter(h => h.d < h.r).sort((a, b) => a.d - b.d)[0]; if (h) { sfx('click'); sel = h.i; drawMap(cv, part, sel); const d = s.querySelector('#chDetail'); d.innerHTML = typeof sel === 'string' ? sideCard(SIDE.find(x => 'side:' + x.id === sel)) : chapterCard(sel); paintCards(d); wire(d); } };
     s.querySelectorAll('[data-part]').forEach(b => b.onclick = () => { sfx('click'); openStory('story', +b.dataset.part); });
   }, { tabs: STORY_TABS, tab, onTab: t => openStory(t) });
 }
@@ -762,11 +762,16 @@ function openSettings() {
 
 /* ---------- Start ---------- */
 function layoutMode() {
-  const portrait = innerHeight > innerWidth * 1.05;
-  document.body.classList.toggle('portrait', portrait);
-  if (portrait && !layoutMode.dismissed) $('#rotate').hidden = false; else $('#rotate').hidden = true;
+  // Hochkant: das ganze Spiel wird um 90° gedreht, damit man das iPhone einfach quer halten kann (auch mit Ausrichtungssperre)
+  const rot = false, app = $('#app'), aw = rot ? innerHeight : innerWidth, ah = rot ? innerWidth : innerHeight;
+  document.body.classList.toggle('rot', rot); document.body.classList.remove('portrait');
+  app.style.width = aw + 'px'; app.style.height = ah + 'px'; app.style.transform = rot ? `translate(${innerWidth}px,0) rotate(90deg)` : '';
+  if (rot && !layoutMode.dismissed && !layoutMode.hinted) { layoutMode.hinted = 1; $('#rotate').hidden = false; clearTimeout(layoutMode.t); layoutMode.t = setTimeout(() => { $('#rotate').hidden = true; }, 4500); }
+  if (!rot) $('#rotate').hidden = true;
   W && W.resize();
 }
+/* Wisch-Richtung im Spiel-Koordinatensystem (berücksichtigt die Drehung) */
+function appDelta(dx, dy) { return document.body.classList.contains('rot') ? [dy, -dx] : [dx, dy]; }
 function boot() {
   const has = load();
   if (!has) { newProfile(); for (const k of STORY[0].join) joinHero(k); save(); }
