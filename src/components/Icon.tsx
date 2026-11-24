@@ -27,6 +27,7 @@ const ICONS: Record<string, Def> = {
   /** Tropfen mit Plus: „Posten“ */
   water: { shapes: [{ d: drop }, { d: 'M12 11.2v6.4M8.8 14.4h6.4' }] },
   add: { shapes: [{ d: 'M12 5v14M5 12h14' }] },
+  remove: { shapes: [{ d: 'M5 12h14' }] },
   'add-circle-outline': { shapes: [{ c: [12, 12, 8.6] }, { d: 'M12 8.2v7.6M8.2 12h7.6' }] },
   film: { shapes: [{ d: 'M8.6 3h6.8A2.6 2.6 0 0 1 18 5.6v12.8a2.6 2.6 0 0 1-2.6 2.6H8.6A2.6 2.6 0 0 1 6 18.4V5.6A2.6 2.6 0 0 1 8.6 3z' }, { d: 'M10.6 9.4 14.6 12l-4 2.6z', fill: true }] },
   videocam: { shapes: [{ d: 'M4.4 7h9.2A1.4 1.4 0 0 1 15 8.4v7.2a1.4 1.4 0 0 1-1.4 1.4H4.4A1.4 1.4 0 0 1 3 15.6V8.4A1.4 1.4 0 0 1 4.4 7z' }, { d: 'm15 10.6 6-3.2v9.2l-6-3.2' }] },

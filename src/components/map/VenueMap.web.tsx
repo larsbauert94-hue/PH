@@ -1,8 +1,9 @@
-import { forwardRef, useImperativeHandle, useMemo, useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { forwardRef, useImperativeHandle, useState } from 'react'
+import { PanResponder, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Image } from 'expo-image'
 import { VENUE_TYPES } from '../../lib/labels'
 import { colors } from '../../lib/theme'
-import type { Coords } from '../../lib/geo'
+import { GERMANY, type Coords } from '../../lib/geo'
 import type { Venue } from '../../lib/types'
 import type { VenueMapHandle } from './VenueMap'
 
@@ -11,65 +12,149 @@ interface Props {
   selectedId: string | null
   onSelect(id: string | null): void
   showsUserLocation: boolean
+  userLocation?: Coords | null
+  /** Radius um den Standort, der als Kreis gezeigt wird (km) */
+  radiusKm?: number
 }
 
-// Ausschnitt Deutschland (grob) für die Umrechnung Längen-/Breitengrad → Bildschirm
-const BOUNDS = { north: 55.1, south: 47.2, west: 5.7, east: 15.2 }
-const CITIES: { name: string; lat: number; lng: number }[] = [
-  { name: 'Hamburg', lat: 53.55, lng: 9.99 }, { name: 'Berlin', lat: 52.52, lng: 13.4 },
-  { name: 'Köln', lat: 50.94, lng: 6.96 }, { name: 'Düsseldorf', lat: 51.23, lng: 6.78 },
-  { name: 'Frankfurt', lat: 50.11, lng: 8.68 }, { name: 'Leipzig', lat: 51.34, lng: 12.37 },
-  { name: 'Stuttgart', lat: 48.78, lng: 9.18 }, { name: 'München', lat: 48.14, lng: 11.58 },
-]
+const TILE = 256
+const MIN_Z = 4
+const MAX_Z = 18
+const clampZ = (z: number) => Math.max(MIN_Z, Math.min(MAX_Z, z))
+
+/** Web-Mercator: Breite/Länge → Weltpixel bei Zoom z */
+function toWorld(lat: number, lng: number, z: number) {
+  const s = TILE * 2 ** z
+  const sin = Math.sin((lat * Math.PI) / 180)
+  return { x: ((lng + 180) / 360) * s, y: (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * s }
+}
+function toLatLng(x: number, y: number, z: number) {
+  const s = TILE * 2 ** z
+  const n = Math.PI - (2 * Math.PI * y) / s
+  return { latitude: (180 / Math.PI) * Math.atan(Math.sinh(n)), longitude: (x / s) * 360 - 180 }
+}
+/** Zoomstufe, bei der `spanDeg` Längengrade in `width` Pixel passen */
+const zoomForSpan = (spanDeg: number, width: number) => clampZ(Math.log2((360 * Math.max(width, 200)) / (TILE * spanDeg)))
 
 /**
- * Web-Version der Karte: eine eigene, gezeichnete Übersicht (Einbetten fremder Kartendienste ist
- * im Browser-Vorschaumodus nicht erlaubt). Die iPhone-/Android-App zeigt Apple bzw. Google Maps.
+ * Web-Karte: dunkle Kartenkacheln (CARTO/OpenStreetMap) zum Verschieben und Zoomen
+ * (Ziehen, zwei Finger, Plus/Minus). Ohne Kachelzugriff bleibt ein Raster sichtbar.
  */
-const VenueMap = forwardRef<VenueMapHandle, Props>(function VenueMap({ venues, selectedId, onSelect }, ref) {
+const VenueMap = forwardRef<VenueMapHandle, Props>(function VenueMap({ venues, selectedId, onSelect, userLocation, radiusKm = 20 }, ref) {
   const [size, setSize] = useState({ w: 0, h: 0 })
-  const [view, setView] = useState({ ...BOUNDS })
+  const [view, setView] = useState({ lat: GERMANY.latitude, lng: GERMANY.longitude, z: 6 })
+  const [fitted, setFitted] = useState(false)
+
+  // Beim ersten Messen Deutschland einpassen
+  if (size.w && !fitted) {
+    setFitted(true)
+    setView(v => ({ ...v, z: zoomForSpan(GERMANY.longitudeDelta * 1.15, size.w) }))
+  }
+
   useImperativeHandle(ref, () => ({
-    focus: (c: Coords, zoom = 0.05) => {
-      const span = Math.max(0.6, zoom * 12)
-      setView({ north: c.latitude + span, south: c.latitude - span, west: c.longitude - span * 1.4, east: c.longitude + span * 1.4 })
-    },
+    // span = Nord-Süd-Ausdehnung in Grad (wie latitudeDelta)
+    focus: (c: Coords, span = 0.05) => setView({ lat: c.latitude, lng: c.longitude, z: zoomForSpan(span / Math.cos((c.latitude * Math.PI) / 180), size.w || 390) }),
+    zoomBy: (d: number) => setView(v => ({ ...v, z: clampZ(v.z + d) })),
   }))
 
-  const project = useMemo(() => (lat: number, lng: number) => ({
-    x: ((lng - view.west) / (view.east - view.west)) * size.w,
-    y: ((view.north - lat) / (view.north - view.south)) * size.h,
-  }), [view, size])
+  const center = toWorld(view.lat, view.lng, view.z)
+  const project = (lat: number, lng: number) => {
+    const p = toWorld(lat, lng, view.z)
+    return { x: p.x - center.x + size.w / 2, y: p.y - center.y + size.h / 2 }
+  }
 
-  const zoomed = view.north - view.south < 6
+  // Ziehen verschiebt, zwei Finger zoomen
+  const [pan] = useState(() => {
+    let start = { x: 0, y: 0, z: 6, dist: 0 }
+    const dist = (t: readonly { pageX: number; pageY: number }[]) => t.length > 1 ? Math.hypot(t[0].pageX - t[1].pageX, t[0].pageY - t[1].pageY) : 0
+    return PanResponder.create({
+      onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dx) + Math.abs(g.dy) > 4,
+      onPanResponderGrant: e => {
+        setView(v => {
+          const w = toWorld(v.lat, v.lng, v.z)
+          start = { x: w.x, y: w.y, z: v.z, dist: dist(e.nativeEvent.touches) }
+          return v
+        })
+      },
+      onPanResponderMove: (e, g) => {
+        const touches = e.nativeEvent.touches
+        if (touches.length > 1) {
+          const d = dist(touches)
+          if (!start.dist) { start.dist = d; return }
+          const z = clampZ(start.z + Math.log2(d / start.dist))
+          const ll = toLatLng(start.x, start.y, start.z)
+          setView({ lat: ll.latitude, lng: ll.longitude, z })
+          return
+        }
+        const ll = toLatLng(start.x - g.dx, start.y - g.dy, start.z)
+        setView(v => ({ ...v, lat: Math.max(-80, Math.min(80, ll.latitude)), lng: ll.longitude }))
+      },
+    })
+  })
+
+  // Sichtbare Kacheln
+  const tz = Math.floor(view.z)
+  const scale = 2 ** (view.z - tz)
+  const ts = TILE * scale
+  const tc = toWorld(view.lat, view.lng, tz)
+  const x0 = Math.floor((tc.x - size.w / 2 / scale) / TILE)
+  const x1 = Math.floor((tc.x + size.w / 2 / scale) / TILE)
+  const y0 = Math.floor((tc.y - size.h / 2 / scale) / TILE)
+  const y1 = Math.floor((tc.y + size.h / 2 / scale) / TILE)
+  const n = 2 ** tz
+  const tiles: { key: string; url: string; left: number; top: number }[] = []
+  if (size.w) {
+    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) {
+      if (y < 0 || y >= n) continue
+      const wx = ((x % n) + n) % n
+      tiles.push({
+        key: `${tz}/${x}/${y}`,
+        url: `https://${'abcd'[(x + y) & 3]}.basemaps.cartocdn.com/dark_all/${tz}/${wx}/${y}@2x.png`,
+        left: (x * TILE - tc.x) * scale + size.w / 2,
+        top: (y * TILE - tc.y) * scale + size.h / 2,
+      })
+    }
+  }
+
+  const mPerPx = (156543.03 * Math.cos((view.lat * Math.PI) / 180)) / 2 ** view.z
+  const me = userLocation ? project(userLocation.latitude, userLocation.longitude) : null
+  const ring = (radiusKm * 1000) / mPerPx
+  const close = view.z >= 11
+
   return (
-    <View style={[StyleSheet.absoluteFill, st.ground]} onLayout={e => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
-      {/* feines Raster wie Längen-/Breitengrade */}
+    <View style={[StyleSheet.absoluteFill, st.ground]} onLayout={e => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })} {...pan.panHandlers}>
       {Array.from({ length: 9 }, (_, i) => <View key={`h${i}`} style={[st.gridH, { top: `${(i + 1) * 10}%` }]} />)}
       {Array.from({ length: 6 }, (_, i) => <View key={`v${i}`} style={[st.gridV, { left: `${(i + 1) * 14}%` }]} />)}
-      <Pressable style={StyleSheet.absoluteFill} onPress={() => { onSelect(null); setView({ ...BOUNDS }) }} accessibilityLabel="Ganz Deutschland zeigen" />
-      {size.w > 0 && CITIES.map(c => {
-        const p = project(c.lat, c.lng)
-        return <Text key={c.name} style={[st.city, { left: p.x + 12, top: p.y - 8 }]} pointerEvents="none">{c.name}</Text>
-      })}
+      {tiles.map(t => (
+        <Image key={t.key} source={{ uri: t.url }} style={{ position: 'absolute', left: t.left, top: t.top, width: ts + 0.5, height: ts + 0.5 }} transition={0} cachePolicy="memory-disk" pointerEvents="none" />
+      ))}
+      <Pressable style={StyleSheet.absoluteFill} onPress={() => onSelect(null)} accessibilityLabel="Auswahl aufheben" />
+
+      {me && (
+        <>
+          <View pointerEvents="none" style={[st.ring, { left: me.x - ring, top: me.y - ring, width: ring * 2, height: ring * 2, borderRadius: ring }]} />
+          <View pointerEvents="none" style={[st.me, { left: me.x - 8, top: me.y - 8 }]} />
+        </>
+      )}
+
       {size.w > 0 && venues.map(v => {
         const p = project(v.latitude, v.longitude)
+        if (p.x < -40 || p.y < -40 || p.x > size.w + 40 || p.y > size.h + 40) return null
         const sel = v.id === selectedId
-        const s = sel ? 22 : zoomed ? 16 : 12
+        const s = sel ? 24 : close ? 18 : 13
         return (
-          <Pressable
-            key={v.id}
-            onPress={() => onSelect(v.id)}
-            hitSlop={10}
-            accessibilityLabel={`${v.name}, ${v.city}`}
-            style={[st.pin, { left: p.x - s / 2, top: p.y - s / 2, width: s, height: s, borderRadius: s / 2, backgroundColor: VENUE_TYPES[v.type].color }, sel && st.pinSel]}
-          />
+          <View key={v.id} style={{ position: 'absolute', left: p.x - s / 2, top: p.y - s / 2 }}>
+            <Pressable
+              onPress={() => onSelect(v.id)}
+              hitSlop={10}
+              accessibilityLabel={`${v.name}, ${v.city}`}
+              style={[st.pin, { width: s, height: s, borderRadius: s / 2, backgroundColor: VENUE_TYPES[v.type].color }, sel && st.pinSel]}
+            />
+            {(close || sel) && <Text style={st.label} numberOfLines={1} pointerEvents="none">{v.name}</Text>}
+          </View>
         )
       })}
-      {size.w > 0 && zoomed && venues.map(v => {
-        const p = project(v.latitude, v.longitude)
-        return <Text key={'l' + v.id} style={[st.label, { left: p.x + 12, top: p.y + 4 }]} numberOfLines={1} pointerEvents="none">{v.name}</Text>
-      })}
+      <Text style={st.attr} pointerEvents="none">© OpenStreetMap · © CARTO</Text>
     </View>
   )
 })
@@ -80,8 +165,10 @@ const st = StyleSheet.create({
   ground: { backgroundColor: '#0f1634', overflow: 'hidden' },
   gridH: { position: 'absolute', left: 0, right: 0, height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(143,153,230,0.14)' },
   gridV: { position: 'absolute', top: 0, bottom: 0, width: StyleSheet.hairlineWidth, backgroundColor: 'rgba(143,153,230,0.14)' },
-  city: { position: 'absolute', color: 'rgba(243,237,230,0.45)', fontSize: 12, fontWeight: '600', letterSpacing: 0.5 },
-  label: { position: 'absolute', color: colors.text, fontSize: 11, maxWidth: 140 },
-  pin: { position: 'absolute', borderWidth: 2, borderColor: colors.bg },
+  ring: { position: 'absolute', borderWidth: 1.5, borderColor: 'rgba(227,165,133,0.55)', backgroundColor: 'rgba(227,165,133,0.06)' },
+  me: { position: 'absolute', width: 16, height: 16, borderRadius: 8, backgroundColor: '#4f8cff', borderWidth: 3, borderColor: '#fff' },
+  label: { position: 'absolute', left: 22, top: -2, color: colors.text, fontSize: 11, fontWeight: '600', maxWidth: 150, textShadowColor: '#000', textShadowRadius: 4 },
+  pin: { borderWidth: 2, borderColor: colors.bg },
   pinSel: { borderColor: colors.text, borderWidth: 3 },
+  attr: { position: 'absolute', left: 8, bottom: 4, color: 'rgba(255,255,255,0.45)', fontSize: 9 },
 })

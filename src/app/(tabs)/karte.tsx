@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { router } from 'expo-router'
 import { Icon } from '../../components/Icon'
@@ -13,6 +13,8 @@ import { colors, radius } from '../../lib/theme'
 import type { Venue, VenueType } from '../../lib/types'
 import { Button, Chip, Empty } from '../../components/ui'
 import { notify } from '../../components/report'
+
+const RADIUS_KM = 20
 
 export default function MapScreen() {
   const insets = useSafeAreaInsets()
@@ -35,14 +37,25 @@ export default function MapScreen() {
 
   const sel = filtered.find(v => v.id === selected) ?? null
 
-  const locate = async () => {
-    const { status } = await Location.requestForegroundPermissionsAsync()
-    if (status !== 'granted') { notify('Standort', 'Erlaube den Standortzugriff in den Einstellungen, um Orte in deiner Nähe zu sehen.'); return }
-    const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
-    const c = { latitude: pos.coords.latitude, longitude: pos.coords.longitude }
-    setMe(c)
-    map.current?.focus(c, 0.08)
+  /** Karte auf 20 km um den eigenen Standort ausrichten (≈ 0,4° Nord-Süd) */
+  const locate = async (silent = false) => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync()
+      if (status !== 'granted') { if (!silent) notify('Standort', 'Erlaube den Standortzugriff in den Einstellungen, um Orte in deiner Nähe zu sehen.'); return }
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
+      const c = { latitude: pos.coords.latitude, longitude: pos.coords.longitude }
+      setMe(c)
+      map.current?.focus(c, RADIUS_KM * 2 / 111 * 1.2)
+    } catch {
+      if (!silent) notify('Standort', 'Dein Standort konnte gerade nicht ermittelt werden.')
+    }
   }
+  // Beim Öffnen direkt in die Nähe springen
+  const [locateOnOpen] = useState(() => () => locate(true))
+  useEffect(() => {
+    const id = setTimeout(locateOnOpen, 0)
+    return () => clearTimeout(id)
+  }, [locateOnOpen])
 
   const select = (v: Venue) => {
     setSelected(v.id)
@@ -54,7 +67,7 @@ export default function MapScreen() {
 
   return (
     <View style={st.root}>
-      {mode === 'karte' && <VenueMap ref={map} venues={filtered} selectedId={selected} onSelect={setSelected} showsUserLocation={!!me} />}
+      {mode === 'karte' && <VenueMap ref={map} venues={filtered} selectedId={selected} onSelect={setSelected} showsUserLocation={!!me} userLocation={me} radiusKm={RADIUS_KM} />}
 
       <View style={[st.top, { paddingTop: insets.top + 8 }, mode === 'liste' && { backgroundColor: colors.bg }]}>
         <View style={st.searchRow}>
@@ -90,7 +103,16 @@ export default function MapScreen() {
                 <Icon name="add" size={24} color={colors.text} />
               </Pressable>
             )}
-            <Pressable style={st.round} onPress={locate} accessibilityLabel="Mein Standort">
+            <View style={st.zoom}>
+              <Pressable style={st.zoomBtn} onPress={() => map.current?.zoomBy(1)} accessibilityLabel="Hineinzoomen">
+                <Icon name="add" size={22} color={colors.text} />
+              </Pressable>
+              <View style={st.zoomSep} />
+              <Pressable style={st.zoomBtn} onPress={() => map.current?.zoomBy(-1)} accessibilityLabel="Herauszoomen">
+                <Icon name="remove" size={22} color={colors.text} />
+              </Pressable>
+            </View>
+            <Pressable style={st.round} onPress={() => locate()} accessibilityLabel="Mein Standort">
               <Icon name="locate" size={22} color={colors.accent} />
             </Pressable>
           </View>
@@ -146,7 +168,10 @@ const st = StyleSheet.create({
   search: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.surface, borderRadius: radius.md, paddingHorizontal: 12, height: 46, borderWidth: 1, borderColor: colors.border, ...shadow },
   searchInput: { flex: 1, color: colors.text, fontSize: 15, height: '100%' },
   round: { width: 46, height: 46, borderRadius: 23, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border, ...shadow },
-  fabs: { position: 'absolute', right: 16, gap: 10 },
+  fabs: { position: 'absolute', right: 16, gap: 10, alignItems: 'center' },
+  zoom: { width: 46, borderRadius: 23, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', ...shadow },
+  zoomBtn: { height: 46, alignItems: 'center', justifyContent: 'center' },
+  zoomSep: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginHorizontal: 10 },
   sheet: { position: 'absolute', left: 12, right: 12, bottom: 12, backgroundColor: colors.surface, borderRadius: radius.xl, padding: 14, gap: 12, borderWidth: 1, borderColor: colors.border, ...shadow },
   strip: { position: 'absolute', left: 0, right: 0, bottom: 16, flexGrow: 0 },
   mini: { width: 160, backgroundColor: colors.surface, borderRadius: radius.lg, padding: 12, gap: 4, borderWidth: 1, borderColor: colors.border, ...shadow },
