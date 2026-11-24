@@ -50,7 +50,7 @@ fs.writeFileSync(path.join(out, 'index.html'), `<title>Pour</title>
   :root { color-scheme: dark; background: #0b1029; }
   html, body { height: 100%; background: #0b1029; color: #f3ede6; }
   body { overflow: hidden; }
-  #root { display: flex; height: 100%; flex: 1; }
+  #root { display: flex; flex: 1; position: fixed; top: 0; right: 0; bottom: 0; left: 0; }
   #pour-boot { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #0b1029; color: #e3a585; font: 600 15px system-ui, sans-serif; letter-spacing: .08em; }
 </style>
 <div id="root"></div>

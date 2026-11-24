@@ -20,7 +20,11 @@ const head = `
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Pour">
     <script>window.__POUR_BASE__ = '${base}/'</script>
-    <style>html, body { background: #0b1029; color-scheme: dark; }</style>
+    <style>
+      html, body { background: #0b1029; color-scheme: dark; }
+      /* iPhone-Home-Bildschirm: App fest an alle Ränder heften, sonst bleibt unten ein Streifen frei */
+      #root { position: fixed; top: 0; right: 0; bottom: 0; left: 0; height: auto !important; }
+    </style>
 `
 const index = path.join(out, 'index.html')
 let html = fs.readFileSync(index, 'utf8')
