@@ -1,0 +1,29 @@
+{
+  "name": "Pour",
+  "short_name": "Pour",
+  "lang": "de",
+  "start_url": "/PH/pour/",
+  "scope": "/PH/pour/",
+  "display": "standalone",
+  "background_color": "#0b1029",
+  "theme_color": "#0b1029",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/PH/pour/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/PH/pour/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/PH/pour/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
