@@ -1,7 +1,7 @@
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
-import { Ionicons } from '@expo/vector-icons'
+import { Icon } from './Icon'
 import { colors } from '../lib/theme'
 import type { Track } from '../lib/types'
 import { notify } from './report'
@@ -20,7 +20,7 @@ export function MusicCover({ track, size = 44, radius = 6 }: { track: Track; siz
   const h = hue(track.title + track.artist)
   return (
     <LinearGradient colors={[`hsl(${h}, 60%, 55%)`, `hsl(${(h + 60) % 360}, 55%, 30%)`]} style={{ width: size, height: size, borderRadius: radius, alignItems: 'center', justifyContent: 'center' }}>
-      <Ionicons name="musical-notes" size={size * 0.45} color="rgba(255,255,255,0.9)" />
+      <Icon name="musical-notes" size={size * 0.45} color="rgba(255,255,255,0.9)" />
     </LinearGradient>
   )
 }
@@ -30,7 +30,7 @@ export function MusicLine({ track, light }: { track: Track; light?: boolean }) {
   const color = light ? '#fff' : colors.muted
   return (
     <Pressable onPress={() => openTrack(track)} style={st.line} hitSlop={6} accessibilityLabel={`Musik: ${track.title} von ${track.artist}`}>
-      <Ionicons name="musical-notes" size={12} color={color} />
+      <Icon name="musical-notes" size={12} color={color} />
       <Text style={[st.lineText, { color }, light && st.shadow]} numberOfLines={1}>{track.artist} · {track.title}</Text>
     </Pressable>
   )
@@ -45,7 +45,7 @@ export function MusicSticker({ track, onPress }: { track: Track; onPress?: () =>
         <Text style={st.stickerTitle} numberOfLines={1}>{track.title}</Text>
         <Text style={st.stickerArtist} numberOfLines={1}>{track.artist}</Text>
       </View>
-      <Ionicons name="play-circle" size={26} color="#111" />
+      <Icon name="play-circle" size={26} color="#111" />
     </Pressable>
   )
 }

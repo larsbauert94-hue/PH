@@ -1,12 +1,13 @@
-import type { ComponentProps, ReactNode } from 'react'
+import type { ReactNode } from 'react'
+import type { IconName } from './Icon'
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native'
 import { Image } from 'expo-image'
-import { Ionicons } from '@expo/vector-icons'
+import { Icon } from './Icon'
 import { colors, fonts, radius } from '../lib/theme'
 import { ACCOUNT_TYPES } from '../lib/labels'
 import type { AccountType } from '../lib/types'
 
-export type IconName = ComponentProps<typeof Ionicons>['name']
+export type { IconName }
 
 const hue = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7)
 
@@ -24,13 +25,13 @@ export function Avatar({ name, url, type, size = 40 }: { name: string; url?: str
 }
 
 export function Verified({ size = 14 }: { size?: number }) {
-  return <Ionicons name="checkmark-circle" size={size} color={colors.accent} accessibilityLabel="Verifiziert" />
+  return <Icon name="checkmark-circle" size={size} color={colors.accent} accessibilityLabel="Verifiziert" />
 }
 
 export function Chip({ label, active, onPress, icon }: { label: string; active?: boolean; onPress?: () => void; icon?: IconName }) {
   return (
     <Pressable onPress={onPress} style={[s.chip, active && s.chipActive]} accessibilityRole="button" accessibilityState={{ selected: active }}>
-      {icon && <Ionicons name={icon} size={14} color={active ? colors.bg : colors.muted} />}
+      {icon && <Icon name={icon} size={14} color={active ? colors.bg : colors.muted} />}
       <Text style={[s.chipText, active && { color: colors.bg }]}>{label}</Text>
     </Pressable>
   )
@@ -39,7 +40,7 @@ export function Chip({ label, active, onPress, icon }: { label: string; active?:
 export function Badge({ label, icon, color = colors.accent }: { label: string; icon?: IconName; color?: string }) {
   return (
     <View style={[s.badge, { borderColor: color + '66', backgroundColor: color + '1a' }]}>
-      {icon && <Ionicons name={icon} size={12} color={color} />}
+      {icon && <Icon name={icon} size={12} color={color} />}
       <Text style={[s.badgeText, { color }]}>{label}</Text>
     </View>
   )
@@ -60,7 +61,7 @@ export function Button({ title, onPress, variant = 'primary', icon, loading, dis
     >
       {loading ? <ActivityIndicator color={fg} /> : (
         <>
-          {icon && <Ionicons name={icon} size={18} color={fg} />}
+          {icon && <Icon name={icon} size={18} color={fg} />}
           <Text style={[s.buttonText, { color: fg }]}>{title}</Text>
         </>
       )}
@@ -88,7 +89,7 @@ export function SectionLabel({ children }: { children: ReactNode }) {
 export function Empty({ icon = 'wine-outline', text }: { icon?: IconName; text: string }) {
   return (
     <View style={{ alignItems: 'center', padding: 40, gap: 12 }}>
-      <Ionicons name={icon} size={40} color={colors.faint} />
+      <Icon name={icon} size={40} color={colors.faint} />
       <Text style={{ color: colors.muted, textAlign: 'center' }}>{text}</Text>
     </View>
   )
@@ -101,7 +102,7 @@ export function Loading() {
 export function ErrorView({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   return (
     <View style={{ alignItems: 'center', padding: 32, gap: 12 }}>
-      <Ionicons name="cloud-offline-outline" size={36} color={colors.faint} />
+      <Icon name="cloud-offline-outline" size={36} color={colors.faint} />
       <Text style={{ color: colors.muted, textAlign: 'center' }}>{error instanceof Error ? error.message : 'Etwas ist schiefgelaufen.'}</Text>
       {onRetry && <Button title="Erneut versuchen" variant="secondary" onPress={onRetry} />}
     </View>

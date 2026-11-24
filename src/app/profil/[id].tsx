@@ -1,6 +1,6 @@
 import { Pressable } from 'react-native'
 import { Stack, router, useLocalSearchParams } from 'expo-router'
-import { Ionicons } from '@expo/vector-icons'
+import { Icon } from '../../components/Icon'
 import { useMe } from '../../lib/auth'
 import { useProfile } from '../../lib/queries'
 import { colors } from '../../lib/theme'
@@ -18,7 +18,7 @@ export default function ProfileScreen() {
           title: isMe ? 'Mein Profil' : profile.data ? `@${profile.data.handle}` : '',
           headerRight: isMe ? () => (
             <Pressable onPress={() => router.push('/einstellungen')} hitSlop={12} accessibilityLabel="Einstellungen">
-              <Ionicons name="settings-outline" size={22} color={colors.text} />
+              <Icon name="settings-outline" size={22} color={colors.text} />
             </Pressable>
           ) : undefined,
         }}

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
-import { Ionicons } from '@expo/vector-icons'
+import { Icon } from '../../components/Icon'
 import { useFeed, useProfiles, useVenues } from '../../lib/queries'
 import { useMe } from '../../lib/auth'
 import { ACCOUNT_TYPES, VENUE_TYPES, subtitle } from '../../lib/labels'
@@ -45,9 +45,9 @@ export default function Explore() {
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={st.searchWrap}>
         <View style={st.search}>
-          <Ionicons name="search" size={18} color={colors.muted} />
+          <Icon name="search" size={18} color={colors.muted} />
           <TextInput value={query} onChangeText={setQuery} placeholder="Suchen: Leute, Betriebe, #hashtags" placeholderTextColor={colors.faint} style={st.input} autoCapitalize="none" autoCorrect={false} returnKeyType="search" />
-          {query ? <Pressable onPress={() => setQuery('')} hitSlop={10} accessibilityLabel="Suche löschen"><Ionicons name="close-circle" size={18} color={colors.faint} /></Pressable> : null}
+          {query ? <Pressable onPress={() => setQuery('')} hitSlop={10} accessibilityLabel="Suche löschen"><Icon name="close-circle" size={18} color={colors.faint} /></Pressable> : null}
         </View>
         {!q && (
           <View style={st.segment}>
@@ -117,14 +117,14 @@ function PlaceRow({ v }: { v: Venue }) {
   return (
     <Pressable style={st.row} onPress={() => router.push(`/ort/${v.id}`)}>
       <View style={[st.placeIcon, { backgroundColor: t.color + '22' }]}>
-        <Ionicons name="location" size={22} color={t.color} />
+        <Icon name="location" size={22} color={t.color} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={st.name} numberOfLines={1}>{v.name}</Text>
         <Text style={st.meta} numberOfLines={1}>{t.label} · {v.city} · {v.post_count ?? 0} Beiträge</Text>
       </View>
-      {v.saved_by_me && <Ionicons name="bookmark" size={16} color={colors.accent} />}
-      <Ionicons name="chevron-forward" size={18} color={colors.faint} />
+      {v.saved_by_me && <Icon name="bookmark" size={16} color={colors.accent} />}
+      <Icon name="chevron-forward" size={18} color={colors.faint} />
     </Pressable>
   )
 }
@@ -196,7 +196,7 @@ function People() {
                 <Text style={st.meta} numberOfLines={1}>{subtitle(p)}</Text>
                 {!ACCOUNT_TYPES[p.account_type].business && p.city ? <Text style={st.city}>{p.city}</Text> : null}
               </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.faint} />
+              <Icon name="chevron-forward" size={18} color={colors.faint} />
             </Pressable>
           )}
         />

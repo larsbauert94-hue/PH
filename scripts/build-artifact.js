@@ -6,8 +6,11 @@
 const fs = require('fs')
 const path = require('path')
 
+const args = process.argv.slice(2)
+// --pwa: eigenständige Webseite (z. B. GitHub Pages) mit App-Symbol und Vollbild auf dem Home-Bildschirm
+const pwa = args.includes('--pwa')
 const src = path.resolve(__dirname, '..', 'dist')
-const out = path.resolve(process.argv[2] ?? path.join(__dirname, '..', 'dist-artifact'))
+const out = path.resolve(args.find(a => !a.startsWith('--')) ?? path.join(__dirname, '..', pwa ? 'dist-pwa' : 'dist-artifact'))
 if (!fs.existsSync(path.join(src, 'index.html'))) {
   console.error('dist/index.html fehlt – zuerst `npx expo export -p web` ausführen.')
   process.exit(1)
@@ -41,12 +44,22 @@ copy('')
 const html = fs.readFileSync(path.join(src, 'index.html'), 'utf8')
 const scripts = [...html.matchAll(/<script src="\/([^"]+)"/g)].map(m => m[1].replace(/^_expo\//, 'app/'))
 
-fs.writeFileSync(path.join(out, 'index.html'), `<title>Pour</title>
+const head = pwa ? `<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+` : ''
+fs.writeFileSync(path.join(out, 'index.html'), `${head}<title>Pour</title>
 <meta name="theme-color" content="#0b1029">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Pour">
-<style>
+${pwa ? '</head>\n<body>\n' : ''}<style>
   :root { color-scheme: dark; background: #0b1029; }
   html, body { height: 100%; background: #0b1029; color: #f3ede6; }
   body { overflow: hidden; }
@@ -75,6 +88,23 @@ fs.writeFileSync(path.join(out, 'index.html'), `<title>Pour</title>
     obs.observe(document.getElementById('root'), { childList: true })
   })()
 </script>
-`)
-fs.writeFileSync(path.join(out, 'files.json'), JSON.stringify(files, null, 1))
+${pwa ? '</body>\n</html>\n' : ''}`)
+
+if (pwa) {
+  // App-Symbole und Manifest für „Zum Home-Bildschirm“
+  const icons = path.join(__dirname, '..', 'assets', 'pwa')
+  fs.cpSync(icons, path.join(out, 'icons'), { recursive: true })
+  fs.writeFileSync(path.join(out, 'manifest.webmanifest'), JSON.stringify({
+    name: 'Pour', short_name: 'Pour', lang: 'de', start_url: '.', scope: '.', display: 'standalone',
+    background_color: '#0b1029', theme_color: '#0b1029', orientation: 'portrait',
+    icons: [
+      { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+      { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+    ],
+  }, null, 2))
+  fs.writeFileSync(path.join(out, '.nojekyll'), '')
+  fs.rmSync(path.join(out, 'files.json'), { force: true })
+}
+if (!pwa) fs.writeFileSync(path.join(out, 'files.json'), JSON.stringify(files, null, 1))
 console.log(`${files.length} Dateien nach ${out}`)

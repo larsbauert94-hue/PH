@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { router } from 'expo-router'
 import { Image } from 'expo-image'
-import { Ionicons } from '@expo/vector-icons'
+import { Icon } from './Icon'
 import { usePost } from '../lib/queries'
 import { colors, radius } from '../lib/theme'
 import { Avatar } from './ui'
@@ -19,7 +19,7 @@ export default function SharedPost({ id }: { id: string }) {
   if (post.isPending) return <View style={[st.card, { height: 120 }]} />
   if (!p) return <View style={st.card}><Text style={st.gone}>Beitrag nicht mehr verfügbar</Text></View>
   return (
-    <Pressable style={st.card} onPress={() => p.video_url ? router.navigate({ pathname: '/reels', params: { start: p.id } }) : router.push(`/post/${p.id}`)} accessibilityLabel={`Geteilter Beitrag von ${p.author_name}`}>
+    <Pressable style={st.card} onPress={() => p.video_url ? router.push(`/reel/${p.id}`) : router.push(`/post/${p.id}`)} accessibilityLabel={`Geteilter Beitrag von ${p.author_name}`}>
       <View style={st.head}>
         <Avatar name={p.author_name} url={p.author_avatar_url} type={p.author_type} size={24} />
         <Text style={st.name} numberOfLines={1}>{p.author_name}</Text>
@@ -27,7 +27,7 @@ export default function SharedPost({ id }: { id: string }) {
       {p.media[0] && (
         <View>
           <Image source={{ uri: p.media[0] }} style={st.image} contentFit="cover" />
-          {p.video_url && <Ionicons name="film" size={20} color="#fff" style={{ position: 'absolute', top: 8, right: 8 }} />}
+          {p.video_url && <Icon name="film" size={20} color="#fff" style={{ position: 'absolute', top: 8, right: 8 }} />}
         </View>
       )}
       <Text style={st.text} numberOfLines={2}>{p.title ?? p.body}</Text>

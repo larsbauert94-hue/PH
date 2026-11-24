@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import { router } from 'expo-router'
-import { Ionicons } from '@expo/vector-icons'
+import { Icon } from '../components/Icon'
 import { useMarkNotificationsRead, useNotifications } from '../lib/queries'
 import { timeAgo } from '../lib/labels'
 import { colors, radius } from '../lib/theme'
@@ -41,7 +41,7 @@ export default function Notifications() {
           <Pressable style={[st.row, !n.read_at && st.unread]} onPress={open}>
             <View>
               <Avatar name={n.actor_name} url={n.actor_avatar_url} type={n.actor_type} size={46} />
-              <View style={[st.icon, { backgroundColor: t.color }]}><Ionicons name={t.icon} size={11} color="#fff" /></View>
+              <View style={[st.icon, { backgroundColor: t.color }]}><Icon name={t.icon} size={11} color="#fff" /></View>
             </View>
             <View style={{ flex: 1, gap: 2 }}>
               <Text style={st.text}><Text style={{ fontWeight: '700' }}>{n.actor_name}</Text> {t.verb}</Text>

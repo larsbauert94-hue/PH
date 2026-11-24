@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { router } from 'expo-router'
-import { Ionicons } from '@expo/vector-icons'
+import { Icon } from '../../components/Icon'
 import { useMusicSearch } from '../../lib/queries'
 import { musicPicker } from '../../lib/picker'
 import { isDemo } from '../../lib/supabase'
@@ -24,7 +24,7 @@ export default function MusicPicker() {
   return (
     <View style={st.root}>
       <View style={st.search}>
-        <Ionicons name="search" size={18} color={colors.muted} />
+        <Icon name="search" size={18} color={colors.muted} />
         <TextInput value={q} onChangeText={setQ} placeholder="Songs oder Künstler:innen suchen" placeholderTextColor={colors.faint} style={st.input} autoFocus autoCorrect={false} />
       </View>
       <Text style={st.hint}>Suche über Spotify. Ein Tipp auf den Song im Beitrag öffnet ihn in Spotify.</Text>
@@ -42,7 +42,7 @@ export default function MusicPicker() {
                 <Text style={st.title} numberOfLines={1}>{t.title}</Text>
                 <Text style={st.artist} numberOfLines={1}>{t.artist}</Text>
               </View>
-              <Ionicons name="add-circle-outline" size={24} color={colors.accent} />
+              <Icon name="add-circle-outline" size={24} color={colors.accent} />
             </Pressable>
           )}
         />

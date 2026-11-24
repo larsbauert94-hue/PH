@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { Stack, router, useLocalSearchParams } from 'expo-router'
-import { Ionicons } from '@expo/vector-icons'
+import { Icon } from '../../components/Icon'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useMe } from '../../lib/auth'
 import { useConversations, useMarkConversationRead, useMessages, useSendMessage } from '../../lib/queries'
@@ -93,7 +93,7 @@ export default function Chat() {
         <View style={[st.composer, { paddingBottom: Math.max(insets.bottom, 10) }]}>
           <TextInput value={text} onChangeText={setText} placeholder="Nachricht schreiben …" placeholderTextColor={colors.faint} style={st.input} multiline maxLength={2000} />
           <Pressable onPress={submit} disabled={!text.trim()} style={[st.send, !text.trim() && { opacity: 0.4 }]} accessibilityLabel="Senden">
-            <Ionicons name="arrow-up" size={22} color={colors.onAccent} />
+            <Icon name="arrow-up" size={22} color={colors.onAccent} />
           </Pressable>
         </View>
       )}

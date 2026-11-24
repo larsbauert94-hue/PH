@@ -4,7 +4,7 @@ import { router } from 'expo-router'
 import { Image } from 'expo-image'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import * as VideoThumbnails from 'expo-video-thumbnails'
-import { Ionicons } from '@expo/vector-icons'
+import { Icon } from '../../components/Icon'
 import { useMe } from '../../lib/auth'
 import { useCreatePost, useVenues } from '../../lib/queries'
 import { pickMedia, type PickedMedia } from '../../lib/pickImage'
@@ -13,12 +13,21 @@ import { musicPicker, venuePicker } from '../../lib/picker'
 import { MusicCover } from '../../components/music'
 import MentionSuggest from '../../components/MentionSuggest'
 import { ACCOUNT_TYPES, CATEGORIES, POST_KINDS } from '../../lib/labels'
-import { colors, radius } from '../../lib/theme'
+import { colors, fonts, radius } from '../../lib/theme'
 import type { Category, LocalFile, PostKind, Track } from '../../lib/types'
-import { Button, Chip, Field, IconName, SectionLabel } from '../../components/ui'
+import { Button, Chip, Field, IconName } from '../../components/ui'
+import { FadeIn, PressScale, tap } from '../../components/motion'
 import { notify } from '../../components/report'
 
 type Mode = 'beitrag' | 'reel'
+
+const KIND_INFO: Record<PostKind, { title: string; hint: string; color: string }> = {
+  beitrag: { title: 'Neuer Beitrag', hint: 'Fotos, Galerie & Text', color: colors.accent },
+  neuheit: { title: 'Neuheit', hint: 'Produkt vorstellen', color: '#e8c36a' },
+  angebot: { title: 'Angebot', hint: 'Aktion für Kunden', color: '#7cc4a0' },
+  event: { title: 'Event', hint: 'Tasting, Party, Messe', color: colors.lavender },
+  job: { title: 'Job', hint: 'Stelle ausschreiben', color: colors.heart },
+}
 
 const TITLE_HINT: Record<PostKind, string> = {
   beitrag: 'Titel (optional)',
@@ -36,14 +45,13 @@ export default function NewPost() {
   // Privatpersonen teilen Beiträge; Betriebe und Gastro-Profis zusätzlich Neuheiten, Angebote, Events und Jobs
   const kinds: PostKind[] = profile.account_type === 'privat' ? ['beitrag'] : business ? ['beitrag', 'neuheit', 'angebot', 'event', 'job'] : ['beitrag', 'event', 'job']
 
-  const [mode, setMode] = useState<Mode>('beitrag')
+  const [mode, setMode] = useState<Mode | null>(null)
   const [kind, setKind] = useState<PostKind>('beitrag')
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [category, setCategory] = useState<Category>('wein')
   const [link, setLink] = useState('')
   const [venueId, setVenueId] = useState<string | null>(null)
-  const [venueSearch, setVenueSearch] = useState('')
   const [images, setImages] = useState<PickedMedia[]>([])
   const [video, setVideo] = useState<PickedMedia | null>(null)
   const [music, setMusic] = useState<Track | null>(null)
@@ -69,7 +77,7 @@ export default function NewPost() {
   }
 
   const reset = () => {
-    setKind('beitrag'); setTitle(''); setBody(''); setLink(''); setVenueId(null); setVenueSearch(''); setImages([]); setVideo(null); setMusic(null)
+    setMode(null); setKind('beitrag'); setTitle(''); setBody(''); setLink(''); setVenueId(null); setImages([]); setVideo(null); setMusic(null)
   }
 
   const submit = async () => {
@@ -96,40 +104,83 @@ export default function NewPost() {
       video: isReel && video ? video : undefined,
       music: music ?? undefined,
     }, {
-      onSuccess: () => { reset(); scroll.current?.scrollTo({ y: 0, animated: false }); router.navigate(isReel ? '/reels' : '/') },
+      onSuccess: () => { const toReels = isReel; reset(); scroll.current?.scrollTo({ y: 0, animated: false }); router.navigate(toReels ? '/reels' : '/') },
       onError: e => notify('Fehler beim Posten', e.message),
     })
   }
 
-  const venueMatches = venueSearch.trim()
-    ? (venues.data ?? []).filter(v => `${v.name} ${v.city}`.toLowerCase().includes(venueSearch.trim().toLowerCase())).slice(0, 5)
-    : []
   const chosenVenue = venues.data?.find(v => v.id === venueId)
 
+  const start = (m: Mode, k: PostKind = 'beitrag') => { tap('select'); setMode(m); setKind(k) }
+
+  if (!mode) {
+    return (
+      <ScrollView style={{ backgroundColor: colors.bg }} contentContainerStyle={st.content}>
+        <FadeIn>
+          <Text style={st.h1}>Was möchtest du teilen?</Text>
+          <Text style={st.lead}>Wähle aus, der Rest ist in wenigen Schritten erledigt.</Text>
+        </FadeIn>
+        {([
+          ['beitrag', 'Beitrag', 'Fotos, Galerie & Text', 'images-outline'],
+          ['story', 'Story', '24 Stunden sichtbar, mit Stickern & Musik', 'water-outline'],
+          ['reel', 'Reel', 'Hochformat-Video bis 60 Sekunden', 'film-outline'],
+        ] as const).map(([k, label, hint, icon], i) => (
+          <FadeIn key={k} delay={80 + i * 70}>
+            <PressScale
+              style={st.bigCard}
+              onPress={() => k === 'story' ? router.push('/story/neu') : start(k)}
+              accessibilityRole="button"
+              accessibilityLabel={label}
+            >
+              <View style={st.bigIcon}><Icon name={icon} size={26} color={colors.accent} /></View>
+              <View style={{ flex: 1 }}>
+                <Text style={st.bigTitle}>{label}</Text>
+                <Text style={st.bigHint}>{hint}</Text>
+              </View>
+              <Icon name="chevron-forward" size={18} color={colors.faint} />
+            </PressScale>
+          </FadeIn>
+        ))}
+        {kinds.length > 1 && (
+          <FadeIn delay={330}>
+            <Text style={st.groupLabel}>{business ? 'Für deinen Betrieb' : 'Für Gastro-Profis'}</Text>
+            <View style={st.tiles}>
+              {kinds.filter(k => k !== 'beitrag').map(k => (
+                <PressScale key={k} wrapStyle={st.tileWrap} style={st.tile} onPress={() => start('beitrag', k)} accessibilityRole="button" accessibilityLabel={KIND_INFO[k].title}>
+                  <View style={[st.tileIcon, { borderColor: KIND_INFO[k].color }]}><Icon name={`${POST_KINDS[k].icon}-outline` as IconName} size={20} color={KIND_INFO[k].color} /></View>
+                  <Text style={st.tileTitle}>{KIND_INFO[k].title}</Text>
+                  <Text style={st.tileHint}>{KIND_INFO[k].hint}</Text>
+                </PressScale>
+              ))}
+            </View>
+          </FadeIn>
+        )}
+      </ScrollView>
+    )
+  }
+
+  const heading = isReel ? 'Neues Reel' : KIND_INFO[kind].title
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
       <ScrollView ref={scroll} contentContainerStyle={st.content} keyboardShouldPersistTaps="handled">
-        <View style={st.segment}>
-          {([['beitrag', 'Beitrag', 'grid-outline'], ['story', 'Story', 'add-circle-outline'], ['reel', 'Reel', 'film-outline']] as const).map(([k, label, icon]) => {
-            const active = mode === k
-            return (
-              <Pressable key={k} style={[st.segItem, active && st.segActive]} onPress={() => k === 'story' ? router.push('/story/neu') : setMode(k)} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected: active }}>
-                <Ionicons name={icon} size={18} color={active ? colors.onAccent : colors.muted} />
-                <Text style={[st.segText, active && { color: colors.onAccent }]}>{label}</Text>
-              </Pressable>
-            )
-          })}
+        <View style={st.topRow}>
+          <Pressable onPress={() => setMode(null)} hitSlop={12} style={st.back} accessibilityRole="button" accessibilityLabel="Zurück zur Auswahl">
+            <Icon name="chevron-back" size={22} color={colors.text} />
+          </Pressable>
+          <Text style={st.formTitle}>{heading}</Text>
+          <View style={{ width: 34 }} />
         </View>
 
+        <FadeIn distance={10} duration={380} style={{ gap: 14 }}>
         {isReel ? (
           video ? (
             <View style={st.videoBox}>
               <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
-              <Pressable onPress={() => setVideo(null)} style={st.remove} accessibilityLabel="Video entfernen"><Ionicons name="close" size={18} color="#fff" /></Pressable>
+              <Pressable onPress={() => setVideo(null)} style={st.remove} accessibilityLabel="Video entfernen"><Icon name="close" size={18} color="#fff" /></Pressable>
             </View>
           ) : (
             <View style={st.pickBox}>
-              <Ionicons name="film-outline" size={40} color={colors.accent} />
+              <Icon name="film-outline" size={40} color={colors.accent} />
               <Text style={st.pickTitle}>Video für dein Reel</Text>
               <Text style={st.pickText}>Hochformat, bis 60 Sekunden</Text>
               <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
@@ -138,92 +189,91 @@ export default function NewPost() {
               </View>
             </View>
           )
-        ) : (
-          <>
-            {kinds.length > 1 && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                {kinds.map(k => <Chip key={k} label={POST_KINDS[k].label} icon={POST_KINDS[k].icon as IconName} active={kind === k} onPress={() => setKind(k)} />)}
-              </ScrollView>
-            )}
-            {images.length > 0 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                {images.map((img, i) => (
-                  <View key={img.uri + i}>
-                    <Image source={{ uri: img.uri }} style={st.thumb} contentFit="cover" />
-                    <Pressable onPress={() => setImages(images.filter((_, j) => j !== i))} style={st.remove} accessibilityLabel={`Bild ${i + 1} entfernen`}><Ionicons name="close" size={16} color="#fff" /></Pressable>
-                    {i === 0 && <View style={st.coverTag}><Text style={st.coverText}>Titelbild</Text></View>}
-                  </View>
-                ))}
-                {images.length < 10 && (
-                  <Pressable style={[st.thumb, st.addThumb]} onPress={() => addImages(false)} accessibilityLabel="Weitere Fotos hinzufügen">
-                    <Ionicons name="add" size={30} color={colors.accent} />
-                  </Pressable>
-                )}
-              </ScrollView>
-            ) : (
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                {Platform.OS !== 'web' && <Button title="Kamera" icon="camera-outline" variant="secondary" style={{ flex: 1 }} onPress={() => addImages(true)} />}
-                <Button title="Fotos (bis 10)" icon="images-outline" variant="secondary" style={{ flex: 1 }} onPress={() => addImages(false)} />
+        ) : images.length > 0 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            {images.map((img, i) => (
+              <View key={img.uri + i}>
+                <Image source={{ uri: img.uri }} style={st.thumb} contentFit="cover" />
+                <Pressable onPress={() => setImages(images.filter((_, j) => j !== i))} style={st.remove} accessibilityLabel={`Bild ${i + 1} entfernen`}><Icon name="close" size={16} color="#fff" /></Pressable>
+                {i === 0 && <View style={st.coverTag}><Text style={st.coverText}>Titelbild</Text></View>}
               </View>
+            ))}
+            {images.length < 10 && (
+              <Pressable style={[st.thumb, st.addThumb]} onPress={() => addImages(false)} accessibilityLabel="Weitere Fotos hinzufügen">
+                <Icon name="add" size={30} color={colors.accent} />
+              </Pressable>
             )}
-            <Field label={needsTitle ? 'Titel' : undefined} value={title} onChangeText={setTitle} placeholder={TITLE_HINT[kind]} maxLength={140} />
-          </>
+          </ScrollView>
+        ) : (
+          <View style={st.pickBox}>
+            <Icon name="images-outline" size={36} color={colors.accent} />
+            <Text style={st.pickTitle}>Fotos hinzufügen</Text>
+            <Text style={st.pickText}>Bis zu 10 Bilder, mit Filtern{kind === 'beitrag' ? '' : ' (optional)'}</Text>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
+              {Platform.OS !== 'web' && <Button title="Kamera" icon="camera-outline" variant="secondary" onPress={() => addImages(true)} />}
+              <Button title="Fotos (bis 10)" icon="images-outline" onPress={() => addImages(false)} />
+            </View>
+          </View>
         )}
 
+        {!isReel && (kind !== 'beitrag' || title) ? <Field label={needsTitle ? 'Titel' : undefined} value={title} onChangeText={setTitle} placeholder={TITLE_HINT[kind]} maxLength={140} /> : null}
+
         <View>
-          <Field value={body} onChangeText={setBody} multiline placeholder={isReel ? 'Bildunterschrift … #hashtags @erwähnen' : kind === 'job' ? 'Aufgaben, Anforderungen, wie man sich bewirbt …' : 'Was gibt es Neues? #hashtags @erwähnen'} maxLength={3000} />
+          <Field value={body} onChangeText={setBody} multiline placeholder={isReel ? 'Bildunterschrift … #hashtags @erwähnen' : kind === 'job' ? 'Aufgaben, Anforderungen, wie man sich bewirbt …' : 'Schreib etwas dazu … #hashtags @erwähnen'} maxLength={3000} />
           <MentionSuggest text={body} onChange={setBody} />
         </View>
 
-        {music ? (
-          <View style={st.venue}>
-            <MusicCover track={music} size={36} />
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: colors.text, fontWeight: '600' }} numberOfLines={1}>{music.title}</Text>
-              <Text style={{ color: colors.muted, fontSize: 12 }} numberOfLines={1}>{music.artist}</Text>
+        <View style={st.group}>
+          {music ? (
+            <View style={st.row}>
+              <MusicCover track={music} size={30} />
+              <View style={{ flex: 1 }}>
+                <Text style={st.rowText} numberOfLines={1}>{music.title}</Text>
+                <Text style={{ color: colors.muted, fontSize: 12 }} numberOfLines={1}>{music.artist}</Text>
+              </View>
+              <Pressable onPress={() => setMusic(null)} hitSlop={10} accessibilityLabel="Musik entfernen"><Icon name="close-circle-outline" size={20} color={colors.faint} /></Pressable>
             </View>
-            <Pressable onPress={() => setMusic(null)} hitSlop={10} accessibilityLabel="Musik entfernen"><Ionicons name="close-circle" size={20} color={colors.faint} /></Pressable>
+          ) : (
+            <Pressable style={st.row} onPress={async () => { const t = await musicPicker.open(); if (t) setMusic(t) }} accessibilityRole="button">
+              <Icon name="musical-notes-outline" size={20} color={colors.accent} />
+              <Text style={[st.rowText, { flex: 1 }]}>Musik hinzufügen</Text>
+              <Icon name="chevron-forward" size={16} color={colors.faint} />
+            </Pressable>
+          )}
+          <View style={st.sep} />
+          {chosenVenue ? (
+            <Pressable style={st.row} onPress={() => setVenueId(null)} accessibilityLabel={`Ort entfernen: ${chosenVenue.name}`}>
+              <Icon name="location-outline" size={20} color={colors.accent} />
+              <Text style={[st.rowText, { flex: 1 }]} numberOfLines={1}>{chosenVenue.name}, {chosenVenue.city}</Text>
+              <Icon name="close-circle-outline" size={20} color={colors.faint} />
+            </Pressable>
+          ) : (
+            <Pressable style={st.row} onPress={async () => { const v = await venuePicker.open(); if (v) setVenueId(v.id) }} accessibilityRole="button">
+              <Icon name="location-outline" size={20} color={colors.accent} />
+              <Text style={[st.rowText, { flex: 1 }]}>Ort hinzufügen</Text>
+              <Icon name="chevron-forward" size={16} color={colors.faint} />
+            </Pressable>
+          )}
+          <View style={st.sep} />
+          <View style={[st.row, { flexDirection: 'column', alignItems: 'stretch', gap: 10 }]}>
+            <Text style={st.rowLabel}>Kategorie</Text>
+            <View style={st.wrap}>
+              {(Object.keys(CATEGORIES) as Category[]).map(c => <Chip key={c} label={CATEGORIES[c]} active={category === c} onPress={() => setCategory(c)} />)}
+            </View>
           </View>
-        ) : (
-          <Pressable style={st.venue} onPress={async () => { const t = await musicPicker.open(); if (t) setMusic(t) }} accessibilityRole="button">
-            <Ionicons name="musical-notes-outline" size={20} color={colors.accent} />
-            <Text style={{ color: colors.text, flex: 1 }}>Musik hinzufügen</Text>
-            <Ionicons name="chevron-forward" size={18} color={colors.faint} />
-          </Pressable>
-        )}
-
-        <SectionLabel>Kategorie</SectionLabel>
-        <View style={st.wrap}>
-          {(Object.keys(CATEGORIES) as Category[]).map(c => <Chip key={c} label={CATEGORIES[c]} active={category === c} onPress={() => setCategory(c)} />)}
+          {!isReel && kind !== 'beitrag' && (
+            <>
+              <View style={st.sep} />
+              <View style={[st.row, { paddingVertical: 4 }]}>
+                <Icon name="link" size={20} color={colors.accent} />
+                <View style={{ flex: 1 }}><Field value={link} onChangeText={setLink} placeholder="Link (optional), z. B. www.beispiel.de" autoCapitalize="none" keyboardType="url" /></View>
+              </View>
+            </>
+          )}
         </View>
 
-        <SectionLabel>Ort markieren (optional)</SectionLabel>
-        {chosenVenue ? (
-          <Pressable style={st.venue} onPress={() => setVenueId(null)}>
-            <Ionicons name="location" size={18} color={colors.accent} />
-            <Text style={{ color: colors.text, flex: 1 }}>{chosenVenue.name}, {chosenVenue.city}</Text>
-            <Ionicons name="close-circle" size={18} color={colors.faint} />
-          </Pressable>
-        ) : (
-          <>
-            <Pressable style={st.venue} onPress={async () => { const v = await venuePicker.open(); if (v) setVenueId(v.id) }} accessibilityRole="button">
-              <Ionicons name="location-outline" size={20} color={colors.accent} />
-              <Text style={{ color: colors.text, flex: 1 }}>Ort hinzufügen</Text>
-              <Ionicons name="chevron-forward" size={18} color={colors.faint} />
-            </Pressable>
-            <Field value={venueSearch} onChangeText={setVenueSearch} placeholder="… oder direkt suchen" />
-            {venueMatches.map(v => (
-              <Pressable key={v.id} style={st.venue} onPress={() => { setVenueId(v.id); setVenueSearch('') }}>
-                <Ionicons name="location-outline" size={18} color={colors.muted} />
-                <Text style={{ color: colors.text }}>{v.name}, {v.city}</Text>
-              </Pressable>
-            ))}
-          </>
-        )}
-
-        {!isReel && kind !== 'beitrag' && <Field label="Link (optional)" value={link} onChangeText={setLink} placeholder="www.beispiel.de" autoCapitalize="none" keyboardType="url" />}
-
-        <Button title={create.isPending ? 'Wird hochgeladen …' : isReel ? 'Reel teilen' : 'Teilen'} icon="send" onPress={submit} loading={create.isPending} disabled={!canPost} style={{ marginTop: 8 }} />
+        <Button title={create.isPending ? 'Wird hochgeladen …' : isReel ? 'Reel teilen' : 'Teilen'} icon="send" onPress={submit} loading={create.isPending} disabled={!canPost} style={{ marginTop: 4 }} />
+        </FadeIn>
       </ScrollView>
     </KeyboardAvoidingView>
   )
@@ -231,10 +281,27 @@ export default function NewPost() {
 
 const st = StyleSheet.create({
   content: { padding: 16, gap: 14, paddingBottom: 40, maxWidth: 680, width: '100%', alignSelf: 'center' },
-  segment: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: radius.md, padding: 3 },
-  segItem: { flex: 1, flexDirection: 'row', gap: 6, height: 40, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
-  segActive: { backgroundColor: colors.accent },
-  segText: { color: colors.muted, fontWeight: '700', fontSize: 14 },
+  h1: { color: colors.text, fontFamily: fonts.serif, fontSize: 28, fontWeight: '700', marginTop: 6 },
+  lead: { color: colors.muted, fontSize: 15, marginTop: 6, marginBottom: 6 },
+  bigCard: { flexDirection: 'row', alignItems: 'center', gap: 16, padding: 18, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  bigIcon: { width: 52, height: 52, borderRadius: 26, borderWidth: 1, borderColor: 'rgba(227,165,133,0.45)', backgroundColor: 'rgba(227,165,133,0.08)', alignItems: 'center', justifyContent: 'center' },
+  bigTitle: { color: colors.text, fontSize: 18, fontWeight: '700' },
+  bigHint: { color: colors.muted, fontSize: 13, marginTop: 3 },
+  groupLabel: { color: colors.faint, fontSize: 12, fontWeight: '700', letterSpacing: 1.4, textTransform: 'uppercase', marginTop: 12, marginBottom: 10 },
+  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  tileWrap: { width: '48%', flexGrow: 1 },
+  tile: { padding: 14, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, gap: 4 },
+  tileIcon: { width: 38, height: 38, borderRadius: 19, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  tileTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
+  tileHint: { color: colors.muted, fontSize: 12 },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  back: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
+  formTitle: { color: colors.text, fontSize: 17, fontWeight: '700' },
+  group: { borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 14 },
+  rowText: { color: colors.text, fontSize: 15 },
+  rowLabel: { color: colors.muted, fontSize: 13, fontWeight: '600' },
+  sep: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginLeft: 46 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   thumb: { width: 110, height: 138, borderRadius: radius.md, backgroundColor: colors.surface2 },
   addThumb: { alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderStyle: 'dashed', borderColor: colors.border },
@@ -245,5 +312,4 @@ const st = StyleSheet.create({
   pickBox: { alignItems: 'center', gap: 6, padding: 28, borderRadius: radius.lg, borderWidth: 1.5, borderStyle: 'dashed', borderColor: colors.border, backgroundColor: colors.surface },
   pickTitle: { color: colors.text, fontSize: 17, fontWeight: '700' },
   pickText: { color: colors.muted, fontSize: 13 },
-  venue: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: radius.md, backgroundColor: colors.surface },
 })

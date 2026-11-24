@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { Link, useLocalSearchParams } from 'expo-router'
-import { Ionicons } from '@expo/vector-icons'
+import { Icon } from '../../components/Icon'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useMe } from '../../lib/auth'
 import { useAddComment, useCommentLike, useComments, usePost } from '../../lib/queries'
@@ -56,7 +56,7 @@ export default function PostScreen() {
               </View>
             </View>
             <Pressable onPress={() => likeComment.mutate(c)} hitSlop={10} accessibilityLabel={c.liked_by_me ? 'Kommentar nicht mehr liken' : 'Kommentar liken'}>
-              <Ionicons name={c.liked_by_me ? 'heart' : 'heart-outline'} size={16} color={c.liked_by_me ? colors.heart : colors.faint} />
+              <Icon name={c.liked_by_me ? 'heart' : 'heart-outline'} size={16} color={c.liked_by_me ? colors.heart : colors.faint} />
             </Pressable>
           </View>
         )}

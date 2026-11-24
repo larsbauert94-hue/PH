@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { PanResponder, Pressable, StyleSheet, Text, View } from 'react-native'
 import { router } from 'expo-router'
-import { Ionicons } from '@expo/vector-icons'
+import { Icon } from './Icon'
 import type { StoryOverlay } from '../lib/types'
 import { MusicSticker } from './music'
 
@@ -21,7 +21,7 @@ export function OverlayContent({ o, interactive }: { o: StoryOverlay; interactiv
     case 'location':
       return (
         <Pressable disabled={!interactive} onPress={() => router.push(`/ort/${o.venue_id}`)} style={st.chip} accessibilityLabel={`Ort: ${o.name}`}>
-          <Ionicons name="location" size={16} color="#d6336c" />
+          <Icon name="location" size={16} color="#d6336c" />
           <Text style={st.chipText}>{o.name.toUpperCase()}</Text>
         </Pressable>
       )
@@ -108,7 +108,7 @@ export function TrashZone({ active }: { active: boolean }) {
   return (
     <View style={st.trash} pointerEvents="none">
       <View style={[st.trashCircle, active && { backgroundColor: '#e5484d', transform: [{ scale: 1.15 }] }]}>
-        <Ionicons name="trash-outline" size={26} color="#fff" />
+        <Icon name="trash-outline" size={26} color="#fff" />
       </View>
     </View>
   )

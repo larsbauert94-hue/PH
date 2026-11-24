@@ -3,7 +3,7 @@ import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput,
 import { router } from 'expo-router'
 import { Image } from 'expo-image'
 import { useVideoPlayer, VideoView } from 'expo-video'
-import { Ionicons } from '@expo/vector-icons'
+import { Icon } from '../../components/Icon'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useMe } from '../../lib/auth'
 import { useCreateStory } from '../../lib/queries'
@@ -78,24 +78,24 @@ export default function NewStory() {
     return (
       <View style={[st.root, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 24 }]}>
         <View style={st.topRow}>
-          <Pressable onPress={close} hitSlop={10} accessibilityLabel="Schließen"><Ionicons name="close" size={30} color="#fff" /></Pressable>
+          <Pressable onPress={close} hitSlop={10} accessibilityLabel="Schließen"><Icon name="close" size={30} color="#fff" /></Pressable>
           <Text style={st.heading}>Neue Story</Text>
           <View style={{ width: 30 }} />
         </View>
         <View style={st.empty}>
-          <Ionicons name="sparkles-outline" size={46} color={colors.accent} />
+          <Icon name="sparkles-outline" size={46} color={colors.accent} />
           <Text style={st.emptyTitle}>Teile einen Moment</Text>
           <Text style={st.emptyText}>Mit Filtern, Text, Musik, Ort und Erwähnungen. Storys sind 24 Stunden sichtbar.</Text>
         </View>
         <View style={{ gap: 12, paddingHorizontal: 24 }}>
           {Platform.OS !== 'web' && (
             <Pressable style={[st.bigBtn, { backgroundColor: colors.accent }]} onPress={() => pick(true)}>
-              <Ionicons name="camera" size={22} color={colors.onAccent} />
+              <Icon name="camera" size={22} color={colors.onAccent} />
               <Text style={[st.bigBtnText, { color: colors.onAccent }]}>Kamera</Text>
             </Pressable>
           )}
           <Pressable style={[st.bigBtn, { backgroundColor: 'rgba(255,255,255,0.12)' }]} onPress={() => pick(false)}>
-            <Ionicons name="images" size={22} color="#fff" />
+            <Icon name="images" size={22} color="#fff" />
             <Text style={st.bigBtnText}>Foto oder Video auswählen</Text>
           </Pressable>
         </View>
@@ -133,12 +133,12 @@ export default function NewStory() {
       {drag.active ? <TrashZone active={drag.overTrash} /> : (
         <>
           <View style={[st.topRow, { position: 'absolute', top: insets.top + 12, left: 16, right: 16 }]}>
-            <Pressable onPress={() => { setFile(null); setOverlays([]) }} hitSlop={10} style={st.round} accessibilityLabel="Zurück"><Ionicons name="chevron-back" size={24} color="#fff" /></Pressable>
+            <Pressable onPress={() => { setFile(null); setOverlays([]) }} hitSlop={10} style={st.round} accessibilityLabel="Zurück"><Icon name="chevron-back" size={24} color="#fff" /></Pressable>
           </View>
           <View style={[st.tools, { top: insets.top + 12 }]}>
             {tools.map(t => (
               <Pressable key={t.label} onPress={t.onPress} style={st.tool} accessibilityLabel={t.label}>
-                <View style={st.round}><Ionicons name={t.icon} size={22} color="#fff" /></View>
+                <View style={st.round}><Icon name={t.icon} size={22} color="#fff" /></View>
                 <Text style={st.toolLabel}>{t.label}</Text>
               </Pressable>
             ))}
@@ -147,7 +147,7 @@ export default function NewStory() {
             <Pressable style={st.shareBtn} onPress={share} disabled={create.isPending} accessibilityRole="button" accessibilityLabel="Story teilen">
               <Avatar name={profile.name} url={profile.avatar_url} type={profile.account_type} size={30} />
               <Text style={st.shareText}>{create.isPending ? 'Wird geteilt …' : 'Deine Story'}</Text>
-              <Ionicons name="arrow-forward-circle" size={28} color={colors.onAccent} />
+              <Icon name="arrow-forward-circle" size={28} color={colors.onAccent} />
             </Pressable>
           </View>
         </>
@@ -157,7 +157,7 @@ export default function NewStory() {
         <View style={st.textEditor}>
           <View style={[st.topRow, { paddingTop: insets.top + 12 }]}>
             <Pressable onPress={() => setDraft({ ...draft, background: !draft.background })} style={st.round} accessibilityLabel="Hintergrund umschalten">
-              <Ionicons name={draft.background ? 'text' : 'text-outline'} size={20} color="#fff" />
+              <Icon name={draft.background ? 'text' : 'text-outline'} size={20} color="#fff" />
             </Pressable>
             <Pressable onPress={saveText} hitSlop={10}><Text style={st.doneText}>Fertig</Text></Pressable>
           </View>

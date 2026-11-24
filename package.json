@@ -55,7 +55,8 @@
     "lint": "eslint .",
     "seed:generate": "node --no-warnings scripts/generate-seed.ts",
     "postinstall": "node scripts/copy-canvaskit.js",
-    "build:webapp": "expo export -p web && node scripts/build-artifact.js"
+    "build:webapp": "expo export -p web && node scripts/build-artifact.js",
+    "build:pwa": "expo export -p web && node scripts/build-artifact.js --pwa"
   },
   "private": true
 }

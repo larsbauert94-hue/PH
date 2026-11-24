@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { router } from 'expo-router'
-import { Ionicons } from '@expo/vector-icons'
+import { Icon } from '../../components/Icon'
 import { useVenues } from '../../lib/queries'
 import { venuePicker } from '../../lib/picker'
 import { VENUE_TYPES } from '../../lib/labels'
@@ -18,7 +18,7 @@ export default function VenuePicker() {
   return (
     <View style={st.root}>
       <View style={st.search}>
-        <Ionicons name="location-outline" size={18} color={colors.muted} />
+        <Icon name="location-outline" size={18} color={colors.muted} />
         <TextInput value={q} onChangeText={setQ} placeholder="Ort suchen" placeholderTextColor={colors.faint} style={st.input} autoFocus />
       </View>
       {venues.isPending ? <Loading /> : (
@@ -31,7 +31,7 @@ export default function VenuePicker() {
           renderItem={({ item: v }) => (
             <Pressable style={st.row} onPress={() => { venuePicker.finish(v); router.back() }}>
               <View style={[st.icon, { backgroundColor: VENUE_TYPES[v.type].color + '22' }]}>
-                <Ionicons name={v.type === 'restaurant' ? 'restaurant' : 'wine'} size={18} color={VENUE_TYPES[v.type].color} />
+                <Icon name={v.type === 'restaurant' ? 'restaurant' : 'wine'} size={18} color={VENUE_TYPES[v.type].color} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={st.title}>{v.name}</Text>

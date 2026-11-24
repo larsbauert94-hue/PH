@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Text, View } from 'react-native'
 import { Stack } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
@@ -9,8 +9,10 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from '../lib/auth'
 import { colors, fonts } from '../lib/theme'
-import { Button, Loading } from '../components/ui'
+import { Button } from '../components/ui'
 import DialogHost from '../components/DialogHost'
+import PourTransition from '../components/PourTransition'
+import PourDrop from '../components/PourDrop'
 
 // Splash-Screen stehen lassen, bis Schrift und Sitzung geladen sind
 SplashScreen.preventAutoHideAsync().catch(() => {})
@@ -20,7 +22,24 @@ function Navigation() {
   const [fontsLoaded, fontError] = useFonts({ BodoniModa_700Bold })
   const loaded = ready && (fontsLoaded || !!fontError)
   useEffect(() => { if (loaded) SplashScreen.hideAsync().catch(() => {}) }, [loaded])
-  if (!loaded) return <Loading />
+
+  // Beim Wechsel in die App (Anmeldung, Einrichtung fertig, Start mit Sitzung) läuft der Tropfen voll
+  const signedIn = !!userId && !needsOnboarding
+  const [shownFor, setShownFor] = useState<boolean | null>(null)
+  const [transition, setTransition] = useState(false)
+  if (loaded && signedIn !== shownFor) {
+    setShownFor(signedIn)
+    if (signedIn) setTransition(true)
+  }
+  const endTransition = useCallback(() => setTransition(false), [])
+
+  if (!loaded) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' }}>
+        <PourDrop size={190} level={0} dropOnly />
+      </View>
+    )
+  }
 
   if (userId && !profile) {
     return (
@@ -32,8 +51,8 @@ function Navigation() {
     )
   }
 
-  const signedIn = !!userId && !needsOnboarding
   return (
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
     <Stack
       screenOptions={{
         headerStyle: { backgroundColor: colors.bg },
@@ -70,9 +89,12 @@ function Navigation() {
         <Stack.Screen name="story/[id]" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'fade', contentStyle: { backgroundColor: '#000' } }} />
         <Stack.Screen name="story/neu" options={{ headerShown: false, presentation: 'fullScreenModal', contentStyle: { backgroundColor: '#000' } }} />
         <Stack.Screen name="chat/[id]" options={{ title: '' }} />
+        <Stack.Screen name="reel/[id]" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'fade', contentStyle: { backgroundColor: '#000' } }} />
       </Stack.Protected>
       <Stack.Screen name="rechtliches" options={{ title: 'Nutzungsbedingungen & Datenschutz', presentation: 'modal' }} />
     </Stack>
+    {transition && <PourTransition onDone={endTransition} />}
+    </View>
   )
 }
 

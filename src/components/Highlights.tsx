@@ -1,7 +1,7 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { router } from 'expo-router'
 import { Image } from 'expo-image'
-import { Ionicons } from '@expo/vector-icons'
+import { Icon } from './Icon'
 import { useDeleteHighlight, useHighlights } from '../lib/queries'
 import { colors } from '../lib/theme'
 import { confirmAction } from './report'
@@ -31,7 +31,7 @@ export default function Highlights({ ownerId, isMe }: { ownerId: string; isMe: b
       ))}
       {isMe && (
         <Pressable style={st.item} onPress={() => router.push('/highlight/neu')} accessibilityLabel="Neues Highlight">
-          <View style={[st.ring, st.newRing]}><Ionicons name="add" size={30} color={colors.text} /></View>
+          <View style={[st.ring, st.newRing]}><Icon name="add" size={30} color={colors.text} /></View>
           <Text style={st.label}>Neu</Text>
         </Pressable>
       )}

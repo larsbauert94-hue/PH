@@ -2,7 +2,7 @@ import { useRef, useState, type ReactNode } from 'react'
 import { Animated, Pressable, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native'
 import { Image } from 'expo-image'
 import { router } from 'expo-router'
-import { Ionicons } from '@expo/vector-icons'
+import { Icon } from './Icon'
 import * as Haptics from 'expo-haptics'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import { colors, radius } from '../lib/theme'
@@ -36,7 +36,7 @@ export function DoubleTap({ onDoubleTap, onTap, children, style }: { onDoubleTap
     <Pressable onPress={press} style={style} accessibilityHint="Doppelt tippen, um den Beitrag zu liken" testID="doubletap">
       {children}
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, st.center, { opacity: heart, transform: [{ scale: heart.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1.15] }) }] }]}>
-        <Ionicons name="heart" size={110} color="#fff" style={st.heartShadow} />
+        <Icon name="heart" size={110} color="#fff" />
       </Animated.View>
     </Pressable>
   )
@@ -74,7 +74,7 @@ export function MediaCarousel({ media, onDoubleTap, aspect = 4 / 5 }: { media: s
 
 /** Reel im Feed: Vorschaubild mit Play-Symbol, öffnet die Reels-Ansicht */
 export function ReelPreview({ post, onDoubleTap }: { post: FeedPost; onDoubleTap: () => void }) {
-  const open = () => router.navigate({ pathname: '/reels', params: { start: post.id } })
+  const open = () => router.push(`/reel/${post.id}`)
   return (
     <View style={{ width: '100%', aspectRatio: 4 / 5, backgroundColor: '#000' }}>
       <DoubleTap onDoubleTap={onDoubleTap} onTap={open} style={StyleSheet.absoluteFill}>
@@ -82,10 +82,10 @@ export function ReelPreview({ post, onDoubleTap }: { post: FeedPost; onDoubleTap
           ? <Image source={{ uri: post.media[0] }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={200} />
           : <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.surface2 }]} />}
         <View style={[StyleSheet.absoluteFill, st.center]} pointerEvents="none">
-          <View style={st.play}><Ionicons name="play" size={34} color="#fff" style={{ marginLeft: 4 }} /></View>
+          <View style={st.play}><Icon name="play" size={34} color="#fff" style={{ marginLeft: 4 }} /></View>
         </View>
         <View style={st.reelBadge} pointerEvents="none">
-          <Ionicons name="film-outline" size={14} color="#fff" />
+          <Icon name="film-outline" size={14} color="#fff" />
           <Text style={st.reelText}>Reel</Text>
         </View>
       </DoubleTap>
@@ -128,7 +128,7 @@ export function PostGrid({ posts }: { posts: FeedPost[] }) {
         <Pressable
           key={p.id}
           style={[st.cell, { width: size, height: size * 1.25 }]}
-          onPress={() => p.video_url ? router.navigate({ pathname: '/reels', params: { start: p.id } }) : router.push(`/post/${p.id}`)}
+          onPress={() => p.video_url ? router.push(`/reel/${p.id}`) : router.push(`/post/${p.id}`)}
           accessibilityLabel={p.title ?? p.body.slice(0, 60)}
         >
           {p.media[0] ? (
@@ -138,8 +138,8 @@ export function PostGrid({ posts }: { posts: FeedPost[] }) {
               <Text style={st.textCellText} numberOfLines={5}>{p.title ?? p.body}</Text>
             </View>
           )}
-          {p.video_url && <Ionicons name="film" size={18} color="#fff" style={st.cellIcon} />}
-          {!p.video_url && p.media.length > 1 && <Ionicons name="copy" size={16} color="#fff" style={st.cellIcon} />}
+          {p.video_url && <Icon name="film" size={18} color="#fff" style={st.cellIcon} />}
+          {!p.video_url && p.media.length > 1 && <Icon name="copy" size={16} color="#fff" style={st.cellIcon} />}
         </Pressable>
       ))}
     </View>

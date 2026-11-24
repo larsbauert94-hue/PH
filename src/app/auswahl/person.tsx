@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { router } from 'expo-router'
-import { Ionicons } from '@expo/vector-icons'
+import { Icon } from '../../components/Icon'
 import { useMe } from '../../lib/auth'
 import { useProfiles } from '../../lib/queries'
 import { personPicker } from '../../lib/picker'
@@ -19,7 +19,7 @@ export default function PersonPicker() {
   return (
     <View style={st.root}>
       <View style={st.search}>
-        <Ionicons name="at" size={18} color={colors.muted} />
+        <Icon name="at" size={18} color={colors.muted} />
         <TextInput value={q} onChangeText={setQ} placeholder="Person oder Betrieb suchen" placeholderTextColor={colors.faint} style={st.input} autoFocus autoCapitalize="none" />
       </View>
       {profiles.isPending ? <Loading /> : (

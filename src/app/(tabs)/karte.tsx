@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { router } from 'expo-router'
-import { Ionicons } from '@expo/vector-icons'
+import { Icon } from '../../components/Icon'
 import * as Location from 'expo-location'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import VenueMap, { type VenueMapHandle } from '../../components/map/VenueMap'
@@ -59,11 +59,11 @@ export default function MapScreen() {
       <View style={[st.top, { paddingTop: insets.top + 8 }, mode === 'liste' && { backgroundColor: colors.bg }]}>
         <View style={st.searchRow}>
           <View style={st.search}>
-            <Ionicons name="search" size={18} color={colors.muted} />
+            <Icon name="search" size={18} color={colors.muted} />
             <TextInput value={search} onChangeText={setSearch} placeholder="Bar, Restaurant oder Stadt" placeholderTextColor={colors.faint} style={st.searchInput} />
           </View>
           <Pressable style={st.round} onPress={() => setMode(mode === 'karte' ? 'liste' : 'karte')} accessibilityLabel={mode === 'karte' ? 'Liste anzeigen' : 'Karte anzeigen'}>
-            <Ionicons name={mode === 'karte' ? 'list' : 'map'} size={20} color={colors.text} />
+            <Icon name={mode === 'karte' ? 'list' : 'map'} size={20} color={colors.text} />
           </Pressable>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}>
@@ -87,11 +87,11 @@ export default function MapScreen() {
           <View style={[st.fabs, { bottom: sel ? 190 : filtered.length ? 104 : 24 }]}>
             {canAdd && (
               <Pressable style={st.round} onPress={() => router.push('/ort/neu')} accessibilityLabel="Betrieb eintragen">
-                <Ionicons name="add" size={24} color={colors.text} />
+                <Icon name="add" size={24} color={colors.text} />
               </Pressable>
             )}
             <Pressable style={st.round} onPress={locate} accessibilityLabel="Mein Standort">
-              <Ionicons name="locate" size={22} color={colors.accent} />
+              <Icon name="locate" size={22} color={colors.accent} />
             </Pressable>
           </View>
           {sel && (
@@ -125,14 +125,14 @@ function VenueRow({ venue, me, onPress }: { venue: Venue; me: Coords | null; onP
   return (
     <Pressable onPress={onPress} style={st.row}>
       <View style={[st.rowIcon, { backgroundColor: t.color + '22' }]}>
-        <Ionicons name={venue.type === 'restaurant' ? 'restaurant' : 'wine'} size={20} color={t.color} />
+        <Icon name={venue.type === 'restaurant' ? 'restaurant' : 'wine'} size={20} color={t.color} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={st.rowName}>{venue.name}</Text>
         <Text style={st.rowMeta} numberOfLines={1}>{t.label} · {venue.address}, {venue.city}</Text>
       </View>
       {me && <Text style={st.rowDist}>{formatDistance(distanceKm(me, venue))}</Text>}
-      <Ionicons name="chevron-forward" size={18} color={colors.faint} />
+      <Icon name="chevron-forward" size={18} color={colors.faint} />
     </Pressable>
   )
 }

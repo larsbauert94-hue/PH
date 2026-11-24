@@ -2,7 +2,7 @@ import { memo } from 'react'
 import { Linking, Pressable, Share, StyleSheet, Text, View } from 'react-native'
 import * as ExpoLinking from 'expo-linking'
 import { Link, router } from 'expo-router'
-import { Ionicons } from '@expo/vector-icons'
+import { Icon } from './Icon'
 import type { FeedPost } from '../lib/types'
 import { POST_KINDS, subtitle, timeAgo } from '../lib/labels'
 import { colors, fonts, radius } from '../lib/theme'
@@ -61,7 +61,7 @@ function PostCard({ post, detail = false }: { post: FeedPost; detail?: boolean }
                 {post.author_verified && <Verified />}
               </View>
               {post.venue_name ? (
-                <Text style={st.meta} numberOfLines={1}><Ionicons name="location" size={11} color={colors.accent} /> {post.venue_name}, {post.venue_city}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}><Icon name="location-outline" size={12} color={colors.accent} /><Text style={[st.meta, { flexShrink: 1 }]} numberOfLines={1}>{post.venue_name}, {post.venue_city}</Text></View>
               ) : (
                 <Text style={st.meta} numberOfLines={1}>{subtitle({ account_type: post.author_type, headline: post.author_headline })}</Text>
               )}
@@ -70,7 +70,7 @@ function PostCard({ post, detail = false }: { post: FeedPost; detail?: boolean }
           </Pressable>
         </Link>
         <Pressable onPress={menu} hitSlop={12} accessibilityLabel="Optionen" style={{ padding: 4 }}>
-          <Ionicons name="ellipsis-horizontal" size={20} color={colors.muted} />
+          <Icon name="ellipsis-horizontal" size={20} color={colors.muted} />
         </Pressable>
       </View>
 
@@ -87,16 +87,16 @@ function PostCard({ post, detail = false }: { post: FeedPost; detail?: boolean }
 
       <View style={st.actions}>
         <Pressable onPress={() => like.mutate(post)} hitSlop={8} accessibilityLabel={post.liked_by_me ? 'Gefällt mir nicht mehr' : 'Gefällt mir'}>
-          <Ionicons name={post.liked_by_me ? 'heart' : 'heart-outline'} size={27} color={post.liked_by_me ? colors.heart : colors.text} />
+          <Icon name={post.liked_by_me ? 'heart' : 'heart-outline'} size={27} color={post.liked_by_me ? colors.heart : colors.text} />
         </Pressable>
         <Pressable onPress={open} hitSlop={8} accessibilityLabel="Kommentieren">
-          <Ionicons name="chatbubble-outline" size={24} color={colors.text} />
+          <Icon name="chatbubble-outline" size={24} color={colors.text} />
         </Pressable>
         <Pressable onPress={() => router.push(`/teilen/${post.id}`)} hitSlop={8} accessibilityLabel="Senden an">
-          <Ionicons name="paper-plane-outline" size={24} color={colors.text} />
+          <Icon name="paper-plane-outline" size={24} color={colors.text} />
         </Pressable>
         <Pressable onPress={() => save.mutate(post)} hitSlop={8} style={{ marginLeft: 'auto' }} accessibilityLabel={post.saved_by_me ? 'Nicht mehr speichern' : 'Speichern'}>
-          <Ionicons name={post.saved_by_me ? 'bookmark' : 'bookmark-outline'} size={24} color={post.saved_by_me ? colors.accent : colors.text} />
+          <Icon name={post.saved_by_me ? 'bookmark' : 'bookmark-outline'} size={24} color={post.saved_by_me ? colors.accent : colors.text} />
         </Pressable>
       </View>
 
@@ -118,14 +118,14 @@ function PostCard({ post, detail = false }: { post: FeedPost; detail?: boolean }
 
         {post.link_url && (
           <Pressable style={st.link} onPress={() => Linking.openURL(post.link_url!)}>
-            <Ionicons name="link" size={14} color={colors.muted} />
+            <Icon name="link" size={14} color={colors.muted} />
             <Text style={st.linkText} numberOfLines={1}>{post.link_url.replace(/^https?:\/\//, '')}</Text>
           </Pressable>
         )}
 
         {!mine && CTA[post.kind] && (
           <Pressable style={st.cta} onPress={contact} disabled={startChat.isPending} accessibilityRole="button">
-            <Ionicons name="chatbubble-ellipses-outline" size={18} color={colors.onAccent} />
+            <Icon name="chatbubble-ellipses-outline" size={18} color={colors.onAccent} />
             <Text style={st.ctaText}>{CTA[post.kind]}</Text>
           </Pressable>
         )}

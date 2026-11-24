@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { ActivityIndicator, Animated, PanResponder, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import Slider from '../Slider'
 import { Canvas, ColorMatrix, Image as SkImageView, ImageFormat, Skia, useImage } from '@shopify/react-native-skia'
-import { Ionicons } from '@expo/vector-icons'
+import { Icon } from '../Icon'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ADJUST_LABELS, FILTERS, NO_ADJUST, buildMatrix, type Adjustments, type Matrix } from '../../lib/filters'
 import { colors } from '../../lib/theme'
@@ -94,7 +94,7 @@ export default function PhotoEditor({ files, aspect, onDone, onCancel }: { files
   return (
     <View style={[st.root, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <View style={st.top}>
-        <Pressable onPress={onCancel} hitSlop={12} accessibilityLabel="Abbrechen"><Ionicons name="close" size={28} color={colors.text} /></Pressable>
+        <Pressable onPress={onCancel} hitSlop={12} accessibilityLabel="Abbrechen"><Icon name="close" size={28} color={colors.text} /></Pressable>
         <Text style={st.title}>Bearbeiten</Text>
         <Pressable onPress={done} disabled={busy} hitSlop={12} accessibilityLabel="Fertig">
           {busy ? <ActivityIndicator color={colors.accent} /> : <Text style={st.done}>Fertig</Text>}
@@ -156,7 +156,7 @@ export default function PhotoEditor({ files, aspect, onDone, onCancel }: { files
           <ScrollView style={{ maxHeight: 230 }} contentContainerStyle={{ paddingHorizontal: 20, gap: 4 }}>
             {ADJUST_LABELS.map(a => (
               <View key={a.key} style={st.adjustRow}>
-                <Ionicons name={a.icon as IconName} size={18} color={colors.muted} />
+                <Icon name={a.icon as IconName} size={18} color={colors.muted} />
                 <Text style={st.adjustLabel}>{a.label}</Text>
                 <Slider min={a.min} max={100} value={edit.adjust[a.key]} onChange={v => update({ adjust: { ...edit.adjust, [a.key]: v } })} accessibilityLabel={a.label} />
                 <Text style={st.adjustValue}>{Math.round(edit.adjust[a.key])}</Text>

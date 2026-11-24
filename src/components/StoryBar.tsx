@@ -1,7 +1,7 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { router } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
-import { Ionicons } from '@expo/vector-icons'
+import { Icon } from './Icon'
 import { useMe } from '../lib/auth'
 import { useStories } from '../lib/queries'
 import { colors } from '../lib/theme'
@@ -34,7 +34,7 @@ export default function StoryBar() {
         <View>
           <StoryRing name={profile.name} url={profile.avatar_url} type={profile.account_type} active={!!mine} seen={false} />
           <Pressable style={st.plus} onPress={() => router.push('/story/neu')} hitSlop={6} accessibilityLabel="Neue Story">
-            <Ionicons name="add" size={16} color={colors.onAccent} />
+            <Icon name="add" size={16} color={colors.onAccent} />
           </Pressable>
         </View>
         <Text style={st.label} numberOfLines={1}>Deine Story</Text>

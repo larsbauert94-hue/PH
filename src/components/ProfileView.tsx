@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native'
 import { router } from 'expo-router'
-import { Ionicons } from '@expo/vector-icons'
+import { Icon } from './Icon'
 import { useMe } from '../lib/auth'
 import { useBlock, useFeed, useFollow, useProfile, useProfileStats, useSavedVenues, useStartConversation, useStories, useUploadAvatar } from '../lib/queries'
 import { pickImage } from '../lib/pickImage'
@@ -81,7 +81,7 @@ export default function ProfileView({ id, onEdit }: { id: string; onEdit?: () =>
         <View style={st.top}>
           <Pressable onPress={avatarPress} disabled={!storyGroup && !isMe} accessibilityLabel={storyGroup ? 'Story ansehen' : isMe ? 'Profilbild ändern' : undefined}>
             <StoryRing name={p.name} url={p.avatar_url} type={p.account_type} size={92} active={!!storyGroup} seen={storyGroup?.all_seen} />
-            {isMe && !storyGroup && <View style={st.camera}><Ionicons name="camera" size={14} color={colors.onAccent} /></View>}
+            {isMe && !storyGroup && <View style={st.camera}><Icon name="camera" size={14} color={colors.onAccent} /></View>}
           </Pressable>
           <View style={st.stats}>
             <Stat n={stats.data?.post_count} label="Beiträge" />
@@ -96,13 +96,13 @@ export default function ProfileView({ id, onEdit }: { id: string; onEdit?: () =>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <Badge label={type.label} icon={type.icon as IconName} />
-            {p.city ? <Text style={st.meta}><Ionicons name="location-outline" size={13} /> {p.city}</Text> : null}
+            {p.city ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Icon name="location-outline" size={14} color={colors.muted} /><Text style={st.meta}>{p.city}</Text></View> : null}
           </View>
           {!type.business && (p.headline || p.workplace) ? <Text style={st.job}>{subtitle(p)}</Text> : null}
           {p.bio ? <Text style={st.bio}>{p.bio}</Text> : null}
           {p.website ? (
             <Pressable onPress={() => Linking.openURL(p.website!)}>
-              <Text style={st.web}><Ionicons name="link" size={13} /> {p.website.replace(/^https?:\/\//, '')}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Icon name="link" size={14} color={colors.accentLight} /><Text style={st.web}>{p.website.replace(/^https?:\/\//, '')}</Text></View>
             </Pressable>
           ) : null}
         </View>
@@ -125,7 +125,7 @@ export default function ProfileView({ id, onEdit }: { id: string; onEdit?: () =>
             />
             <Button title="Nachricht" variant="secondary" style={st.smallBtn} loading={startChat.isPending} onPress={message} />
             <Pressable style={st.iconBtn} onPress={more} accessibilityLabel="Weitere Optionen">
-              <Ionicons name="ellipsis-horizontal" size={20} color={colors.text} />
+              <Icon name="ellipsis-horizontal" size={20} color={colors.text} />
             </Pressable>
           </View>
         )}
@@ -137,7 +137,7 @@ export default function ProfileView({ id, onEdit }: { id: string; onEdit?: () =>
         <View style={st.tabs}>
           {tabs.map(t => (
             <Pressable key={t.key} style={[st.tab, tab === t.key && st.tabActive]} onPress={() => setTab(t.key)} accessibilityRole="tab" accessibilityLabel={t.label} accessibilityState={{ selected: tab === t.key }}>
-              <Ionicons name={tab === t.key ? t.icon : (`${t.icon}-outline` as IconName)} size={22} color={tab === t.key ? colors.text : colors.faint} />
+              <Icon name={tab === t.key ? t.icon : (`${t.icon}-outline` as IconName)} size={22} color={tab === t.key ? colors.text : colors.faint} />
             </Pressable>
           ))}
         </View>
@@ -149,7 +149,7 @@ export default function ProfileView({ id, onEdit }: { id: string; onEdit?: () =>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}>
             {savedVenues.data.map(v => (
               <Pressable key={v.id} style={st.placeChip} onPress={() => router.push(`/ort/${v.id}`)}>
-                <Ionicons name="location" size={14} color={colors.accent} />
+                <Icon name="location" size={14} color={colors.accent} />
                 <Text style={{ color: colors.text, fontWeight: '600' }}>{v.name}</Text>
               </Pressable>
             ))}

@@ -3,7 +3,7 @@ import { Animated, KeyboardAvoidingView, PanResponder, Platform, Pressable, Styl
 import { router } from 'expo-router'
 import { Image } from 'expo-image'
 import { useVideoPlayer, VideoView } from 'expo-video'
-import { Ionicons } from '@expo/vector-icons'
+import { Icon } from './Icon'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useMe } from '../lib/auth'
 import { api } from '../lib/api'
@@ -157,8 +157,8 @@ export default function StoryPlayer({ groups, startAuthor, highlightTitle }: { g
               {story.music && <MusicLine track={story.music} light />}
             </View>
           </Pressable>
-          {own && <Pressable onPress={ownMenu} hitSlop={10} accessibilityLabel="Optionen"><Ionicons name="ellipsis-horizontal" size={24} color="#fff" /></Pressable>}
-          <Pressable onPress={close} hitSlop={10} accessibilityLabel="Schließen"><Ionicons name="close" size={30} color="#fff" /></Pressable>
+          {own && <Pressable onPress={ownMenu} hitSlop={10} accessibilityLabel="Optionen"><Icon name="ellipsis-horizontal" size={24} color="#fff" /></Pressable>}
+          <Pressable onPress={close} hitSlop={10} accessibilityLabel="Schließen"><Icon name="close" size={30} color="#fff" /></Pressable>
         </View>
       </View>
 
@@ -173,7 +173,7 @@ export default function StoryPlayer({ groups, startAuthor, highlightTitle }: { g
       <View style={[st.bottom, { paddingBottom: insets.bottom + 12 }]}>
         {highlightTitle && !own ? null : own ? (
           <View style={st.views}>
-            <Ionicons name="eye-outline" size={20} color="#fff" />
+            <Icon name="eye-outline" size={20} color="#fff" />
             <Text style={st.viewsText}>{story.view_count === 1 ? '1 Aufruf' : `${story.view_count} Aufrufe`}</Text>
           </View>
         ) : (
@@ -190,7 +190,7 @@ export default function StoryPlayer({ groups, startAuthor, highlightTitle }: { g
               returnKeyType="send"
             />
             <Pressable onPress={sendReply} hitSlop={8} accessibilityLabel="Antwort senden">
-              <Ionicons name="paper-plane-outline" size={26} color="#fff" />
+              <Icon name="paper-plane-outline" size={26} color="#fff" />
             </Pressable>
           </View>
         )}

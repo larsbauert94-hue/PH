@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { FlatList, Pressable, Share, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useLocalSearchParams } from 'expo-router'
-import { Ionicons } from '@expo/vector-icons'
+import { Icon } from '../../components/Icon'
 import * as ExpoLinking from 'expo-linking'
 import { useQueryClient } from '@tanstack/react-query'
 import { useMe } from '../../lib/auth'
@@ -57,7 +57,7 @@ export default function ShareSheet() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={st.search}>
-        <Ionicons name="search" size={18} color={colors.muted} />
+        <Icon name="search" size={18} color={colors.muted} />
         <TextInput value={q} onChangeText={setQ} placeholder="Suchen" placeholderTextColor={colors.faint} style={st.input} autoCapitalize="none" />
       </View>
       {convs.isPending ? <Loading /> : (
@@ -86,7 +86,7 @@ export default function ShareSheet() {
       <View style={st.footer}>
         <TextInput value={note} onChangeText={setNote} placeholder="Nachricht hinzufügen …" placeholderTextColor={colors.faint} style={st.note} />
         <Pressable style={st.more} onPress={more} accessibilityLabel="Weitere Möglichkeiten zum Teilen">
-          <Ionicons name="share-outline" size={20} color={colors.text} />
+          <Icon name="share-outline" size={20} color={colors.text} />
           <Text style={{ color: colors.text, fontWeight: '600' }}>Mehr</Text>
         </Pressable>
       </View>

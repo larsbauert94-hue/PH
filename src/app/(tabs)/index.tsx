@@ -1,15 +1,13 @@
 import { useRef, useState } from 'react'
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
-import { router, useScrollToTop } from 'expo-router'
-import { Ionicons } from '@expo/vector-icons'
+import { ActivityIndicator, FlatList, RefreshControl, ScrollView, View } from 'react-native'
+import { useScrollToTop } from 'expo-router'
 import { useFeed, useStories } from '../../lib/queries'
-import { useMe } from '../../lib/auth'
 import { FEED_TABS } from '../../lib/labels'
-import { colors, radius } from '../../lib/theme'
+import { colors } from '../../lib/theme'
 import type { FeedPost, FeedTab } from '../../lib/types'
 import PostCard from '../../components/PostCard'
 import StoryBar from '../../components/StoryBar'
-import { Avatar, Chip, Empty, ErrorView, Loading } from '../../components/ui'
+import { Chip, Empty, ErrorView, Loading } from '../../components/ui'
 
 const EMPTY: Record<FeedTab, string> = {
   alle: 'Noch keine Beiträge. Sei die erste Person, die etwas teilt!',
@@ -22,11 +20,9 @@ const EMPTY: Record<FeedTab, string> = {
 }
 
 export default function Feed() {
-  const { profile } = useMe()
   const [tab, setTab] = useState<FeedTab>('alle')
   const feed = useFeed({ tab })
   const stories = useStories()
-  const firstName = profile.name.split(' ')[0]
   // Erneutes Tippen auf „Feed“ scrollt nach oben
   const list = useRef<FlatList<FeedPost>>(null)
   useScrollToTop(list)
@@ -34,11 +30,6 @@ export default function Feed() {
   const header = (
     <View style={{ gap: 14, marginBottom: 2 }}>
       <StoryBar />
-      <Pressable style={st.compose} onPress={() => router.navigate('/neu')} accessibilityRole="button" accessibilityLabel="Neuen Beitrag schreiben">
-        <Avatar name={profile.name} url={profile.avatar_url} type={profile.account_type} size={38} />
-        <Text style={st.composeText} numberOfLines={1}>Was gibt’s Neues, {firstName}?</Text>
-        <View style={st.composeIcon}><Ionicons name="image-outline" size={20} color={colors.accent} /></View>
-      </Pressable>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
         {FEED_TABS.map(t => <Chip key={t.key} label={t.label} active={tab === t.key} onPress={() => setTab(t.key)} />)}
       </ScrollView>
@@ -63,9 +54,3 @@ export default function Feed() {
     </View>
   )
 }
-
-const st = StyleSheet.create({
-  compose: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.surface, borderRadius: radius.pill, padding: 6, paddingRight: 8, borderWidth: 1, borderColor: colors.border },
-  composeText: { flex: 1, color: colors.muted, fontSize: 15 },
-  composeIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.surface2, alignItems: 'center', justifyContent: 'center' },
-})

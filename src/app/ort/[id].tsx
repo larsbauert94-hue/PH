@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Linking, Pressable, ScrollView, Share, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native'
 import { Link, Stack, router, useLocalSearchParams } from 'expo-router'
-import { Ionicons } from '@expo/vector-icons'
+import { Icon } from '../../components/Icon'
 import * as ExpoLinking from 'expo-linking'
 import { useFeed, useProfile, useVenue, useVenueSave, useVenueStories } from '../../lib/queries'
 import { VENUE_TYPES } from '../../lib/labels'
@@ -58,7 +58,7 @@ export default function VenueScreen() {
             <Text style={st.meta}>{v.post_count ?? 0} Beiträge</Text>
           </View>
           <Pressable onPress={() => openRoute(v, v.name)}>
-            <Text style={st.address}><Ionicons name="location-outline" size={14} /> {v.address}, {v.city}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Icon name="location-outline" size={15} color={colors.muted} /><Text style={[st.address, { flexShrink: 1 }]}>{v.address}, {v.city}</Text></View>
           </Pressable>
           {v.description ? <Text style={st.desc}>{v.description}</Text> : null}
         </View>
@@ -67,7 +67,7 @@ export default function VenueScreen() {
           {actions.map(a => (
             <Pressable key={a.label} style={st.action} onPress={a.onPress} accessibilityRole="button" accessibilityLabel={a.label}>
               <View style={[st.actionIcon, a.active && { backgroundColor: colors.accent }]}>
-                <Ionicons name={a.icon} size={20} color={a.active ? colors.onAccent : colors.text} />
+                <Icon name={a.icon} size={20} color={a.active ? colors.onAccent : colors.text} />
               </View>
               <Text style={st.actionLabel}>{a.label}</Text>
             </Pressable>
