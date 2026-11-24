@@ -12,6 +12,14 @@ Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden 
 
 Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten). Unter **Optionen → Grafik** lässt sich zwischen *Auto*, *Hoch* (Figuren mit Szenenlicht, Kantenlicht und Bodenverdeckung) und *Normal* wählen; *Auto* schaltet bei zu niedriger Bildrate selbst herunter.
 
+## Neu in Version 19 – großes Grafik-Update
+- **Figuren neu gezeichnet:** Arme und Beine als durchgehende, muskulös geformte Konturen mit Licht- und Schattenseite statt aneinandergereihter Röhren und Gelenkscheiben; Stiefel mit umgeschlagener Stulpe; Roben als ein fließendes Gewand mit Faltenwurf, Gürtelkordel und weiten Glockenärmeln
+- **Riesen und Trolle:** Riesen mit breiten Schultern und schmaler Taille, Trolle mit Buckel und Wanst; Plattenpanzer mit Lamellen und Nieten, geschichtete Schulterpanzer (bei Sauron mit Stacheln), gefächerter Plattenschurz; neuer Dornenhelm mit Visier statt Kastenkopf; Balrog mit Muskeln und Glutrissen
+- **Wölfe und Warge:** geformte Beine mit Pfoten, zottige zurückfließende Mähne, Fellstruktur, keine Halsnaht
+- **Landschaften:** Berge mit schroffen Graten, weiche Haufenwolken, belaubte Bäume mit Blattstruktur, gestufte Tannen (im Norden verschneit), Waldsäume in vielen Gebieten, Wiesen mit Grasbüscheln, Wildblumen und Pfad
+- **Bruchtal und Lothlórien neu:** geschichtete Felswände mit Wasserfällen und ein elbisches Haus mit Turm und geschwungenen Dächern; Mallorn-Bäume mit silbrigen Stämmen, Ästen und goldenen Kronen
+- **Kapitelbelohnung:** statt der Truhenwahl gibt es immer direkt den Gegenstand; die Bonusleiste öffnet ein festes Fenster
+
 ## Neu in Version 18
 - **Lebendige Landschaften:** Trommeln in der Tiefe von Moria mit bebendem Boden und rieselndem Staub, glühende Spinnenaugen und eine sich abseilende Spinne im Düsterwald, das Auge Saurons mit wanderndem Suchstrahl über Mordor, Polarlichter im Norden, Schiffe und Möwen am Meer, Smaugs ferner Schatten über Seestadt und Erebor, Nazgûl-Geister um Dol Guldur, Krähenschwärme an der Wetterspitze, Laternenlichter in Lórien und Bruchtal, Schmetterlinge und abendliches Feuerwerk im Auenland
 - **Schimmernde Gegner:** selten taucht ein goldglänzender Gegner auf – zäher, aber mit garantiert legendärer oder mythischer Beute; im Roten Buch markiert, mit zwei neuen Heldentaten
