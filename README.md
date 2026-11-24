@@ -12,6 +12,14 @@ Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden 
 
 Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten). Unter **Optionen → Grafik** lässt sich zwischen *Auto*, *Hoch* (Figuren mit Szenenlicht, Kantenlicht und Bodenverdeckung) und *Normal* wählen; *Auto* schaltet bei zu niedriger Bildrate selbst herunter.
 
+## Neu in Version 20 – Grafik-Update 2
+- **Drachen neu gezeichnet:** Flügel mit nach hinten gefächerten Fingerknochen, Adern und gewellter Flughaut, Schuppen und Bauchplatten, Rückenstacheln, gehörnter Kopf mit beweglichem Kiefer, Zähnen und glühendem Schlund, eigene Laufbewegung
+- **Spinnen neu gezeichnet:** gegliederte Beine mit Gelenken und Borsten, birnenförmiger behaarter Hinterleib mit Zeichnung und Glanz, Kopfbrust mit Furchen und Tastern
+- **Alle Wahrzeichen neu:** Hornburg mit Klammwall, Rampe und Bergfried; Minas Tirith mit sieben Ringen, Felsbug und Weißem Turm; Barad-dûr mit gestaffelten Türmen und glühenden Schlitzen; die Argonath; die Wetterspitze mit zerbrochenem Mauerring und verwitterten Steinen; der Erebor mit Felsbändern, Zwergentor und Wächtern; Minas Morgul; Dol Guldur mit toten Bäumen und Nebel; ein Harad-Wachturm mit Palmen und Lehmhäusern; ein Tempel in Rhûn mit Jurten; ein Elbenschiff mit Schwanenbug; die Ruinen von Ost-in-Edhil mit Stechpalmen
+- **Waffen und Schilde:** Schwerter mit Hohlkehle, geschwungener Parierstange, Lederwicklung und Knauf; Äxte mit Schneidenlicht, Metallringen und Rückendorn; Hämmer mit Kanten; Speere mit Blattklinge; Bögen mit Griffwicklung; Schilde mit Brettern, Metallrand, Nieten und Buckel
+- **Bärte** mit Strähnen in Licht und Schatten
+- **Menüs:** goldene Eckornamente an Karten und Dialogen, Zierstein unter den Reitern, filigrane Ecken am Seitenfenster
+
 ## Neu in Version 19 – großes Grafik-Update
 - **Figuren neu gezeichnet:** Arme und Beine als durchgehende, muskulös geformte Konturen mit Licht- und Schattenseite statt aneinandergereihter Röhren und Gelenkscheiben; Stiefel mit umgeschlagener Stulpe; Roben als ein fließendes Gewand mit Faltenwurf, Gürtelkordel und weiten Glockenärmeln
 - **Riesen und Trolle:** Riesen mit breiten Schultern und schmaler Taille, Trolle mit Buckel und Wanst; Plattenpanzer mit Lamellen und Nieten, geschichtete Schulterpanzer (bei Sauron mit Stacheln), gefächerter Plattenschurz; neuer Dornenhelm mit Visier statt Kastenkopf; Balrog mit Muskeln und Glutrissen
