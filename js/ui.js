@@ -259,25 +259,11 @@ function showMemory(blob, info) {
 }
 /* Drei verdeckte Truhen: eine wählen, danach werden alle aufgedeckt */
 function pickChest(title, mith) {
-  const lv = chapterLvl() + 2, opts = [
-    { k: 'item', it: genItem(lv, Math.random() < .35 ? 4 : 3) },
-    { k: 'frag', v: 2 },
-    { k: 'gold', v: Math.round(300 + lv * 90), it: genItem(lv, 2) }
-  ].sort(() => Math.random() - .5);
-  const show = o => o.k === 'item' ? `${icHtml(o.it)}<b style="color:${RARITY[o.it.r].c}">${esc(o.it.name)}</b>` : o.k === 'frag' ? `<span class="pk-big">◈ ${o.v}</span><b>Ringfragmente</b>` : `<span class="pk-big">◆ ${fmt(o.v)}</span><b>Gold + ${esc(o.it.name)}</b>`;
-  return new Promise(res => {
-    const s = $('#splash'); s.className = 'splash doneS'; s.hidden = false; document.body.classList.add('splash-open'); W.hold = true; s.onclick = null;
-    s.innerHTML = `<div class="cdone pick"><div class="kicker">Kapitel abgeschlossen · ◈ ${mith} Ringfragment</div><h1>${esc(title)}</h1><p>Wähle eine der drei Truhen!</p><div class="pk">${opts.map((o, i) => `<button class="pkc" data-i="${i}"><span class="pk-lid">?</span><div class="pk-in">${show(o)}</div></button>`).join('')}</div><div class="dhint" hidden>${memBtn({ kicker: `Kapitel ${G.story.ch + 1} bezwungen`, title, bg: chBg(STORY[G.story.ch]), foe: STORY[G.story.ch].boss.find(k => ENEMIES[k].boss) || STORY[G.story.ch].boss[0] })}<span>Tippen zum Fortfahren</span></div></div>`;
-    paintCards(s); bindMem(s);
-    s.querySelectorAll('.pkc').forEach(b => b.onclick = e => {
-      e.stopPropagation(); if (s.querySelector('.pkc.open')) return;
-      const o = opts[+b.dataset.i]; sfx('join');
-      if (o.k === 'frag') grantFragments(o.v); if (o.k === 'gold') { G.gold += o.v; addItem(o.it); } if (o.k === 'item') addItem(o.it);
-      if (G.settings.autoEquip) autoEquip(); save(); updateHud();
-      b.classList.add('open', 'mine'); setTimeout(() => s.querySelectorAll('.pkc').forEach(x => x.classList.add('open')), 650);
-      setTimeout(() => { s.querySelector('.dhint').hidden = false; s.onclick = () => { s.onclick = null; s.classList.add('out'); setTimeout(() => { s.hidden = true; s.classList.remove('out'); document.body.classList.remove('splash-open'); W.hold = false; res(); }, 300); }; }, 900);
-    });
-  });
+  // Keine Truhenwahl mehr: nach jedem Kapitel gibt es immer direkt den Gegenstand
+  const lv = chapterLvl() + 2, it = genItem(lv, Math.random() < .35 ? 4 : 3);
+  addItem(it); if (G.settings.autoEquip) autoEquip(); save(); updateHud();
+  const C = STORY[G.story.ch];
+  return splash(`<div class="cdone"><div class="kicker">Kapitel abgeschlossen · ◈ ${mith} Ringfragment</div><h1>${esc(title)}</h1><p>Deine Belohnung</p><div class="loot1">${icHtml(it)}<b style="color:${RARITY[it.r].c}">${esc(it.name)}</b></div><div class="dhint">${memBtn({ kicker: `Kapitel ${G.story.ch + 1} bezwungen`, title, bg: chBg(C), foe: C.boss.find(k => ENEMIES[k].boss) || C.boss[0] })}<span>Tippen zum Fortfahren</span></div></div>`, 0, 'doneS');
 }
 function paintPano(cv, key) {
   if (!cv) return; const dpr = Math.min(2, devicePixelRatio || 1), Wc = cv.clientWidth || 800, Hc = cv.clientHeight || 300; cv.width = Math.round(Wc * dpr); cv.height = Math.round(Hc * dpr);
@@ -766,12 +752,10 @@ function renderBoons() {
   for (const el of els) { el.innerHTML = html; el.hidden = false; el.onclick = e => { e.stopPropagation(); const lk = e.target.closest('[data-lock]'); if (lk) return lockHint(lk.dataset.lock); sfx('click'); showBoons(el); }; }
 }
 function showBoons(src) {
-  const L = boonList(), box = $('#uinfo'); if (!L.length) { toast('Noch keine Boni aktiv – Begleiter, Banner, Relikte und Ringe kommen im Lauf der Reise.', 'mini'); return; }
-  box.className = 'uinfo boons'; box.innerHTML = `<div class="ui-h"><b>Aktive Boni</b><span>wirken auf die Gruppe</span></div>${L.map(b => `<div class="bo-r"><span class="bo-i" style="--bc:${b.c};${b.bg ? `--bb:${b.bg}` : ''}">${b.ic}</span><span><b>${esc(b.n)}</b><small>${esc(b.d)}</small></span></div>`).join('')}`;
-  box.hidden = false; const app = $('#app').getBoundingClientRect(), bw = box.offsetWidth, bh = box.offsetHeight, land = app.width > app.height, ref = (land ? $('#boonsL') : $('#party')).getBoundingClientRect();
-  if (land) { box.style.left = Math.max(8, Math.min(app.width - bw - 8, ref.left - app.left)) + 'px'; box.style.top = Math.max(8, Math.min(app.height - bh - 8, ref.bottom - app.top + 8)) + 'px'; }
-  else { box.style.left = Math.max(8, Math.min(app.width - bw - 8, ref.left - app.left + ref.width / 2 - bw / 2)) + 'px'; box.style.top = Math.max(8, Math.min(app.height - bh - 8, ref.top - app.top - bh - 34)) + 'px'; }
-  clearTimeout(unitInfo.t); unitInfo.t = setTimeout(() => { box.hidden = true; }, 7000);
+  // Bonusübersicht als festes Fenster: bleibt offen, bis du es schließt
+  const L = boonList(); if (!L.length) { toast('Noch keine Boni aktiv – Begleiter, Banner, Relikte und Ringe kommen im Lauf der Reise.', 'mini'); return; }
+  $('#uinfo').hidden = true;
+  openSheet('Aktive Boni', `<div class="m-boons">${L.map(b => `<div class="bo-r"><span class="bo-i" style="--bc:${b.c};${b.bg ? `--bb:${b.bg}` : ''}">${b.ic}</span><span><b>${esc(b.n)}</b><small>${esc(b.d)}</small></span></div>`).join('')}</div>`);
 }
 /* ---------- Freischaltungen: grau, Hinweis, NEU-Markierung, Ankündigung ---------- */
 const TAB_UNL = { modi: 'horde', jagd: 'hunt', chronik: 'chronik', best: 'best', reittiere: 'mounts', begleiter: 'comps', banner: 'banner', buende: 'bonds', feat: 'feats', rel: 'relics', sets: 'sets' };

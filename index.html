@@ -685,6 +685,11 @@ body.eco #world.hq{filter:none}
 @keyframes rvpop{0%{transform:scale(.3);opacity:0}100%{transform:none;opacity:1}}
 @keyframes rvsp{0%{opacity:0;transform:rotate(var(--a)) translateY(-20px)}20%{opacity:1}100%{opacity:0;transform:rotate(var(--a)) translateY(-180px)}}
 .bk-sh{color:#ffd770;font-style:normal}
+/* Bonusübersicht im Fenster */
+.m-boons{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.m-boons .bo-r{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,214,140,.14)}
+.m-boons .bo-r b{display:block;font-size:14px;color:#ffe2a0}
+.m-boons .bo-r small{display:block;font-size:12.5px;color:#e8dcc0;opacity:.85}
 /* Freischaltungen */
 .m-tabs.many{gap:1px} .m-tabs.many .m-tab{padding-left:5px!important;padding-right:5px!important;font-size:.88em}
 @container app (max-height:390px){ .m-ch .cc-opt,.m-ch .cc-new{display:none!important} .m-tiles.six .m-tile small{-webkit-line-clamp:1!important} .m-tiles.six .m-tile .m-ic{font-size:20px} #boonsL{display:none!important} #party .boons{display:flex!important} }
