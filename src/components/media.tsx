@@ -13,8 +13,11 @@ export function DoubleTap({ onDoubleTap, onTap, children, style }: { onDoubleTap
   const last = useRef(0)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [heart] = useState(() => new Animated.Value(0))
+  const start = useRef({ x: 0, y: 0 })
 
-  const press = () => {
+  const press = (e: { nativeEvent: { pageX: number; pageY: number } }) => {
+    // Beim Wischen meldet der Browser oft zusätzlich einen Tipp: bewegte Finger ignorieren
+    if (Math.abs(e.nativeEvent.pageX - start.current.x) > 10 || Math.abs(e.nativeEvent.pageY - start.current.y) > 10) return
     const now = Date.now()
     if (now - last.current < 280) {
       if (timer.current) clearTimeout(timer.current)
@@ -33,7 +36,7 @@ export function DoubleTap({ onDoubleTap, onTap, children, style }: { onDoubleTap
   }
 
   return (
-    <Pressable onPress={press} style={style} accessibilityHint="Doppelt tippen, um den Beitrag zu liken" testID="doubletap">
+    <Pressable onPressIn={e => { start.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY } }} onPress={press} style={style} accessibilityHint="Doppelt tippen, um den Beitrag zu liken" testID="doubletap">
       {children}
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, st.center, { opacity: heart, transform: [{ scale: heart.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1.15] }) }] }]}>
         <Icon name="heart" size={110} color="#fff" />

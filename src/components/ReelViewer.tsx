@@ -30,6 +30,8 @@ export default function ReelViewer({ posts, startId, onEndReached, onClose, onOp
   const [active, setActive] = useState(startIndex)
   const [muted, setMuted] = useState(false)
   const list = useRef<FlatList<FeedPost>>(null)
+  // Zeitpunkt der letzten Scroll-Bewegung: Tipps kurz danach sind keine Tipps, sondern Wischen
+  const lastScroll = useRef(0)
 
   const [onViewable] = useState(() => ({ viewableItems }: { viewableItems: ViewToken[] }) => {
     const first = viewableItems.find(v => v.isViewable)
@@ -54,9 +56,13 @@ export default function ReelViewer({ posts, startId, onEndReached, onClose, onOp
           onViewableItemsChanged={onViewable}
           viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
           onEndReached={onEndReached}
+          onScroll={() => { lastScroll.current = Date.now() }}
+          onScrollBeginDrag={() => { lastScroll.current = Date.now() }}
+          onMomentumScrollEnd={() => { lastScroll.current = Date.now() }}
+          scrollEventThrottle={32}
           windowSize={3}
           renderItem={({ item, index }) => (
-            <Reel post={item} height={height} playing={!paused && index === active} muted={muted} onToggleMute={() => setMuted(m => !m)} onTap={onOpen ? () => onOpen(item) : undefined} />
+            <Reel post={item} height={height} playing={!paused && index === active} muted={muted} onToggleMute={() => setMuted(m => !m)} onTap={onOpen ? () => { if (Date.now() - lastScroll.current > 600) onOpen(item) } : undefined} />
           )}
         />
       )}
