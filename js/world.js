@@ -1158,7 +1158,7 @@ class World {
     const c = cv.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'source-over'; c.clearRect(0, 0, W2 + 1, H2 + 1);
     c.beginPath(); c.rect(0, 0, W2, H2); c.save(); c.clip();
     c.setTransform(mir ? -k : k, 0, 0, k, ax * k, ay * k);
-    RIG.draw(c, u.type, u.look, u.anim.n, u.anim.el, gt + u.gt0);
+    try { RIG.draw(c, u.type, u.look, u.anim.n, u.anim.el, gt + u.gt0); } catch (e) { RIG.reportDrawError(e); }
     c.restore(); c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'source-atop';
     // Licht-Overlay (Oberlicht, Bodenverdeckung, farbiges Kantenlicht) einmal pro Gebiet & Rahmengröße vorberechnet; nur der genutzte Ausschnitt wird aufgelegt
     const FW = Math.ceil(F.bw * k), FH = Math.ceil(F.bh * k), key = this.bgKey + FW + 'x' + FH; let ov = this._lit && this._lit.get(key);

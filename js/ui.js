@@ -105,14 +105,14 @@ function heroCol(k) { return ROLE_COL[roleOf(k)]; }
 function stars(n) { return '<span class="stars">' + [0, 1, 2].map(i => `<i class="${i <= n ? 'on' : ''}">★</i>`).join('') + '</span>'; }
 function paintCards(root = document) {
   requestAnimationFrame(() => {
-    root.querySelectorAll('canvas[data-card]').forEach(c => {
+    root.querySelectorAll('canvas[data-card]').forEach(c => { try {
       const k = c.dataset.card;
       if (c.dataset.enemy) { const E = ENEMIES[k]; RIG.card(c, E.type, Object.assign({ wpn: E.wpn }, E.look), { col: '#ff5a3a', flip: 1, seed: k, bust: E.type === 'hum' && !!c.dataset.bust, zoom: +(c.dataset.zoom || 1) }); return; }
       if (!HEROES[k]) return;
       if (c.dataset.mirror) { RIG.card(c, 'hum', mirrorLook(G.heroes[k] ? heroLook(k) : lookAtStage(k, 0)), { col: '#a868ff', flip: 1, bust: !!c.dataset.bust, seed: k, zoom: +(c.dataset.zoom || 1) }); return; }
       const LK = c.dataset.stage !== undefined ? lookAtStage(k, +c.dataset.stage) : G.heroes[k] ? footLook(k) : lookAtStage(k, 0);
       RIG.card(c, 'hum', LK, { col: ROLE_COL[CLASSES[HEROES[k].cls].role], bust: !!c.dataset.bust, seed: k, zoom: +(c.dataset.zoom || 1) });
-    });
+    } catch (e) { RIG.reportDrawError(e); } });
     root.querySelectorAll('canvas[data-ic]').forEach(c => RIG.icon(c, c.dataset.ic, c.dataset.c, c.dataset.r !== undefined ? +c.dataset.r : 2));
   });
 }

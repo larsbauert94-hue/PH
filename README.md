@@ -12,6 +12,10 @@ Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden 
 
 Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten). Unter **Optionen → Grafik** lässt sich zwischen *Auto*, *Hoch* (Figuren mit Szenenlicht, Kantenlicht und Bodenverdeckung) und *Normal* wählen; *Auto* schaltet bei zu niedriger Bildrate selbst herunter.
 
+## Neu in Version 20.1 – Fehlerbehebung
+- **Unsichtbare Figuren behoben:** Trug ein Held eine mythische Waffe oder ein mythisches Amulett, fehlte beim Zeichnen die Farbe dieser Seltenheit. Dann blieben seine Karte und alle folgenden Heldenkarten leer, und im Kampf verschwanden Figuren.
+- **Fehlerfestes Zeichnen:** Ein Fehler bei einer einzelnen Figur lässt nie mehr andere Figuren oder Karten verschwinden.
+
 ## Neu in Version 20 – Grafik-Update 2
 - **Drachen neu gezeichnet:** Flügel mit nach hinten gefächerten Fingerknochen, Adern und gewellter Flughaut, Schuppen und Bauchplatten, Rückenstacheln, gehörnter Kopf mit beweglichem Kiefer, Zähnen und glühendem Schlund, eigene Laufbewegung
 - **Spinnen neu gezeichnet:** gegliederte Beine mit Gelenken und Borsten, birnenförmiger behaarter Hinterleib mit Zeichnung und Glanz, Kopfbrust mit Furchen und Tastern
