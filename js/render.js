@@ -1106,6 +1106,7 @@ const RIG = (() => {
       g.ell(133, 61, 7, 2.2, '#ff7a2a', 0);
     }, anim(ctx, x, y, gt) {
       const ex = x + 48, ey = y + 17, p = .75 + .25 * Math.sin(gt / 380); ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      { const a = Math.PI / 2 + .35 - Math.sin(gt / 5200) * 1.05, len = 620, bg = ctx.createLinearGradient(ex, ey, ex + Math.cos(a) * len, ey + Math.sin(a) * len); bg.addColorStop(0, 'rgba(255,150,60,.32)'); bg.addColorStop(.5, 'rgba(255,100,30,.1)'); bg.addColorStop(1, 'rgba(255,80,20,0)'); ctx.fillStyle = bg; ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex + Math.cos(a - .07) * len, ey + Math.sin(a - .07) * len); ctx.lineTo(ex + Math.cos(a + .07) * len, ey + Math.sin(a + .07) * len); ctx.closePath(); ctx.fill(); }
       let r = ctx.createRadialGradient(ex, ey, 0, ex, ey, 22); r.addColorStop(0, `rgba(255,140,40,${.55 * p})`); r.addColorStop(1, 'rgba(255,80,20,0)'); ctx.fillStyle = r; ctx.fillRect(ex - 22, ey - 22, 44, 44);
       ctx.fillStyle = `rgba(255,${150 + 60 * p | 0},60,.95)`; ctx.beginPath(); ctx.ellipse(ex, ey, 4.6, 2.6, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = '#100404'; ctx.beginPath(); ctx.ellipse(ex + Math.sin(gt / 2300) * .8, ey, .55, 2.2, 0, 0, Math.PI * 2); ctx.fill();
       ctx.globalCompositeOperation = 'lighter'; r = ctx.createRadialGradient(x + 133, y + 60, 0, x + 133, y + 60, 16); r.addColorStop(0, `rgba(255,120,40,${.4 * p})`); r.addColorStop(1, 'rgba(255,80,20,0)'); ctx.fillStyle = r; ctx.fillRect(x + 117, y + 44, 32, 32);

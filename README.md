@@ -12,6 +12,14 @@ Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden 
 
 Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten). Unter **Optionen → Grafik** lässt sich zwischen *Auto*, *Hoch* (Figuren mit Szenenlicht, Kantenlicht und Bodenverdeckung) und *Normal* wählen; *Auto* schaltet bei zu niedriger Bildrate selbst herunter.
 
+## Neu in Version 18
+- **Lebendige Landschaften:** Trommeln in der Tiefe von Moria mit bebendem Boden und rieselndem Staub, glühende Spinnenaugen und eine sich abseilende Spinne im Düsterwald, das Auge Saurons mit wanderndem Suchstrahl über Mordor, Polarlichter im Norden, Schiffe und Möwen am Meer, Smaugs ferner Schatten über Seestadt und Erebor, Nazgûl-Geister um Dol Guldur, Krähenschwärme an der Wetterspitze, Laternenlichter in Lórien und Bruchtal, Schmetterlinge und abendliches Feuerwerk im Auenland
+- **Schimmernde Gegner:** selten taucht ein goldglänzender Gegner auf – zäher, aber mit garantiert legendärer oder mythischer Beute; im Roten Buch markiert, mit zwei neuen Heldentaten
+- **Die Adler kommen!** In verzweifelten Bosskämpfen können die Adler herabstoßen: schwerer Schaden für alle Feinde, Gefallene stehen wieder auf
+- **Sternschnuppen:** ab und zu zieht eine Sternschnuppe über den Himmel – wer sie antippt, erhält ein Ringfragment
+- **Eigene Ultimates der großen Helden:** Gandalfs Lichtkuppel, Aragorns Totenheer, Boromirs Horn, Earendils Sternenstrahlen, das Licht von Sam und Frodo, Bilbos Schatten, Túrins schwarze Flamme, Elronds Vilya, Arwens Blüten und Finrods Lied
+- **Mythischer Fund:** eigene Bühne mit rotierendem Lichtkranz, Funken und den Werten des Gegenstands
+
 ## Neu in Version 17
 - **Spiegel der Galadriel** (ab Kapitel 18): Kampf gegen dunkle Spiegelbilder der eigenen Gruppe mit ihren Fähigkeiten und Ultimates; jede Spiegelstufe stärker, alle fünf Stufen ein großer Fund; zerspringt ein Spiegelbild, schöpft der echte Held daraus Kraft
 - **Neue Gegner mit eigenen Tricks:** der Wächter im Wasser (Fangarme, Umschlingen), Grabunholde mit lähmendem Grabesbann, Huorns mit Wurzelgriff und Borkenhaut, Hügeltrolle mit Felsbrocken und Flächenschaden, Ork-Katapulte mit Brandgeschossen aus der hinteren Reihe

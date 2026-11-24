@@ -118,6 +118,7 @@ class World {
       atkStat: E.look.glowC && E.wpn === 'staff' ? 'mag' : 'atk'
     });
     if (E.fly) addS(u, 'fly', 99, 0, this);
+    if (this.shinyOk && !this.fighting && !E.boss && Math.random() < 1 / 75) { u.shiny = 1; u.name = '✦ ' + u.name; u.maxHp = Math.round(u.maxHp * 1.8); u.gold *= 6; u.xp *= 3; }
     u.hp = u.maxHp; const Dm = RIG.dims(u.type, u.look); u.h = Dm.h; u.big = Dm.big; u.w = Dm.w;
     this.enemies.push(u); return u;
   }
@@ -219,7 +220,7 @@ class World {
   }
   async fight(group, lvl, kind, opts = {}) {
     if (this.abortNext) { this.abortNext = false; return { win: false, aborted: true, enemies: [], dmgPct: 0 }; }
-    this.raid = !!opts.raid; this.raidEnd = 0; this.decals = [];
+    this.raid = !!opts.raid; this.raidEnd = 0; this.decals = []; this.fkind = kind; this.shinyOk = kind !== 'boss' && !opts.raid && !opts.mirror; this.eaglesUsed = false; this.eagleRoll = Math.random() < .35;
     this.enemies = []; this.parts = this.parts.filter(p => p.amb);
     this.arena = group.includes('balrog') ? 'bridge' : null; this.bridgeBreak = null;
     if (opts.keepHp) { for (const h of this.heroes) { h.statuses = []; h.cd = {}; h.threat = 0; h.atb = 0; h.holdAnim = null; if (alive(h)) h.anim = { n: 'idle', el: 0 }; } } else this.restoreHeroes();
@@ -239,6 +240,7 @@ class World {
     else if (kind === 'boss') { const bz = this.enemies.find(e => e.boss) || this.enemies[0]; this.cine = { t: this.time, dur: 2100 }; this.focus(bz, 1.34, 1600); this.setAnim(bz, 'shout'); sfx('crit'); await this.wait(350); this.shake(5); this.flash('#ff3a1a', 450); this.fxs.push({ k: 'ring', x: bz.x, y: bz.y - 2, r: 80, c: '#ffd0a0', t: 0, dur: 750 }); this.fxs.push({ k: 'ring', x: bz.x, y: bz.y - 2, r: 46, c: '#ff8a50', t: 0, dur: 520 }); this.burst(bz.x, bz.y - 3, 'stone', 28, 1.9, .5); await this.wait(1100); }
     if (this.abortNext) { this.abortNext = false; this.enemies.forEach(e => { e.fade = 0; e.hp = 0; }); return { win: false, aborted: true, enemies: [], dmgPct: 0 }; }
     this.applyStartPassives(); this.leaderAura();
+    { const sh = this.enemies.find(e => e.shiny); if (sh) { sfx('shiny'); this.flash('#ffe8a0', 380); this.fxs.push({ k: 'pillar', x: sh.x, y: sh.y, c: '#ffe090', t: 0, dur: 900 }); this.burst(sh.x, sh.y - sh.h * .5, 'holy', 18, 1.2, .8); this.h.banner?.('✦ Ein schimmernder Gegner!', 'ult'); } }
     if (opts.bless) opts.bless(this);
     const ch = opts.chaos;
     if (ch === 'schnell') this.all().forEach(u => u.spd = Math.round(u.spd * 1.7));
@@ -251,6 +253,24 @@ class World {
     if (this.raid || opts.time) this.raidEnd = this.time + (opts.time || 45000);
     this.fstat = { t0: this.time, fallen: 0, minTeam: 1, afxKills: 0 }; this.duoUsed = {};
     return new Promise(res => { this.onFightEnd = res; });
+  }
+  /* Die Adler kommen: einmalige Rettung in verzweifelten Bosskämpfen */
+  async eagles() {
+    this.eaglesUsed = true; this.h.eagles?.(); this.h.banner?.('Die Adler kommen!', 'ult'); sfx('eagle'); this.cine = { t: this.time, dur: 3000 }; this.flash('#fff4d0', 500);
+    const foes = this.enemies.filter(alive); this.eagleFx = { t0: this.time, dur: 2600, n: 3, tg: foes.map(f => [f.x + f.ox, f.y + f.oy - f.h * .5]) };
+    await this.wait(1150); this.shake(6); sfx('crit');
+    for (const e of this.enemies.filter(alive)) { const d = Math.round(e.maxHp * (e.boss ? .12 : .35)); e.hp = Math.max(0, e.hp - d); e.flash = 160; e.kb = 6; this.num(e, d, '#ffe080', 1.4); this.burst(e.x + e.ox, e.y + e.oy - e.h * .5, 'slash', 14, 1.6, .5); if (e.hp <= 0) this.die(e); }
+    await this.wait(400);
+    for (const h of this.heroes) { if (!alive(h)) this.revive(h, .35); else this.heal(h, h, h.maxHp * .3); }
+    await this.wait(900);
+  }
+  drawEagles(ctx, gt) {
+    const E = this.eagleFx; if (!E) return; const q = (this.time - E.t0) / E.dur; if (q >= 1) { this.eagleFx = null; return; }
+    const look = { fur: '#6a4a2c', belly: '#c8a878' };
+    for (let i = 0; i < E.n; i++) { const p = Math.max(0, Math.min(1, q * 1.2 - i * .1)); if (p <= 0 || p >= 1) continue; const tg = E.tg[i % Math.max(1, E.tg.length)] || [this.LW * .7, 100];
+      const x = p < .45 ? -50 + (tg[0] + 50) * RIG.ease(p / .45) : tg[0] + (this.LW + 80 - tg[0]) * RIG.ease((p - .45) / .55), y = p < .45 ? -30 + (tg[1] - 14 + 30) * RIG.ease(p / .45) : tg[1] - 14 - 80 * RIG.ease((p - .45) / .55);
+      ctx.save(); ctx.globalAlpha = .45; ctx.fillStyle = '#000'; ctx.beginPath(); ctx.ellipse(x, 112 + i * 6, 14, 2.4, 0, 0, 6.29); ctx.fill(); ctx.restore();
+      ctx.save(); ctx.translate(x, y); ctx.scale(1.9, 1.9); RIG.drawEagle(ctx, look, gt + i * 300); ctx.restore(); }
   }
   /* Boss-Auftritte: Feuer, Überflug, Sturzflug, Abseilen, Schatten, Blitz, Licht, Wasser, Geister, Wurzeln, Ansturm */
   async entrance(u, st) {
@@ -315,12 +335,13 @@ class World {
     this.busy = false;
     const boss = this.enemies.find(e => e.boss);
     const fs = this.fstat || { t0: this.time, fallen: 0, minTeam: 1, afxKills: 0 }, eh = this.enemies.reduce((a, e) => a + Math.max(0, e.hp), 0), em = this.enemies.reduce((a, e) => a + e.maxHp, 0) || 1;
-    const cb = this.onFightEnd; this.onFightEnd = null; cb && cb({ win: res === 'win', timeout: res === 'time', enemies: this.enemies, dmgPct: boss ? 1 - boss.hp / boss.maxHp : 0, fallen: fs.fallen, dur: this.time - fs.t0, minTeam: fs.minTeam, afxKills: fs.afxKills, aliveEnd: this.heroes.filter(alive).length, left: eh / em, rams: this.enemies.filter(e => alive(e) && e.key === 'ram_troll').length });
+    const cb = this.onFightEnd; this.onFightEnd = null; cb && cb({ win: res === 'win', timeout: res === 'time', enemies: this.enemies, dmgPct: boss ? 1 - boss.hp / boss.maxHp : 0, fallen: fs.fallen, dur: this.time - fs.t0, minTeam: fs.minTeam, afxKills: fs.afxKills, aliveEnd: this.heroes.filter(alive).length, left: eh / em, rams: this.enemies.filter(e => alive(e) && e.key === 'ram_troll').length, shiny: this.enemies.filter(e => e.shiny && !alive(e)).map(e => e.key) });
   }
   async act(u) {
     this.busy = true; u.atb = 0; this.active = u; this.turn++;
     try {
       await this.checkPhases();
+      if (this.fkind === 'boss' && this.eagleRoll && !this.eaglesUsed && !this.raid && this.fighting) { const al = this.heroes.filter(alive), hpf = al.reduce((a, h) => a + h.hp, 0) / (this.heroes.reduce((a, h) => a + h.maxHp, 0) || 1); if (al.length && this.heroes.length >= 2 && (al.length <= 1 || hpf < .2)) await this.eagles(); }
       const skip = alive(u) ? await this.turnStart(u) : true;
       if (alive(u) && !skip && !this.checkEnd()) { const plan = this.ai(u); if (plan) await this.perform(u, plan.sk, plan.t, plan.ult); }
       u.manualUlt = 0;
@@ -564,6 +585,7 @@ class World {
   }
   ultFx(u) {
     const k = u.key, w = u.wpn, foes = this.foesOf(u), x = u.x + u.ox, y = u.y + u.oy - u.h * .55, gc = u.look.glowC || '#fff4c0';
+    if (this.sigUlt(u, foes, x, y)) return;
     const kind = ['gandalf', 'fremder', 'saruman'].includes(k) ? 'licht' : k === 'galadriel' ? 'koenigin' : u.look.mount && ['theoden', 'eomer', 'eowyn'].includes(k) ? 'ritt' : w === 'bow' ? 'pfeile' : ['axe', 'hammer', 'club', 'mace'].includes(w) ? 'beben' : w === 'spear' ? 'lanze' : w === 'staff' ? 'sterne' : 'bogen';
     if (kind === 'licht') { this.flash('#ffffff', 520); this.fxs.push({ k: 'rays', x, y, t: 0, dur: 1100 }); for (const r of [40, 70, 100]) this.fxs.push({ k: 'ring', x, y, r, c: '#fffbe8', t: 0, dur: 600 + r * 4 }); }
     else if (kind === 'koenigin') { this.flash('#7affb0', 600); this.fxs.push({ k: 'pillar', x: u.x + u.ox, y: u.y + u.oy, c: '#9affc8', t: 0, dur: 1200 }); this.fxs.push({ k: 'ring', x, y, r: 90, c: '#7affb0', t: 0, dur: 1000 }); this.shake(3); }
@@ -573,6 +595,20 @@ class World {
     else if (kind === 'beben') { this.shake(7); for (const f of foes) { this.fxs.push({ k: 'crack', x: f.x + f.ox, y: f.y + f.oy, t: 0, dur: 900, under: 1 }); this.burst(f.x + f.ox, f.y + f.oy - 2, 'stone', 12, 1.4, .8); } }
     else if (kind === 'lanze') for (const f of foes) this.fxs.push({ k: 'bolt', x, y, tx: f.x + f.ox, ty: f.y + f.oy - f.h * .5, t: 0, dur: 420 });
     else this.fxs.push({ k: 'arc', x: (foes[0] ? foes[0].x + foes[0].ox : x + 40), y: y + 4, c: k === 'aragorn' ? '#ffb060' : gc, t: 0, dur: 650 });
+  }
+  /* Eigene Ultimate-Inszenierungen der großen Helden */
+  sigUlt(u, foes, x, y) {
+    const k = u.key, allies = this.heroes.filter(alive), fp = f => [f.x + f.ox, f.y + f.oy];
+    if (k === 'gandalf') { this.flash('#ffffff', 650); this.fxs.push({ k: 'dome', x: u.x + u.ox + 10, y: u.y + u.oy, r: 120, t: 0, dur: 1300 }); this.fxs.push({ k: 'rays', x, y, t: 0, dur: 1100 }); for (const f of foes) this.fxs.push({ k: 'crack', x: f.x + f.ox, y: f.y + f.oy, r: 12, seed: Math.random() * 1000, t: 0, dur: 1000, under: 1 }); this.shake(5); return true; }
+    if (k === 'aragorn') { this.flash('#a0ffd0', 520); this.fxs.push({ k: 'ghosts', t: 0, dur: 1500 }); sfx('charge'); return true; }
+    if (k === 'boromir') { sfx('horn'); this.fxs.push({ k: 'horn', x: u.x + u.ox + 4, y, t: 0, dur: 1300 }); this.shake(3); this.flash('#ffe2a0', 300); return true; }
+    if (k === 'earendil') { this.flash('#e8f4ff', 600); this.fxs.push({ k: 'light', x: this.cx + 30, y: 6, r: 70, c: '#e8f4ff', t: 0, dur: 1400, a: .7 }); for (const f of foes) this.fxs.push({ k: 'beam', x: f.x + f.ox, y: f.y + f.oy, c: '#cfe8ff', t: 0, dur: 1100 }); return true; }
+    if (k === 'sam' || k === 'frodo') { this.fxs.push({ k: 'light', x, y, r: 110, c: '#cfe8ff', t: 0, dur: 1200, a: .6 }); this.fxs.push({ k: 'rays', x, y, t: 0, dur: 900 }); for (const a of (k === 'sam' ? allies : [u])) this.burst(a.x + a.ox, a.y + a.oy - a.h * .5, 'holy', 10, .8, 1); if (k === 'frodo' && foes[0]) this.fxs.push({ k: 'arc', x: foes[0].x + foes[0].ox, y: y + 4, c: '#8ac8ff', t: 0, dur: 650 }); return true; }
+    if (k === 'bilbo') { u.flash = 300; for (const f of foes) for (let i = 0; i < 14; i++) this.parts.push({ x: f.x + f.ox + rnd(-8, 8), y: f.y + f.oy - rnd(0, f.h), vx: rnd(-.25, .25), vy: -rnd(.05, .3), t: 0, life: rnd(900, 1400), c: pick(['rgba(20,14,24,.7)', 'rgba(40,24,50,.6)']), s: 2.6 }); this.flash('#2a1a3a', 500); return true; }
+    if (k === 'turin') { this.flash('#3a0a2a', 450); for (const f of foes) { this.fxs.push({ k: 'arc', x: f.x + f.ox, y: f.y + f.oy - f.h * .5, c: '#b050ff', t: 0, dur: 700 }); this.burst(f.x + f.ox, f.y + f.oy - f.h * .5, 'dark', 12, 1.3, .5); } return true; }
+    if (k === 'elrond') { this.fxs.push({ k: 'pillar', x: u.x + u.ox, y: u.y + u.oy, c: '#7ab8ff', t: 0, dur: 1200 }); this.fxs.push({ k: 'rain', star: 1, foes: allies.map(fp), c: '#9ad0ff', t: 0, dur: 1100 }); this.flash('#a8d4ff', 400); return true; }
+    if (k === 'arwen' || k === 'finrod') { const c = k === 'arwen' ? ['#ffffff', '#ffe8f0', '#e8f0ff'] : ['#fff0b0', '#ffe080', '#ffffff']; for (let i = 0; i < 40; i++) this.parts.push({ x: rnd(this.cx - 110, this.cx), y: rnd(-10, 40), vx: rnd(.05, .3), vy: rnd(.25, .6), t: 0, life: rnd(1800, 2600), c: pick(c), amb: k === 'arwen' ? 'leaves' : undefined, glow: k === 'finrod' ? 1 : 0, s: 1.1 }); for (const a of allies) this.fxs.push({ k: 'ring', x: a.x + a.ox, y: a.y + a.oy - 2, r: 18, c: c[1], t: 0, dur: 800 }); this.flash(c[1], 350); return true; }
+    return false;
   }
   async duo(a, b, D) {
     this.cine = { t: this.time, dur: 1500 }; this.slowUntil = this.time + 650; this.flash(D.c, 380); sfx('ult'); this.shake(3);
@@ -712,11 +748,14 @@ class World {
     const tile = (cv, par, y, hgt) => { const w = L.TW, off = -((this.scroll * par) % w + w) % w; for (let x = off - w; x < LW + w; x += w) ctx.drawImage(cv, x - (LW > w ? 0 : 0) - 20, y, w, hgt); };
     tile(L.sky, .03, YO, L.HZ + 4);
     this.drawAtmosBack(ctx, gt);
+    this.drawStar(ctx, gt);
     tile(L.far, .12, YO, L.HZ + 4);
     this.drawLandmark(ctx, gt, L);
+    this.drawLife(ctx, gt, L, 'sky');
     if (this.bgKey === 'weather' || this.bgKey === 'helm') this.drawStorm(ctx, gt, L);
     tile(L.mid, .35, YO, L.HZ + 4);
     this.drawLandmark(ctx, gt, L, true);
+    this.drawLife(ctx, gt, L, 'mid');
     tile(L.ground, 1, L.HZ + YO, LH - L.HZ - YO + 4);
     this.drawArmy(ctx, gt, L);
     this.drawDecals(ctx);
@@ -735,6 +774,7 @@ class World {
     for (const u of units) this.drawUnit(u, gt);
     for (const u of units) this.drawTrail(u);
     this.drawCharge(ctx, gt);
+    this.drawEagles(ctx, gt);
     for (const f of this.fxs) if (!f.under) this.drawFx(f);
     for (const p of this.projs) this.drawProj(p);
     this.drawParts(ctx);
@@ -769,6 +809,49 @@ class World {
     vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.5)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, this.cv.width, this.cv.height);
     if (this.flashV) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .5 * this.fxMul() * Math.pow(1 - this.flashV.t / this.flashV.dur, 2); ctx.fillStyle = this.flashV.c; ctx.fillRect(0, 0, this.cv.width, this.cv.height); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; }
     if (this.fade > 0) { ctx.globalAlpha = Math.sin(this.fade * Math.PI); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, this.cv.width, this.cv.height); ctx.globalAlpha = 1; }
+  }
+  /* ---------- Lebendige Landschaften: kleine Ereignisse je Region ---------- */
+  drawLife(ctx, gt, L, layer) {
+    const k = this.bgKey, hz = L.HZ + YO, LW = this.LW, R = i => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+    const bird = (x, y, sz, ph, col) => { const f = Math.sin(gt / 110 + ph) * sz * .7; ctx.strokeStyle = col; ctx.lineWidth = sz * .28; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x - sz, y - f * .6); ctx.quadraticCurveTo(x - sz * .4, y - sz * .5 - f * .3, x, y); ctx.quadraticCurveTo(x + sz * .4, y - sz * .5 - f * .3, x + sz, y - f * .6); ctx.stroke(); };
+    ctx.save();
+    if (layer === 'sky') {
+      if (k === 'snow') { ctx.globalCompositeOperation = 'lighter'; for (let b = 0; b < 3; b++) { const col = ['80,255,190', '90,200,255', '190,120,255'][b]; ctx.beginPath(); for (let x = -10; x <= LW + 10; x += 6) { const y = 14 + b * 7 + Math.sin(x * .025 + gt / 2400 + b * 1.7) * 6 + Math.sin(x * .07 - gt / 1700) * 2; x === -10 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); } for (let x = LW + 10; x >= -10; x -= 6) { const y = 30 + b * 7 + Math.sin(x * .025 + gt / 2400 + b * 1.7) * 6 + Math.sin(x * .05 + gt / 2100) * 4; ctx.lineTo(x, y); } ctx.closePath(); const g = ctx.createLinearGradient(0, 8, 0, 50); g.addColorStop(0, `rgba(${col},0)`); g.addColorStop(.4, `rgba(${col},${.16 + .06 * Math.sin(gt / 1300 + b)})`); g.addColorStop(1, `rgba(${col},0)`); ctx.fillStyle = g; ctx.fill(); } }
+      if (k === 'sea' || k === 'lake') { for (let i = 0; i < 2; i++) { const span = LW + 120, x = ((gt * .0035 * (i ? .7 : 1) + i * 170) % span) - 60, y = hz - .5 + i * 1.2, sc = i ? .45 : .6; ctx.fillStyle = 'rgba(40,32,28,.8)'; ctx.beginPath(); ctx.moveTo(x - 7 * sc, y - 1.6 * sc); ctx.lineTo(x + 7 * sc, y - 1.6 * sc); ctx.lineTo(x + 5 * sc, y); ctx.lineTo(x - 5 * sc, y); ctx.fill(); ctx.fillStyle = 'rgba(240,236,224,.9)'; ctx.beginPath(); ctx.moveTo(x - .4 * sc, y - 1.8 * sc); ctx.lineTo(x - .4 * sc, y - 11 * sc); ctx.quadraticCurveTo(x + 5 * sc, y - 7 * sc, x + 4.4 * sc, y - 2 * sc); ctx.fill(); ctx.beginPath(); ctx.moveTo(x - 1.2 * sc, y - 2 * sc); ctx.lineTo(x - 1.2 * sc, y - 8 * sc); ctx.quadraticCurveTo(x - 5 * sc, y - 5 * sc, x - 5.4 * sc, y - 2.2 * sc); ctx.fill(); }
+        for (let i = 0; i < 4; i++) { const span = LW + 80, x = ((gt * .012 + i * 47) % span) - 40, y = 26 + i * 7 + Math.sin(gt / 900 + i) * 3; bird(x, y, 1.6, i, 'rgba(250,250,250,.85)'); } }
+      if (k === 'lake' || k === 'erebor') { const per = 26000, ph = (gt % per) / per; if (ph < .45) { const q = ph / .45, x = LW + 30 - q * (LW + 60), y = 22 + Math.sin(q * 6.28) * 6; ctx.save(); ctx.translate(x, y); ctx.scale(-.2, .2); ctx.globalAlpha = .55; RIG.draw(ctx, 'dragon', { skin: '#1a1210', belly: '#2a1a14', wing: '#120c0a', eye: '#ff8030', horn: '#2a201a' }, 'walk', gt % 420, gt); ctx.restore(); } for (let i = 0; i < 3; i++) { const a = gt / 2600 + i * 2.1; bird(LW * .64 + Math.cos(a) * 26, 18 + Math.sin(a) * 6, 1.3, i, 'rgba(20,16,18,.75)'); } }
+      if (k === 'dolguldur') { ctx.globalCompositeOperation = 'lighter'; for (let i = 0; i < 5; i++) { const a = gt / 1800 + i * 1.256, x = LW * .6 + Math.cos(a) * 34, y = 30 + Math.sin(a) * 9 + Math.sin(gt / 500 + i) * 2, dir = -Math.sin(a); const g = ctx.createRadialGradient(x, y, 0, x, y, 7); g.addColorStop(0, 'rgba(190,255,210,.32)'); g.addColorStop(1, 'rgba(160,255,200,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y, 5, 3, 0, 0, 6.29); ctx.fill(); ctx.strokeStyle = 'rgba(190,255,210,.16)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x - dir * 8, y + 3, x - dir * 16, y + Math.sin(gt / 300 + i) * 3); ctx.stroke(); } }
+      if (k === 'weather' || k === 'amonhen' || k === 'eregion') { const per = 21000, ph = (gt % per) / per; if (ph < .5) { const q = ph / .5; for (let i = 0; i < 22; i++) { const x = -40 + q * (LW + 90) - R(i) * 40, y = 20 + R(i + 9) * 20 + Math.sin(gt / 600 + i) * 3 + Math.sin(q * 4 + R(i) * 6) * 5; bird(x, y, 1.7 + R(i + 3) * .7, i, 'rgba(18,14,16,.9)'); } } }
+      if (k === 'south' || k === 'rhun') for (let i = 0; i < 2; i++) { const a = gt / 3800 + i * 3.1; bird(LW * (.3 + i * .4) + Math.cos(a) * 20, 24 + Math.sin(a) * 5, 2.2, i * 2, 'rgba(30,22,18,.7)'); }
+      if (k === 'shire' && this.weather === 'abend') { this._fw = this._fw || []; if (gt > (this._fwT || 0)) { this._fwT = gt + rnd(3500, 7000); this._fw.push({ t0: gt, x: rnd(LW * .15, LW * .85), y: rnd(14, 34), c: pick(['255,120,90', '120,200,255', '255,230,120', '190,140,255', '140,255,170']) }); }
+        ctx.globalCompositeOperation = 'lighter'; this._fw = this._fw.filter(f => gt - f.t0 < 2600); for (const f of this._fw) { const t = gt - f.t0; if (t < 700) { const q = t / 700, y = hz + (f.y - hz) * RIG.easeOut(q); ctx.fillStyle = 'rgba(255,230,180,.9)'; ctx.fillRect(f.x - .3, y, .6, 2.4); } else { const q = (t - 700) / 1900; for (let i = 0; i < 22; i++) { const a = i / 22 * 6.28, r = RIG.easeOut(Math.min(1, q * 1.6)) * 16, px = f.x + Math.cos(a) * r, py = f.y + Math.sin(a) * r + q * q * 8; ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = `rgba(${f.c},${(1 - q) * .95})`; ctx.beginPath(); ctx.arc(px, py, 1.1 * (1 - q * .5), 0, 6.29); ctx.fill(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(255,255,255,${(1 - q) * .5})`; ctx.beginPath(); ctx.arc(px, py, .5, 0, 6.29); ctx.fill(); } if (t < 760) { const g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, 24); g.addColorStop(0, `rgba(${f.c},.35)`); g.addColorStop(1, `rgba(${f.c},0)`); ctx.fillStyle = g; ctx.fillRect(f.x - 24, f.y - 24, 48, 48); } } } }
+    } else {
+      if (k === 'mirkwood') { for (let i = 0; i < 7; i++) { const x = 10 + R(i) * (LW - 20), y = hz + 2 + R(i + 20) * 12, bl = Math.sin(gt / (1400 + R(i + 5) * 1600) + i * 3), on = bl > -.82; if (!on) continue; const a = .55 + .3 * Math.sin(gt / 400 + i); ctx.globalCompositeOperation = 'lighter'; for (let e = 0; e < (i % 2 ? 4 : 2); e++) { const ex = x + (e % 2) * 1.6 + Math.floor(e / 2) * .6, ey = y - Math.floor(e / 2) * 1.1; const g = ctx.createRadialGradient(ex, ey, 0, ex, ey, 1.4); g.addColorStop(0, `rgba(255,${i % 3 ? 60 : 200},40,${a})`); g.addColorStop(1, 'rgba(255,60,20,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(ex, ey, 1.4, 0, 6.29); ctx.fill(); } }
+        ctx.globalCompositeOperation = 'source-over'; const sx = LW * .82, sy = 30 + (Math.sin(gt / 3000) * .5 + .5) * 30; ctx.strokeStyle = 'rgba(220,220,230,.3)'; ctx.lineWidth = .25; ctx.beginPath(); ctx.moveTo(sx, -20); ctx.lineTo(sx, sy); ctx.stroke(); ctx.fillStyle = 'rgba(10,8,10,.85)'; ctx.beginPath(); ctx.ellipse(sx, sy + 1.6, 1.6, 2, 0, 0, 6.29); ctx.fill(); ctx.strokeStyle = 'rgba(10,8,10,.85)'; ctx.lineWidth = .35; for (let l = 0; l < 4; l++) for (const sd of [-1, 1]) { ctx.beginPath(); ctx.moveTo(sx, sy + 1 + l * .5); ctx.quadraticCurveTo(sx + sd * 2.6, sy - .5 + l * .8, sx + sd * 3.2, sy + 2 + l * 1.1); ctx.stroke(); } }
+      if (k === 'lorien' || k === 'rivendell') { ctx.globalCompositeOperation = 'lighter'; for (let i = 0; i < 9; i++) { const x = 8 + R(i) * (LW - 16) + Math.sin(gt / 2300 + i) * 3, y = 34 + R(i + 4) * 40 + Math.sin(gt / 1700 + i * 2) * 2.5, a = .45 + .25 * Math.sin(gt / 900 + i * 1.3), c = i % 3 ? '255,226,150' : '190,225,255'; const g = ctx.createRadialGradient(x, y, 0, x, y, 6); g.addColorStop(0, `rgba(${c},${a + .2})`); g.addColorStop(.3, `rgba(${c},${a * .45})`); g.addColorStop(1, `rgba(${c},0)`); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 6, 0, 6.29); ctx.fill(); ctx.fillStyle = `rgba(255,255,240,${a + .25})`; ctx.beginPath(); ctx.arc(x, y, .8, 0, 6.29); ctx.fill(); } }
+      if (k === 'shire') { for (let i = 0; i < 4; i++) { const t = gt / 1000 + i * 7.3, x = ((t * 6 + R(i) * 300) % (LW + 40)) - 20, y = hz + 10 + Math.sin(t * 1.3 + i) * 5 + R(i + 2) * 8, f = Math.abs(Math.sin(gt / 70 + i)); ctx.fillStyle = ['#ffe070', '#ffffff', '#ffb0d0', '#a8d8ff'][i]; ctx.beginPath(); ctx.ellipse(x - .8, y, 1 * f + .15, .7, -.4, 0, 6.29); ctx.ellipse(x + .8, y, 1 * f + .15, .7, .4, 0, 6.29); ctx.fill(); } }
+      if (k === 'moria' || k === 'khazad') { const per = 7200, ph = gt % per, beat = [0, 640, 1280].findIndex(b => ph >= b && ph < b + 60); if (beat >= 0 && this._drumB !== Math.floor(gt / per) * 3 + beat) { this._drumB = Math.floor(gt / per) * 3 + beat; this.shake(1.1); if (typeof sfx === 'function' && G && G.settings.sound) sfx('drum'); for (let i = 0; i < 6; i++) this.parts.push({ x: rnd(0, LW), y: rnd(-4, 20), vx: rnd(-.05, .05), vy: rnd(.3, .6), g: .02, t: 0, life: 1400, c: 'rgba(150,140,130,.7)', s: .9 }); }
+        ctx.globalCompositeOperation = 'lighter'; const pulse = ph < 1900 ? Math.max(0, Math.sin((ph % 640) / 640 * Math.PI)) * .5 : 0; const g = ctx.createRadialGradient(LW * .82, hz + 6, 0, LW * .82, hz + 6, 60); g.addColorStop(0, `rgba(255,70,20,${.1 + pulse * .12})`); g.addColorStop(1, 'rgba(255,40,10,0)'); ctx.fillStyle = g; ctx.fillRect(LW * .82 - 60, hz - 54, 120, 80); }
+    }
+    ctx.restore();
+  }
+  /* ---------- Sternschnuppe: antippen bringt ein Ringfragment ---------- */
+  drawStar(ctx, gt) {
+    if (!this._starNext) this._starNext = gt + rnd(35000, 70000);
+    if (!this.star && gt > this._starNext && !(this.fighting && this.enemies.some(e => e.boss)) && !(this.h.starOk && !this.h.starOk())) { this.star = { t0: gt, x0: rnd(this.LW * .2, this.LW * .95), y0: rnd(4, 14), dx: -rnd(70, 110), dy: rnd(26, 40), dur: 2900 }; this._starNext = gt + rnd(60000, 120000); }
+    const S = this.star; if (!S) return; const q = (gt - S.t0) / S.dur; if (q >= 1 || S.caught) { if (!S.caught || gt - S.caught > 900) this.star = null; if (!S.caught) return; }
+    const p = S.caught ? S.cq : q, x = S.x0 + S.dx * p, y = S.y0 + S.dy * p; S.x = x; S.y = y;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    if (S.caught) { const c = (gt - S.caught) / 900; for (let i = 0; i < 12; i++) { const a = i / 12 * 6.28, r = RIG.easeOut(c) * 16; ctx.fillStyle = `rgba(255,240,190,${1 - c})`; ctx.beginPath(); ctx.arc(x + Math.cos(a) * r, y + Math.sin(a) * r, 1 - c * .6, 0, 6.29); ctx.fill(); } }
+    else { const tl = ctx.createLinearGradient(x, y, x - S.dx * .28, y - S.dy * .28); tl.addColorStop(0, 'rgba(255,250,220,.95)'); tl.addColorStop(1, 'rgba(255,240,200,0)'); ctx.strokeStyle = tl; ctx.lineWidth = 1.1; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - S.dx * .28, y - S.dy * .28); ctx.stroke(); const g = ctx.createRadialGradient(x, y, 0, x, y, 6 + Math.sin(gt / 80) * 1.2); g.addColorStop(0, 'rgba(255,255,240,1)'); g.addColorStop(.25, 'rgba(255,236,170,.7)'); g.addColorStop(1, 'rgba(255,220,140,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 7, 0, 6.29); ctx.fill(); }
+    ctx.restore();
+  }
+  starAt(clientX, clientY) {
+    const S = this.star; if (!S || S.caught || S.x === undefined) return false;
+    const r = this.cv.getBoundingClientRect(), px = (clientX - r.left) * this.cv.width / r.width, py = (clientY - r.top) * this.cv.height / r.height;
+    const z = this.cam.z, s = this.s, sc = s * z, tx = this.ox0 + (-(this.LW / 2) * (z - 1) - (this.cam.x - this.LW / 2) * (z - 1)) * s, ty = (-(LH / 2) * (z - 1) - (this.cam.y - LH / 2) * (z - 1)) * s;
+    const wx = (px - tx) / sc, wy = (py - ty) / sc; if (Math.hypot(wx - S.x, wy - S.y) > 16) return false;
+    S.caught = this.time; S.cq = (this.time - S.t0) / S.dur; return true;
   }
   armyStyle() { if (this.bgKey === 'pelennor' || this.bgKey === 'helm') return this.bgKey; const h = typeof armyHint === 'function' ? armyHint() : null; return h === this.bgKey ? h : null; }
   /* Vorgezeichnete Heeres-Streifen (3 Bewegungsbilder je Seite), danach nur noch Bilder verschieben */
@@ -1019,6 +1102,7 @@ class World {
       ctx.save(); ctx.globalAlpha = u.fade * (hasS(u, 'invis') ? .38 : 1) * (u.look.ghost ? .62 : 1);
       if (u.look.ghost) { ctx.shadowColor = 'rgba(160,255,210,.9)'; ctx.shadowBlur = 8 * this.s; }
       else if (u.mirror) { ctx.shadowColor = `rgba(170,100,255,${.65 + Math.sin(gt / 300) * .2})`; ctx.shadowBlur = 5 * this.s; }
+      else if (u.shiny && alive(u)) { ctx.shadowColor = `rgba(255,214,110,${.75 + Math.sin(gt / 220) * .2})`; ctx.shadowBlur = 6 * this.s; if (Math.random() < .25) this.parts.push({ x: x + rnd(-u.w * .7, u.w * .7), y: y - fly - rnd(0, u.h), vx: 0, vy: -rnd(.05, .2), t: 0, life: 700, c: pick(['#fff4c0', '#ffd770', '#ffffff']), glow: 1, s: .7 }); }
       ctx.drawImage(img.cv, 0, 0, img.sw, img.sh, x - img.ax, y - fly - img.ay, img.bw, img.bh);
       ctx.restore(); ctx.globalAlpha = 1;
     } else {
@@ -1139,6 +1223,11 @@ class World {
     else if (f.k === 'light') { ctx.globalCompositeOperation = 'lighter'; const a = (1 - k) * (1 - k) * (f.a || .25), g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r); g.addColorStop(0, RIG.rgba(f.c, a)); g.addColorStop(.5, RIG.rgba(f.c, a * .35)); g.addColorStop(1, RIG.rgba(f.c, 0)); ctx.fillStyle = g; ctx.fillRect(f.x - f.r, f.y - f.r, f.r * 2, f.r * 2); }
     else if (f.k === 'slash') { ctx.globalCompositeOperation = 'lighter'; ctx.translate(f.x, f.y); ctx.scale(f.dir, 1); const st = -1.6 + k * .9, en = st + 2.2 * Math.min(1, k * 2.2); ctx.lineCap = 'round'; for (const [w, col] of [[3.2, 'rgba(160,200,255,.35)'], [1.4, 'rgba(255,255,255,.95)']]) { ctx.globalAlpha = 1 - k; ctx.strokeStyle = col; ctx.lineWidth = w * (1 - k * .6); ctx.beginPath(); ctx.arc(0, 0, f.r, st, en); ctx.stroke(); } }
     else if (f.k === 'beam') { ctx.globalCompositeOperation = 'lighter'; const a = Math.sin(Math.min(1, k * 1.3) * Math.PI) , g = ctx.createLinearGradient(0, f.y - 110, 0, f.y); g.addColorStop(0, RIG.rgba(f.c, 0)); g.addColorStop(.7, RIG.rgba(f.c, .55 * a)); g.addColorStop(1, RIG.rgba('#ffffff', .8 * a)); ctx.fillStyle = g; ctx.fillRect(f.x - 5, f.y - 110, 10, 110); ctx.fillStyle = RIG.rgba(f.c, .25 * a); ctx.fillRect(f.x - 12, f.y - 110, 24, 110); const r = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, 22); r.addColorStop(0, RIG.rgba(f.c, .7 * a)); r.addColorStop(1, RIG.rgba(f.c, 0)); ctx.fillStyle = r; ctx.beginPath(); ctx.ellipse(f.x, f.y, 22, 7, 0, 0, Math.PI * 2); ctx.fill(); for (let i = 0; i < 10; i++) { const t2 = (k * 1.5 + i / 10) % 1; ctx.fillStyle = RIG.rgba('#ffffff', (1 - t2) * a); ctx.fillRect(f.x - 6 + (i * 37 % 12), f.y - t2 * 100, .8, .8); } }
+    else if (f.k === 'dome') { ctx.globalCompositeOperation = 'lighter'; const R2 = f.r * RIG.easeOut(Math.min(1, k * 1.6)), a = k < .6 ? 1 : 1 - (k - .6) / .4; const g = ctx.createRadialGradient(f.x, f.y, R2 * .2, f.x, f.y, R2); g.addColorStop(0, `rgba(255,255,250,${.05 * a})`); g.addColorStop(.85, `rgba(255,250,230,${.28 * a})`); g.addColorStop(1, 'rgba(255,250,230,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(f.x, f.y, R2, R2 * .78, 0, Math.PI, Math.PI * 2); ctx.fill(); ctx.strokeStyle = `rgba(255,255,245,${.75 * a})`; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(f.x, f.y, R2, R2 * .78, 0, Math.PI, Math.PI * 2); ctx.stroke(); ctx.beginPath(); ctx.ellipse(f.x, f.y, R2, R2 * .2, 0, 0, Math.PI * 2); ctx.stroke(); }
+    else if (f.k === 'ghosts') { const look = this._ghostLook || (this._ghostLook = Object.assign({ wpn: 'sword' }, ENEMIES.dead_soldier.look)); ctx.globalAlpha = Math.min(1, (1 - k) * 3) * .62;
+      for (let i = 0; i < 8; i++) { const p = Math.max(0, Math.min(1, k * 1.25 - (i % 4) * .05)), x = -40 + (this.LW + 90) * p - Math.floor(i / 4) * 16, yy = 94 + (i % 4) * 9 + Math.floor(i / 4) * 4; ctx.save(); ctx.translate(x, yy); RIG.draw(ctx, 'hum', look, 'walk', (this.time + i * 90) % 420, this.time + i * 300); ctx.restore(); }
+      ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'lighter'; const gx = -40 + (this.LW + 90) * Math.min(1, k * 1.25); const g = ctx.createLinearGradient(gx - 60, 0, gx + 10, 0); g.addColorStop(0, 'rgba(160,255,210,0)'); g.addColorStop(1, `rgba(160,255,210,${.18 * (1 - k)})`); ctx.fillStyle = g; ctx.fillRect(gx - 60, 70, 70, 70); }
+    else if (f.k === 'horn') { ctx.globalCompositeOperation = 'lighter'; for (let j = 0; j < 4; j++) { const q = k * 1.4 - j * .16; if (q <= 0 || q >= 1) continue; const R2 = 8 + RIG.easeOut(q) * 150; ctx.strokeStyle = `rgba(255,226,150,${(1 - q) * .8})`; ctx.lineWidth = 2.4 * (1 - q) + .3; ctx.beginPath(); ctx.ellipse(f.x, f.y, R2, R2 * .62, 0, -.75, .75); ctx.stroke(); } }
     else if (f.k === 'tentacle') { const ext = k < .42 ? RIG.easeOut(k / .42) : k < .62 ? 1 : 1 - RIG.ease((k - .62) / .38), n = 14, dx = f.tx - f.x, dy = f.ty - f.y, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L; const pts = [];
       for (let i = 0; i <= n; i++) { const t = i / n * ext, wob = Math.sin(t * 9 + f.seed + this.time / 120) * 3 * (1 - t) + Math.sin(t * Math.PI) * -10; pts.push([f.x + dx * t + nx * wob, f.y + dy * t + ny * wob - Math.sin(t * Math.PI) * 6]); }
       ctx.lineCap = 'round'; for (let pass = 0; pass < 2; pass++) for (let i = 0; i < n; i++) { const w = 3.8 * (1 - i / n * .8); ctx.strokeStyle = pass ? (i % 2 ? '#2e3a34' : '#34423a') : 'rgba(8,12,10,.65)'; ctx.lineWidth = pass ? w : w + .9; ctx.beginPath(); ctx.moveTo(...pts[i]); ctx.lineTo(...pts[i + 1]); ctx.stroke(); }

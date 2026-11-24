@@ -18,7 +18,7 @@ const lastSfx = {};
 const SFX = {
   hit() { noise(.08, .06, 1400); tone(150, .08, 'square', .02, -70); }, crit() { noise(.16, .09, 2400); tone(260, .18, 'sawtooth', .035, -180); },
   swing() { noise(.09, .035, 3000); }, blunt() { noise(.12, .08, 500); tone(90, .1, 'square', .025, -30); }, bow() { tone(700, .05, 'triangle', .025, -300); noise(.05, .025, 4000); },
-  cast() { tone(520, .2, 'sine', .03, 400); }, charge() { tone(300, .25, 'sine', .02, 300); }, shout() { tone(180, .25, 'sawtooth', .03, 60); },
+  cast() { tone(520, .2, 'sine', .03, 400); }, drum() { tone(68, .55, 'sine', .1, -28); noise(.22, .035, 180); }, star() { tone(1250, .3, 'sine', .025, 900); tone(1880, .35, 'sine', .016, 700, .09); }, eagle() { tone(980, .4, 'sawtooth', .018, -520); noise(.35, .03, 2800); }, shiny() { tone(1400, .16, 'triangle', .026, 300); tone(2100, .22, 'triangle', .02, 240, .1); }, horn() { tone(196, .95, 'sawtooth', .032, 6); tone(294, .95, 'sawtooth', .018, 5, .06); }, charge() { tone(300, .25, 'sine', .02, 300); }, shout() { tone(180, .25, 'sawtooth', .03, 60); },
   heal() { tone(520, .15, 'sine', .035, 220); tone(780, .2, 'sine', .025, 220, .08); }, buff() { [392, 523, 659].forEach((f, i) => tone(f, .1, 'triangle', .03, 0, i * .06)); },
   miss() { tone(240, .12, 'sine', .025, -80); }, die() { tone(320, .4, 'sawtooth', .035, -250); },
   win() { [392, 494, 587, 784].forEach((f, i) => tone(f, .22, 'triangle', .04, 0, i * .12)); }, lose() { [392, 349, 311, 262].forEach((f, i) => tone(f, .3, 'sine', .045, 0, i * .18)); },
@@ -402,6 +402,7 @@ function onResult(r, kind) {
     G.stats.wins++; addChest(kind === 'boss' ? 3 : 1);
     for (const k of party) if (G.heroes[k]) { const before = fameRank(k); G.heroes[k].fame = (G.heroes[k].fame || 0) + (kind === 'boss' ? 3 : 1); const after = fameRank(k); if (after > before) { W.pendingParty = 1; toast(`✦ ${esc(HEROES[k].n)} ist jetzt <b>${FAME[after][1]}</b>`, 'lvl'); } }
     const rw = battleReward(kind, r.enemies.filter(e => e.xp));
+    if (r.shiny && r.shiny.length) { const lv = r.enemies.reduce((a, e) => Math.max(a, e.lvl || 1), 1) + 2; G.shinies = G.shinies || {}; for (const k of r.shiny) { rw.items.push(genItem(lv, topRarity(.12, .88))); G.shinies[k] = (G.shinies[k] || 0) + 1; } }
     if (kind === 'boss' && r.setCh !== undefined) { const S2 = chapterSet(r.setCh); if (S2 && Math.random() < .6) rw.items.push(genSetItem(S2, r.enemies.reduce((a, e) => Math.max(a, e.lvl), 1))); }
     const lvBefore = Object.fromEntries(owned().map(k => [k, G.heroes[k].lvl]));
     autoEquip.last = []; const res = applyReward(rw, party); suggestGear(rw.items); autoClean();
@@ -1139,7 +1140,7 @@ function openBook(cat = openBook.cat || 'heroes', page = 0) {
   if (!gate('best')) return; openBook.cat = cat;
   const L = bookCards(cat), per = innerHeight > innerWidth ? 9 : 12, np = pages(L.length, per); page = clampPg(page, np); const B = BOOK.find(b => b.id === cat), got = L.filter(c => c.seen).length;
   const card = c => { const art = cat === 'heroes' ? `<canvas data-card="${c.k}" data-bust="1" class="${c.seen ? '' : 'sil'}"></canvas>` : cat === 'foes' ? `<canvas data-card="${c.k}" data-enemy="1" data-bust="1" class="${c.seen ? '' : 'sil'}"></canvas>` : cat === 'places' ? `<canvas class="bk-pl ${c.seen ? '' : 'sil'}" data-place="${c.k}"></canvas>` : cat === 'rings' ? `<canvas data-ring="${c.k}" class="${c.seen ? '' : 'sil'}"></canvas>` : cat === 'banners' ? `<canvas data-flag="${c.k}" class="${c.seen ? '' : 'sil'}"></canvas>` : `<div class="bk-ic ${c.seen ? '' : 'sil'}">${icHtml({ r: c.r, icon: c.icon })}</div>`;
-    return `<div class="bk-c ${c.seen ? '' : 'lk'} ${c.gold ? 'gold' : ''}">${art}<b>${c.seen ? esc(c.n) : '???'}</b>${cat === 'foes' && c.seen ? `<small>${fmt(c.cnt)}× besiegt</small>` : ''}</div>`; };
+    return `<div class="bk-c ${c.seen ? '' : 'lk'} ${c.gold ? 'gold' : ''}">${art}<b>${c.seen ? esc(c.n) : '???'}</b>${cat === 'foes' && c.seen ? `<small>${fmt(c.cnt)}× besiegt${(G.shinies || {})[c.k] ? ' · <em class="bk-sh">✦ schimmernd</em>' : ''}</small>` : ''}</div>`; };
   openSheet('Reise', `<div class="m-rbook"><div class="bk-cats">${BOOK.map(b => { const l2 = bookCards(b.id), g2 = l2.filter(c => c.seen).length; return `<button class="bk-cat ${b.id === cat ? 'on' : ''} ${g2 === l2.length ? 'done' : ''}" data-cat="${b.id}"><span>${b.ic}</span>${b.n}<i>${g2}/${l2.length}</i></button>`; }).join('')}</div>
     <div class="bk-info">${got === L.length ? '✓ ' : ''}${B.n} vollständig: <b>${B.d}</b> für alle Helden · ${got}/${L.length}</div><div class="bk-grid ${per === 9 ? 'p' : ''}">${L.slice(page * per, page * per + per).map(card).join('')}</div></div>`, s => {
     s.querySelectorAll('[data-cat]').forEach(b => b.onclick = () => { sfx('click'); openBook(b.dataset.cat, 0); });
@@ -1403,7 +1404,7 @@ function grantFeat(id) {
   save(); sfx('ult'); updateHud();
   toast(`✦ Heldentat: <b>${esc(F.n)}</b> · ${[rw.gold ? '◆ ' + fmt(rw.gold) : '', rw.frags ? '◈ ' + rw.frags : '', ...items.map(it => `<b style="color:${RARITY[it.r].c}">${esc(it.name)}</b>`)].filter(Boolean).join(' · ')}`, 'lvl');
 }
-const FEAT_PROG = { serie25: () => [G.fstats?.best || 0, 25], serie100: () => [G.fstats?.best || 0, 100], affix25: () => [G.fstats?.afx || 0, 25], affix150: () => [G.fstats?.afx || 0, 150], jaeger: () => [Object.keys(G.hunts || {}).length, 4], meisterjaeger: () => [Object.keys(G.hunts || {}).length, HUNTS.length], sterne15: () => [starTotal(), 15], sterne60: () => [starTotal(), 60], horn10: () => [G.modes?.helm || 0, 10], horn25: () => [G.modes?.helm || 0, 25], pfad8: () => [G.modes?.pfad || 0, 8], pfad15: () => [G.modes?.pfad || 0, 15], ringe3: () => [RINGS.filter(R => (G.rings?.[R.id]?.stars || 0) >= 3).length, 3], quests12: () => [Object.keys(G.side || {}).filter(k => G.side[k]).length, 12] };
+const FEAT_PROG = { glanz: () => [Object.values(G.shinies || {}).reduce((a, b) => a + b, 0), 1], glanz5: () => [Object.keys(G.shinies || {}).length, 5], stern: () => [G.stats.stars || 0, 10], adler: () => [G.stats.eagles || 0, 1], serie25: () => [G.fstats?.best || 0, 25], serie100: () => [G.fstats?.best || 0, 100], affix25: () => [G.fstats?.afx || 0, 25], affix150: () => [G.fstats?.afx || 0, 150], jaeger: () => [Object.keys(G.hunts || {}).length, 4], meisterjaeger: () => [Object.keys(G.hunts || {}).length, HUNTS.length], sterne15: () => [starTotal(), 15], sterne60: () => [starTotal(), 60], horn10: () => [G.modes?.helm || 0, 10], horn25: () => [G.modes?.helm || 0, 25], pfad8: () => [G.modes?.pfad || 0, 8], pfad15: () => [G.modes?.pfad || 0, 15], ringe3: () => [RINGS.filter(R => (G.rings?.[R.id]?.stars || 0) >= 3).length, 3], quests12: () => [Object.keys(G.side || {}).filter(k => G.side[k]).length, 12] };
 function trackFeats(c = {}) {
   if (!G) return; const fs = G.fstats = G.fstats || { streak: 0, best: 0, afx: 0 }, r = c.r;
   if (r && !r.aborted) {
@@ -1419,7 +1420,17 @@ function trackFeats(c = {}) {
   for (const [id, f] of Object.entries(FEAT_PROG)) { const [v, goal] = f(); if (v >= goal) grantFeat(id); }
   if ((G.stats.mythics || 0) > 0) grantFeat('mythos');
 }
-function onMythic(it) { setTimeout(() => { W.flash('#ff5a48', 700); W.shake(3); sfx('ult'); banner(`Mythischer Fund: ${it.name}`, 'ult'); trackFeats(); }, 500); }
+function onMythic(it) { setTimeout(() => { W.flash('#ff5a48', 700); W.shake(3); sfx('ult'); reveal(it); trackFeats(); }, 500); }
+/* Mythischer Fund: eigene Bühne mit Lichtkranz, unabhängig von anderen Einblendungen */
+function reveal(it) {
+  let el = $('#reveal'); if (!el) { el = document.createElement('div'); el.id = 'reveal'; $('#app').appendChild(el); }
+  const c = RARITY[it.r].c, lines = itemLines(it).slice(0, 3);
+  el.style.setProperty('--rc', c);
+  el.innerHTML = `<div class="rv-rays"></div><div class="rv-in"><div class="kicker">${RARITY[it.r].n || 'Mythisch'}er Fund</div><div class="rv-ic">${icHtml(it)}</div><h2>${esc(it.name)}</h2><small>${lines.map(esc).join(' · ')}</small></div>${Array.from({ length: 14 }, (_, i) => `<i class="rv-sp" style="--a:${i * 25.7}deg;--d:${(i % 5) * .12}s"></i>`).join('')}`;
+  el.hidden = false; el.classList.remove('out'); paintCards(el);
+  const close = () => { el.classList.add('out'); setTimeout(() => { el.hidden = true; el.classList.remove('out'); }, 350); };
+  clearTimeout(reveal.t); reveal.t = setTimeout(close, 3400); el.onclick = e => { e.stopPropagation(); clearTimeout(reveal.t); close(); };
+}
 function openFeats(page = openFeats.page) {
   if (!gate('feats')) return;
   const list = FEATS.slice().sort((a, b) => featDone(a.id) - featDone(b.id)), per = 9, np = pages(list.length, per); page = openFeats.page = clampPg(page, np);
@@ -1550,7 +1561,7 @@ function boot() {
   const has = load();
   if (!has) { newProfile(); for (const k of STORY[0].join) joinHero(k); save(); }
   ecoMode();
-  W = new World($('#world'), { banner, combo: comboFx, ultUsed: () => track('ults', 1), crit: () => track('crits', 1), kill: u => { if (u.gold) flyCoins(u, u.boss ? 9 : u.elite ? 5 : 3); G.bestiary = G.bestiary || {}; if (!u.mirror) G.bestiary[u.key] = (G.bestiary[u.key] || 0) + 1; if (u.tags?.includes('ork')) track('orcs', 1); if (u.tags?.includes('tier')) track('beasts', 1); } });
+  W = new World($('#world'), { banner, starOk: () => started && isUnl('forge'), eagles: () => { G.stats.eagles = (G.stats.eagles || 0) + 1; }, combo: comboFx, ultUsed: () => track('ults', 1), crit: () => track('crits', 1), kill: u => { if (u.gold) flyCoins(u, u.boss ? 9 : u.elite ? 5 : 3); G.bestiary = G.bestiary || {}; if (!u.mirror) G.bestiary[u.key] = (G.bestiary[u.key] || 0) + 1; if (u.tags?.includes('ork')) track('orcs', 1); if (u.tags?.includes('tier')) track('beasts', 1); } });
   layoutMode();
   W.speed = G.settings.speed || 1;
   W.bgKey = STORY[G.story.ch].bg;
@@ -1580,7 +1591,7 @@ function boot() {
   $('#farm').onclick = () => { G.story.farm = false; save(); toast('Der Boss wird erneut herausgefordert!', 'lvl'); updateHud(); };
   $('#rotOk').onclick = () => { layoutMode.dismissed = 1; $('#rotate').hidden = true; };
   addEventListener('resize', layoutMode);
-  $('#world').addEventListener('click', e => { if ($('#sheet').classList.contains('open')) { closeSheet(); return; } const u = W.unitAt(e.clientX, e.clientY); if (u) sfx('click'); unitInfo(u, e.clientX, e.clientY); });
+  $('#world').addEventListener('click', e => { if ($('#sheet').classList.contains('open')) { closeSheet(); return; } if (W.starAt(e.clientX, e.clientY)) { sfx('star'); G.stats.stars = (G.stats.stars || 0) + 1; grantFragments(1, true); toast('✦ Sternschnuppe gefangen · <b>+1 Ringfragment</b>', 'lvl'); save(); updateHud(); trackFeats(); return; } const u = W.unitAt(e.clientX, e.clientY); if (u) sfx('click'); unitInfo(u, e.clientX, e.clientY); });
   $('#uinfo').addEventListener('click', () => { $('#uinfo').hidden = true; });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
 }

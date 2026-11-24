@@ -1140,6 +1140,10 @@ const BLESSINGS = [
 ];
 /* ---------- Heldentaten: passieren beim normalen Spielen, Belohnung kommt automatisch ---------- */
 const FEATS = [
+  { id: 'glanz', n: 'Glanzjäger', d: 'Besiege einen schimmernden Gegner.', rw: { frags: 2 } },
+  { id: 'glanz5', n: 'Sammler des Glanzes', d: 'Besiege fünf verschiedene schimmernde Gegner.', rw: { frags: 4, r: 4 } },
+  { id: 'adler', n: 'Die Adler kommen!', d: 'Werde in höchster Not von den Adlern gerettet.', rw: { frags: 2 } },
+  { id: 'stern', n: 'Sternenfänger', d: 'Fange zehn Sternschnuppen am Himmel.', rw: { gold: 3000, frags: 2 } },
   { id: 'makellos', n: 'Makellos', d: 'Besiege einen Boss, ohne dass ein Held fällt.', rw: { frags: 2 } },
   { id: 'drache', n: 'Drachentöter', d: 'Besiege Smaug oder Glaurung, ohne dass ein Held fällt.', rw: { frags: 3, r: 4 } },
   { id: 'blitz', n: 'Blitzsieg', d: 'Gewinne einen Kampf gegen drei oder mehr Gegner in unter 8 Sekunden.', rw: { gold: 1500 } },
