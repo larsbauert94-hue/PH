@@ -4,8 +4,9 @@ import { isDemo, supabase } from './supabase'
 import { demoApi } from './demo-api'
 import type {
   FeedComment, FeedPost, FeedQuery, NewPost, NewVenue, Profile, ProfileStats, ProfileUpdate, Venue, AccountType,
-  AppNotification, Conversation, Message,
+  AppNotification, Conversation, Message, LocalFile, NewStory, StoryGroup, Story,
 } from './types'
+import { groupStories } from './stories'
 import { FEED_PAGE_SIZE } from './types'
 
 export interface OnboardingData {
@@ -54,6 +55,13 @@ export interface Api {
   getMessages(conversationId: string): Promise<Message[]>
   sendMessage(me: string, conversationId: string, body: string): Promise<void>
   markConversationRead(me: string, conversationId: string): Promise<void>
+
+  setSave(me: string, postId: string, saved: boolean): Promise<void>
+
+  getStories(me: string): Promise<StoryGroup[]>
+  createStory(me: string, story: NewStory): Promise<void>
+  markStorySeen(me: string, storyId: string): Promise<void>
+  deleteStory(storyId: string): Promise<void>
 }
 
 function check<T>(res: { data: T; error: { message: string } | null }): T {
@@ -66,10 +74,12 @@ function rows<T>(res: { data: T[] | null; error: { message: string } | null }): 
   return check(res) ?? []
 }
 
+const EXT: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/heic': 'heic', 'video/mp4': 'mp4', 'video/quicktime': 'mov' }
+
 async function uploadImage(me: string, uri: string, mime = 'image/jpeg') {
   const sb = supabase!
-  const ext = mime.split('/')[1] ?? 'jpg'
-  const path = `${me}/${Date.now()}.${ext}`
+  const ext = EXT[mime] ?? mime.split('/')[1] ?? 'bin'
+  const path = `${me}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
   const body = Platform.OS === 'web' ? await (await fetch(uri)).arrayBuffer() : await new File(uri).arrayBuffer()
   check(await sb.storage.from('media').upload(path, body, { contentType: mime }))
   return sb.storage.from('media').getPublicUrl(path).data.publicUrl
@@ -105,6 +115,11 @@ const supabaseApi: Api = {
   async getFeed(me, q, before) {
     let query = supabase!.from('feed').select('*').order('created_at', { ascending: false }).limit(FEED_PAGE_SIZE)
     if (before) query = query.lt('created_at', before)
+    if (q.reels) query = query.not('video_url', 'is', null)
+    if (q.withMedia) query = query.neq('media', '{}')
+    if (q.saved) query = query.eq('saved_by_me', true)
+    const s = q.search?.trim().replace(/[%,()]/g, '')
+    if (s) query = s.startsWith('#') ? query.ilike('body', `%${s}%`) : query.or(`title.ilike.%${s}%,body.ilike.%${s}%,author_name.ilike.%${s}%`)
     if (q.authorId) query = query.eq('author_id', q.authorId)
     if (q.venueId) query = query.eq('venue_id', q.venueId)
     switch (q.tab) {
@@ -125,10 +140,14 @@ const supabaseApi: Api = {
     return check(await supabase!.from('feed').select('*').eq('id', id).maybeSingle()) as FeedPost | null
   },
   async createPost(me, p) {
-    const image_url = p.imageUri ? await uploadImage(me, p.imageUri, p.imageMime) : null
+    const upload = (f: LocalFile) => uploadImage(me, f.uri, f.mime)
+    const [media, video_url] = await Promise.all([
+      Promise.all((p.media ?? []).map(upload)),
+      p.video ? upload(p.video) : Promise.resolve(null),
+    ])
     check(await supabase!.from('posts').insert({
       author_id: me, kind: p.kind, title: p.title || null, body: p.body, category: p.category,
-      link_url: p.link_url || null, venue_id: p.venue_id || null, image_url,
+      link_url: p.link_url || null, venue_id: p.venue_id || null, media, image_url: media[0] ?? null, video_url,
     }))
   },
   async deletePost(id) {
@@ -202,6 +221,25 @@ const supabaseApi: Api = {
   },
   async markConversationRead(me, conversationId) {
     check(await supabase!.from('conversation_members').update({ last_read_at: new Date().toISOString() }).match({ conversation_id: conversationId, user_id: me }))
+  },
+
+  async setSave(me, postId, saved) {
+    const t = supabase!.from('saves')
+    check(await (saved ? t.upsert({ user_id: me, post_id: postId }) : t.delete().match({ user_id: me, post_id: postId })))
+  },
+
+  async getStories(me) {
+    return groupStories(rows<Story>(await supabase!.from('story_feed').select('*').order('created_at').limit(500)), me)
+  },
+  async createStory(me, st) {
+    const media_url = await uploadImage(me, st.file.uri, st.file.mime)
+    check(await supabase!.from('stories').insert({ author_id: me, media_url, media_type: st.media_type, caption: st.caption || null, venue_id: st.venue_id || null }))
+  },
+  async markStorySeen(me, storyId) {
+    check(await supabase!.from('story_views').upsert({ story_id: storyId, viewer_id: me }, { ignoreDuplicates: true }))
+  },
+  async deleteStory(storyId) {
+    check(await supabase!.from('stories').delete().eq('id', storyId))
   },
 }
 

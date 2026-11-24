@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query'
 import { api } from './api'
 import { useAuth, useMe } from './auth'
-import type { AccountType, FeedPost, FeedQuery, NewPost, NewVenue } from './types'
+import type { AccountType, FeedPost, FeedQuery, NewPost, NewStory, NewVenue } from './types'
 import { FEED_PAGE_SIZE } from './types'
 
 export const keys = {
@@ -16,6 +16,7 @@ export const keys = {
   notifications: ['notifications'] as const,
   conversations: ['conversations'] as const,
   messages: (id: string) => ['messages', id] as const,
+  stories: ['stories'] as const,
 }
 
 /** Feed mit automatischem Nachladen beim Scrollen */
@@ -196,5 +197,55 @@ export function useStartConversation() {
   return useMutation({
     mutationFn: (otherId: string) => api.startConversation(otherId),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.conversations }),
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Gespeichert und Storys
+// ---------------------------------------------------------------------------
+
+/** Speichern sofort in allen Listen umschalten */
+export function useToggleSave() {
+  const qc = useQueryClient()
+  const { me } = useMe()
+  return useMutation({
+    mutationFn: (p: FeedPost) => api.setSave(me, p.id, !p.saved_by_me),
+    onMutate: (p: FeedPost) => {
+      const flip = (x: FeedPost) => x.id === p.id ? { ...x, saved_by_me: !p.saved_by_me } : x
+      qc.setQueriesData<FeedCache>({ queryKey: ['feed'] }, old => old && { ...old, pages: old.pages.map(page => page.map(flip)) })
+      qc.setQueryData<FeedPost | null>(keys.post(p.id), old => old && flip(old))
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ['feed', { saved: true }] }),
+  })
+}
+
+export function useStories() {
+  const { me } = useMe()
+  return useQuery({ queryKey: keys.stories, queryFn: () => api.getStories(me), refetchInterval: 60_000 })
+}
+
+export function useCreateStory() {
+  const qc = useQueryClient()
+  const { me } = useMe()
+  return useMutation({
+    mutationFn: (st: NewStory) => api.createStory(me, st),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.stories }),
+  })
+}
+
+export function useMarkStorySeen() {
+  const qc = useQueryClient()
+  const { me } = useMe()
+  return useMutation({
+    mutationFn: (storyId: string) => api.markStorySeen(me, storyId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.stories }),
+  })
+}
+
+export function useDeleteStory() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (storyId: string) => api.deleteStory(storyId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.stories }),
   })
 }

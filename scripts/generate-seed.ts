@@ -8,6 +8,7 @@ const q = (v: unknown): string =>
   v === null || v === undefined ? 'null' : typeof v === 'number' || typeof v === 'boolean' ? String(v) : `'${String(v).replace(/'/g, "''")}'`
 const ago = (h: number) => `now() - interval '${h} hours'`
 
+// Reels und Bilder liegen nur als lokale Demo-Dateien vor und werden hier ausgelassen
 const lines: string[] = [
   '-- Automatisch erzeugt aus src/lib/demo-data.ts (npm run seed:generate). Nicht von Hand bearbeiten.',
   '-- Beispieldaten: alle Betriebe, Marken und Personen sind frei erfunden.',
@@ -24,7 +25,7 @@ const lines: string[] = [
   seedVenues.map(v => `  (${[v.id, v.owner_id, v.name, v.type, v.address, v.city, v.latitude, v.longitude, v.description, v.website, v.phone].map(q).join(', ')})`).join(',\n') + ';',
   '',
   'insert into public.posts (id, author_id, kind, title, body, category, link_url, venue_id, created_at) values',
-  seedPosts.map(p => `  (${[p.id, p.author_id, p.kind, p.title, p.body, p.category, p.link_url, p.venue_id].map(q).join(', ')}, ${ago(p.hoursAgo)})`).join(',\n') + ';',
+  seedPosts.filter(p => !p.video).map(p => `  (${[p.id, p.author_id, p.kind, p.title, p.body, p.category, p.link_url, p.venue_id].map(q).join(', ')}, ${ago(p.hoursAgo)})`).join(',\n') + ';',
   '',
   'insert into public.follows (follower_id, following_id) values',
   seedFollows.map(([a, b]) => `  (${q(a)}, ${q(b)})`).join(',\n') + ';',

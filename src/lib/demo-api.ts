@@ -1,9 +1,11 @@
 // In-Memory-Backend für den Demo-Modus (ohne Supabase-Zugangsdaten).
 // Verhält sich wie die Supabase-Views, damit die App identisch funktioniert.
 import type { Api } from './api'
-import type { AppNotification, Conversation, FeedComment, FeedPost, Message, NotificationType, Post, Profile, Venue } from './types'
+import type { AppNotification, Conversation, FeedComment, FeedPost, Message, NotificationType, Post, Profile, Story, Venue } from './types'
+import { demoUri } from './demo-media'
+import { groupStories } from './stories'
 import { FEED_PAGE_SIZE } from './types'
-import { seedComments, seedConversations, seedFollows, seedLikes, seedPosts, seedProfiles, seedVenues } from './demo-data'
+import { seedComments, seedConversations, seedStories, seedFollows, seedLikes, seedPosts, seedProfiles, seedVenues } from './demo-data'
 
 const ago = (h: number) => new Date(Date.now() - h * 3600_000).toISOString()
 const uid = () => `demo-${Math.random().toString(36).slice(2, 10)}`
@@ -14,7 +16,16 @@ const db = {
     ...p, avatar_url: null as string | null, created_at: ago(24 * 90), terms_accepted_at: ago(24 * 90) as string | null,
   })),
   venues: seedVenues.map(v => ({ ...v, created_at: ago(24 * 60) })) as Venue[],
-  posts: seedPosts.map(({ hoursAgo, ...p }) => ({ ...p, image_url: null, created_at: ago(hoursAgo) })) as Post[],
+  posts: seedPosts.map(({ hoursAgo, media, video, ...p }) => {
+    const urls = (media ?? []).map(demoUri)
+    return { ...p, media: urls, image_url: urls[0] ?? null, video_url: video ? demoUri(video) : null, created_at: ago(hoursAgo) }
+  }) as Post[],
+  saves: [] as { user_id: string; post_id: string }[],
+  stories: seedStories.map(st => ({
+    id: st.id, author_id: st.author_id, media_url: demoUri(st.media), media_type: 'image' as 'image' | 'video', caption: st.caption,
+    venue_id: null as string | null, created_at: ago(st.hoursAgo), expires_at: ago(st.hoursAgo - 24),
+  })),
+  storyViews: [] as { story_id: string; viewer_id: string }[],
   likes: seedLikes.map(([post_id, user_id]) => ({ post_id, user_id })),
   comments: seedComments.map(({ hoursAgo, ...c }) => ({ ...c, created_at: ago(hoursAgo) })),
   follows: seedFollows.map(([follower_id, following_id]) => ({ follower_id, following_id })),
@@ -59,6 +70,7 @@ function toFeed(p: Post): FeedPost {
     like_count: db.likes.filter(l => l.post_id === p.id).length,
     comment_count: db.comments.filter(c => c.post_id === p.id && !blocked(c.author_id)).length,
     liked_by_me: db.likes.some(l => l.post_id === p.id && l.user_id === currentUser),
+    saved_by_me: db.saves.some(x => x.post_id === p.id && x.user_id === currentUser),
   }
 }
 
@@ -117,7 +129,12 @@ export const demoApi: Api = {
   async getFeed(me, q, before) {
     const following = new Set([me, ...db.follows.filter(f => f.follower_id === me).map(f => f.following_id)])
     const authorType = (p: Post) => db.profiles.find(a => a.id === p.author_id)?.account_type
+    const needle = q.search?.trim().toLowerCase()
     const rows = db.posts
+      .filter(p => !q.reels || !!p.video_url)
+      .filter(p => !q.withMedia || p.media.length > 0)
+      .filter(p => !q.saved || db.saves.some(x => x.post_id === p.id && x.user_id === me))
+      .filter(p => !needle || [p.title ?? '', p.body, db.profiles.find(a => a.id === p.author_id)?.name ?? ''].some(f => f.toLowerCase().includes(needle)))
       .filter(p => !blocked(p.author_id))
       .filter(p => !q.authorId || p.author_id === q.authorId)
       .filter(p => !q.venueId || p.venue_id === q.venueId)
@@ -145,7 +162,8 @@ export const demoApi: Api = {
   async createPost(me, p) {
     db.posts.push({
       id: uid(), author_id: me, kind: p.kind, title: p.title || null, body: p.body, category: p.category,
-      link_url: p.link_url || null, venue_id: p.venue_id || null, image_url: p.imageUri ?? null, created_at: new Date().toISOString(),
+      link_url: p.link_url || null, venue_id: p.venue_id || null, created_at: new Date().toISOString(),
+      media: (p.media ?? []).map(f => f.uri), image_url: p.media?.[0]?.uri ?? null, video_url: p.video?.uri ?? null,
     })
     return wait(undefined)
   },
@@ -298,6 +316,44 @@ export const demoApi: Api = {
   async markConversationRead(me, conversationId) {
     const m = db.conversations.find(x => x.id === conversationId)?.members.find(x => x.user_id === me)
     if (m) m.last_read_at = new Date().toISOString()
+    return wait(undefined)
+  },
+
+  async setSave(me, postId, saved) {
+    db.saves = db.saves.filter(x => !(x.user_id === me && x.post_id === postId))
+    if (saved) db.saves.push({ user_id: me, post_id: postId })
+    return wait(undefined)
+  },
+
+  async getStories(me) {
+    const now = new Date().toISOString()
+    const rows: Story[] = db.stories
+      .filter(st => st.expires_at > now && !blocked(st.author_id))
+      .flatMap(st => {
+        const a = db.profiles.find(x => x.id === st.author_id)
+        return a ? [{
+          ...st, author_handle: a.handle, author_name: a.name, author_type: a.account_type, author_avatar_url: a.avatar_url, author_verified: a.verified,
+          venue_name: db.venues.find(v => v.id === st.venue_id)?.name ?? null,
+          seen_by_me: db.storyViews.some(v => v.story_id === st.id && v.viewer_id === me),
+          view_count: db.storyViews.filter(v => v.story_id === st.id).length,
+        }] : []
+      })
+    return wait(groupStories(rows, me))
+  },
+  async createStory(me, st) {
+    const now = Date.now()
+    db.stories.push({
+      id: uid(), author_id: me, media_url: st.file.uri, media_type: st.media_type, caption: st.caption || null, venue_id: st.venue_id ?? null,
+      created_at: new Date(now).toISOString(), expires_at: new Date(now + 86_400_000).toISOString(),
+    })
+    return wait(undefined)
+  },
+  async markStorySeen(me, storyId) {
+    if (!db.storyViews.some(v => v.story_id === storyId && v.viewer_id === me)) db.storyViews.push({ story_id: storyId, viewer_id: me })
+    return wait(undefined)
+  },
+  async deleteStory(storyId) {
+    db.stories = db.stories.filter(st => st.id !== storyId)
     return wait(undefined)
   },
 }

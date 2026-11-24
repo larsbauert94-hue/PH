@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuth } from '../lib/auth'
-import { useNotifications } from '../lib/queries'
+import { useConversations, useNotifications } from '../lib/queries'
 import { colors } from '../lib/theme'
 import { Avatar } from './ui'
 
@@ -17,14 +17,21 @@ export function MeButton() {
   )
 }
 
-/** Glocke oben rechts mit Zähler für neue Mitteilungen */
-export function BellButton() {
-  const { unread } = useNotifications()
+/** Oben rechts: Herz für Mitteilungen und Papierflieger für Nachrichten, jeweils mit Zähler */
+export function HeaderActions() {
+  const notes = useNotifications()
+  const convs = useConversations()
   return (
-    <Pressable onPress={() => router.push('/mitteilungen')} hitSlop={10} style={{ marginRight: 16 }} accessibilityLabel={unread ? `Mitteilungen, ${unread} neu` : 'Mitteilungen'}>
-      <Ionicons name="notifications-outline" size={25} color={colors.text} />
-      {unread > 0 && <CountBadge count={unread} style={{ position: 'absolute', top: -4, right: -6 }} />}
-    </Pressable>
+    <View style={{ flexDirection: 'row', gap: 22, marginRight: 16 }}>
+      <Pressable onPress={() => router.push('/mitteilungen')} hitSlop={10} accessibilityLabel={notes.unread ? `Mitteilungen, ${notes.unread} neu` : 'Mitteilungen'}>
+        <Ionicons name="heart-outline" size={26} color={colors.text} />
+        {notes.unread > 0 && <CountBadge count={notes.unread} style={{ position: 'absolute', top: -5, right: -8 }} />}
+      </Pressable>
+      <Pressable onPress={() => router.push('/nachrichten')} hitSlop={10} accessibilityLabel={convs.unread ? `Nachrichten, ${convs.unread} ungelesen` : 'Nachrichten'}>
+        <Ionicons name="paper-plane-outline" size={25} color={colors.text} />
+        {convs.unread > 0 && <CountBadge count={convs.unread} style={{ position: 'absolute', top: -5, right: -8 }} />}
+      </Pressable>
+    </View>
   )
 }
 

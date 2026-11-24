@@ -10,13 +10,17 @@ Das soziale Netzwerk für die Wein-, Spirituosen- und Gastroszene. Es mischt Lin
 | --- | --- |
 | **Login** | Apple (nativ auf iOS), Google, E-Mail mit Passwort |
 | **Onboarding** | Kontotyp wählen. Betriebe: Bar, Restaurant, Händler, Lieferant, Marke. Personen: Gastro-Profi, Genießer:in. Dazu Name, Nutzername, Position und Arbeitsplatz, Bestätigung „18+“ und Zustimmung zu den Nutzungsbedingungen |
+| **Storys** | Kreise oben im Feed (Roségold-Ring = neu), Vollbild mit Fortschrittsbalken, tippen vor/zurück, gedrückt halten pausiert, nach unten wischen schließt, Antworten per Direktnachricht, Aufrufzähler bei eigenen Storys, nach 24 Stunden weg |
+| **Reels** | Eigener Tab mit Kurzvideos im Vollbild, Wischen zum nächsten, Ton per Tippen an/aus, Like, Kommentar, Teilen, Speichern |
+| **Beiträge** | Bis zu 10 Fotos als Galerie zum Wischen, Doppeltippen zum Liken mit Herz-Animation, Speichern-Lesezeichen, #hashtags antippbar |
+| **Entdecken** | Suche nach Leuten, Betrieben und #hashtags, Bildraster „Für dich“, Trend-Hashtags, Verzeichnis „Personen & Betriebe“ mit Filtern |
 | **Feed** | Feld „Was gibt’s Neues?“ ganz oben, Filter (Alle, Folge ich, Neuheiten, Marken & Handel, Bars & Restaurants, Jobs, Events), lädt beim Scrollen automatisch nach |
-| **Nachrichten** | Direktnachrichten zwischen allen Nutzern, Ungelesen-Zähler am Tab, „Nachricht“ im Profil, „Jetzt bewerben“ bzw. „Angebot anfragen“ direkt am Beitrag |
-| **Mitteilungen** | Glocke oben rechts mit Zähler: Likes, Kommentare, neue Follower |
+| **Nachrichten** | Direktnachrichten zwischen allen Nutzern (Papierflieger oben rechts, mit Zähler), „Nachricht“ im Profil, „Jetzt bewerben“ bzw. „Angebot anfragen“ direkt am Beitrag |
+| **Mitteilungen** | Herz oben rechts mit Zähler: Likes, Kommentare, neue Follower |
 | **Posten** | Arten: Beitrag, Neuheit, Angebot, Event, Job. Jeweils mit Foto, Kategorie, markiertem Ort und Link |
 | **Karte** | Alle Bars und Restaurants auf Apple Maps bzw. Google Maps, filterbar nach Art. Listenansicht, eigener Standort, Route. Bars und Restaurants können sich selbst eintragen |
 | **Netzwerk** | Verzeichnis aller Profile mit Filter nach Typ und Suche nach Name, Stadt oder Position |
-| **Profile** | Für Personen mit Position und Arbeitsplatz wie bei LinkedIn, für Betriebe mit Haken „verifiziert“. Profilbild hochladen, Folgen, Follower und Beiträge. Das eigene Profil öffnest du über dein Bild oben links |
+| **Profile** | Wie bei Instagram mit Bildraster und Reitern (Beiträge, Reels, Liste, Gespeichert), Story-Ring ums Profilbild. Für Personen mit Position und Arbeitsplatz wie bei LinkedIn, für Betriebe mit Haken „verifiziert“. Das eigene Profil öffnest du über dein Bild oben links |
 | **Teilen** | Beiträge über das normale Teilen-Menü des Handys weitergeben |
 | **Sicherheit** | Beiträge und Profile melden, Nutzer blockieren, Account in der App löschen (Pflicht im App Store) |
 
@@ -27,7 +31,7 @@ npm install
 npx expo start
 ```
 
-Ohne Supabase-Zugangsdaten startet die App im **Demo-Modus** mit erfundenen Beispieldaten. Die Anmeldung funktioniert dann ohne echte Konten:
+Ohne Supabase-Zugangsdaten startet die App im **Demo-Modus** mit erfundenen Beispieldaten, illustrierten Beispielbildern, Storys und Reels (in `assets/demo`). Die Anmeldung funktioniert dann ohne echte Konten:
 
 - Apple und Google legen ein neues Demo-Konto an und führen durch das Onboarding.
 - Mit `demo@example.com` und beliebigem Passwort meldest du dich als bestehender Nutzer an.
@@ -42,7 +46,7 @@ Zum Ausprobieren auf dem Handy die App **Expo Go** installieren und den QR-Code 
    npx supabase link --project-ref <projekt-ref>
    npx supabase db push
    ```
-   oder beide Dateien aus `supabase/migrations/` nacheinander im SQL Editor ausführen (erst `…_init.sql`, dann `…_messages_notifications.sql`).
+   oder die drei Dateien aus `supabase/migrations/` der Reihe nach im SQL Editor ausführen (`…_init.sql`, `…_messages_notifications.sql`, `…_stories_reels_saves.sql`).
 3. Optional die Beispieldaten laden: `supabase/seed.sql` im SQL Editor ausführen. Neu erzeugen lässt sich die Datei mit `npm run seed:generate`.
 4. `.env.example` nach `.env` kopieren und URL sowie Publishable Key eintragen (zu finden unter Project Settings → API).
 5. Unter **Authentication → Providers**:
@@ -53,12 +57,13 @@ Zum Ausprobieren auf dem Handy die App **Expo Go** installieren und den QR-Code 
 
 ### Datenbank
 
-- **Tabellen**: `profiles`, `venues`, `posts`, `likes`, `comments`, `follows`, `blocks`, `reports`, `notifications`, `conversations`, `conversation_members`, `messages`.
-- **Views** für die App: `feed`, `comment_feed`, `profile_stats`, `notification_feed`, `my_conversations`.
+- **Tabellen**: `profiles`, `venues`, `posts` (mit `media` für Galerien und `video_url` für Reels), `likes`, `comments`, `follows`, `saves`, `stories`, `story_views`, `blocks`, `reports`, `notifications`, `conversations`, `conversation_members`, `messages`.
+- **Views** für die App: `feed`, `comment_feed`, `profile_stats`, `story_feed`, `notification_feed`, `my_conversations`.
+- **Storys** verschwinden nach 24 Stunden automatisch aus `story_feed`; Aufrufe sieht nur, wer die Story gepostet hat.
 - **Mitteilungen** entstehen automatisch per Trigger. Nachrichten und Mitteilungen werden regelmäßig abgefragt (Chat alle 4 Sekunden), eine Echtzeit-Verbindung ist nicht nötig.
 - **Row Level Security** auf allen Tabellen: Lesen ist nur angemeldet möglich, schreiben darf man nur eigene Daten. Den Haken „verifiziert“ und den Kontotyp können Nutzer nicht selbst ändern. Blockieren blendet Inhalte in beide Richtungen aus.
 - **Funktionen**: `complete_onboarding()`, `delete_account()`, `start_conversation()`, `mark_notifications_read()`.
-- **Bilder**: Bucket `media`. Jeder Nutzer darf nur in seinen eigenen Ordner hochladen.
+- **Bilder und Videos**: Bucket `media` (bis 50 MB pro Datei, JPEG/PNG/WebP/HEIC/MP4/MOV). Jeder Nutzer darf nur in seinen eigenen Ordner hochladen.
 - **Moderation**: Meldungen landen in `reports` und sind nur im Supabase-Dashboard sichtbar. Profile verifiziert man dort mit `update profiles set verified = true where handle = '…'`.
 
 ## Ab in den App Store

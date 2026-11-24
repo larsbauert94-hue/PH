@@ -1,10 +1,10 @@
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import { router } from 'expo-router'
-import { useMe } from '../../lib/auth'
-import { useConversations } from '../../lib/queries'
-import { subtitle, timeAgo } from '../../lib/labels'
-import { colors, radius } from '../../lib/theme'
-import { Avatar, Button, Empty, ErrorView, Loading } from '../../components/ui'
+import { useMe } from '../lib/auth'
+import { useConversations } from '../lib/queries'
+import { subtitle, timeAgo } from '../lib/labels'
+import { colors, radius } from '../lib/theme'
+import { Avatar, Button, Empty, ErrorView, Loading } from '../components/ui'
 
 export default function Inbox() {
   const { me } = useMe()
@@ -23,7 +23,7 @@ export default function Inbox() {
       ListEmptyComponent={
         <View style={{ gap: 16, alignItems: 'center' }}>
           <Empty icon="chatbubbles-outline" text="Noch keine Nachrichten. Schreib Betrieben, Lieferanten oder Kolleg:innen direkt über ihr Profil." />
-          <Button title="Leute finden" icon="people-outline" variant="secondary" onPress={() => router.navigate('/netzwerk')} />
+          <Button title="Leute finden" icon="people-outline" variant="secondary" onPress={() => router.navigate({ pathname: '/entdecken', params: { tab: 'personen' } })} />
         </View>
       }
       renderItem={({ item: c }) => {

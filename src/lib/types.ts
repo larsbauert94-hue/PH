@@ -57,6 +57,10 @@ export interface Post {
   link_url: string | null
   venue_id: string | null
   created_at: string
+  /** Bilder der Galerie (bei Reels: Vorschaubild) */
+  media: string[]
+  /** gesetzt = Reel */
+  video_url: string | null
 }
 
 /** Zeile aus der View `feed` */
@@ -72,6 +76,7 @@ export interface FeedPost extends Post {
   like_count: number
   comment_count: number
   liked_by_me: boolean
+  saved_by_me: boolean
 }
 
 /** Zeile aus der View `comment_feed` */
@@ -93,7 +98,17 @@ export interface FeedQuery {
   tab?: FeedTab
   authorId?: string
   venueId?: string
+  /** nur Reels */
+  reels?: boolean
+  /** nur Beiträge mit Bild oder Video (Entdecken-Raster) */
+  withMedia?: boolean
+  /** nur eigene gespeicherte Beiträge */
+  saved?: boolean
+  /** Volltext bzw. #hashtag */
+  search?: string
 }
+
+export interface LocalFile { uri: string; mime?: string }
 
 export interface NewPost {
   kind: PostKind
@@ -102,9 +117,10 @@ export interface NewPost {
   category: Category
   link_url?: string
   venue_id?: string
-  /** Lokale Datei-URI vom Image-Picker */
-  imageUri?: string
-  imageMime?: string
+  /** Bilder (Galerie, bis 10) bzw. bei Reels das Vorschaubild */
+  media?: LocalFile[]
+  /** Video → Reel */
+  video?: LocalFile
 }
 
 export interface NewVenue {
@@ -176,3 +192,41 @@ export interface Message {
 
 /** Beiträge pro Seite im Feed */
 export const FEED_PAGE_SIZE = 20
+
+/** Zeile aus der View `story_feed` */
+export interface Story {
+  id: string
+  author_id: string
+  media_url: string
+  media_type: 'image' | 'video'
+  caption: string | null
+  venue_id: string | null
+  created_at: string
+  expires_at: string
+  author_handle: string
+  author_name: string
+  author_type: AccountType
+  author_avatar_url: string | null
+  author_verified: boolean
+  venue_name: string | null
+  seen_by_me: boolean
+  view_count: number
+}
+
+/** Storys einer Person, wie sie in der Leiste oben im Feed erscheinen */
+export interface StoryGroup {
+  author_id: string
+  author_name: string
+  author_handle: string
+  author_type: AccountType
+  author_avatar_url: string | null
+  stories: Story[]
+  all_seen: boolean
+}
+
+export interface NewStory {
+  file: LocalFile
+  media_type: 'image' | 'video'
+  caption?: string
+  venue_id?: string
+}

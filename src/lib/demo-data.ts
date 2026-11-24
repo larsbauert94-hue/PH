@@ -42,6 +42,9 @@ export interface SeedPost {
   link_url: string | null
   venue_id: string | null
   hoursAgo: number
+  /** Schlüssel aus demo-media.ts (nur Demo-Modus) */
+  media?: string[]
+  video?: string
 }
 
 export const P = {
@@ -92,18 +95,21 @@ export const seedVenues: SeedVenue[] = [
 ]
 
 export const seedPosts: SeedPost[] = [
-  { id: id(201), author_id: P.alpenbrand, kind: 'neuheit', title: 'Alpenbrand Zirbe Dry Gin', body: 'Unser neuer Gin mit Zirbenzapfen und Bergwacholder ist ab 1. Dezember bei allen Partnern im Großhandel erhältlich. Gastro-Muster gibt es auf Anfrage.', category: 'spirituosen', link_url: 'https://example.com/alpenbrand', venue_id: null, hoursAgo: 1 },
-  { id: id(202), author_id: P.max, kind: 'beitrag', title: null, body: 'Neu auf unserer Winterkarte: Smoked Rosemary Negroni. Gin, Campari, Wermut und ein abgeflammter Rosmarinzweig.', category: 'cocktails', link_url: null, venue_id: V.nachtschatten, hoursAgo: 3 },
+  { id: id(201), author_id: P.alpenbrand, kind: 'neuheit', title: 'Alpenbrand Zirbe Dry Gin', body: 'Unser neuer Gin mit Zirbenzapfen und Bergwacholder ist ab 1. Dezember bei allen Partnern im Großhandel erhältlich. Gastro-Muster gibt es auf Anfrage.', category: 'spirituosen', link_url: 'https://example.com/alpenbrand', venue_id: null, media: ['gintonic-post'], hoursAgo: 1 },
+  { id: id(202), author_id: P.max, kind: 'beitrag', title: null, body: 'Neu auf unserer Winterkarte: Smoked Rosemary Negroni. Gin, Campari, Wermut und ein abgeflammter Rosmarinzweig.', category: 'cocktails', link_url: null, venue_id: V.nachtschatten, media: ['negroni-post', 'bar-post'], hoursAgo: 3 },
   { id: id(203), author_id: P.nordlicht, kind: 'angebot', title: 'Winteraktion für Gastro-Kunden', body: 'Bis Jahresende 8 % Rabatt auf alle Rum- und Whisky-Bestellungen ab 24 Flaschen. Lieferung in Hamburg und Schleswig-Holstein innerhalb von 48 Stunden.', category: 'spirituosen', link_url: null, venue_id: null, hoursAgo: 5 },
   { id: id(204), author_id: P.nachtschatten, kind: 'job', title: 'Bartender:in (Vollzeit) gesucht', body: 'Wir suchen ab Januar Verstärkung hinter dem Tresen. Erfahrung mit Klassikern, Lust auf Fermentation und ein gutes Team. Bewerbung per Direktnachricht oder E-Mail.', category: 'gastronomie', link_url: null, venue_id: V.nachtschatten, hoursAgo: 8 },
-  { id: id(205), author_id: P.lena, kind: 'beitrag', title: null, body: 'Riesling Spätlese Alte Reben 2019 vom Weingut Schieferhang zum Rehrücken. Steinobst, Petrol und eine Säure wie ein Uhrwerk.', category: 'wein', link_url: null, venue_id: V.ochsen, hoursAgo: 20 },
-  { id: id(206), author_id: P.schieferhang, kind: 'event', title: 'Jahrgangspräsentation 2025 am 14. Dezember', body: 'Wir öffnen den Keller: Fassproben des Jahrgangs 2025, Steillagen-Führung und Winzervesper. Für Fachbesucher kostenlos, Anmeldung erforderlich.', category: 'wein', link_url: null, venue_id: null, hoursAgo: 26 },
-  { id: id(207), author_id: P.rheinkeller, kind: 'neuheit', title: 'Neu im Sortiment: Grüner Veltliner aus dem Kamptal', body: 'Drei Lagenweine eines jungen Winzerpaares sind ab sofort bei uns gelistet. Ideal für die glasweise Ausschank. Preisliste für Gastronomie auf Anfrage.', category: 'wein', link_url: null, venue_id: null, hoursAgo: 30 },
-  { id: id(208), author_id: P.sofia, kind: 'beitrag', title: null, body: 'Gestern im Kupferkessel einen 12-jährigen Single Malt aus Bayern probiert. Hätte nie gedacht, dass deutscher Whisky so gut sein kann.', category: 'spirituosen', link_url: null, venue_id: V.kupfer, hoursAgo: 40 },
+  { id: id(205), author_id: P.lena, kind: 'beitrag', title: null, body: 'Riesling Spätlese Alte Reben 2019 vom Weingut Schieferhang zum Rehrücken. Steinobst, Petrol und eine Säure wie ein Uhrwerk.', category: 'wein', link_url: null, venue_id: V.ochsen, media: ['weinberg-post'], hoursAgo: 20 },
+  { id: id(206), author_id: P.schieferhang, kind: 'event', title: 'Jahrgangspräsentation 2025 am 14. Dezember', body: 'Wir öffnen den Keller: Fassproben des Jahrgangs 2025, Steillagen-Führung und Winzervesper. Für Fachbesucher kostenlos, Anmeldung erforderlich.', category: 'wein', link_url: null, venue_id: null, media: ['keller-post'], hoursAgo: 26 },
+  { id: id(207), author_id: P.rheinkeller, kind: 'neuheit', title: 'Neu im Sortiment: Grüner Veltliner aus dem Kamptal', body: 'Drei Lagenweine eines jungen Winzerpaares sind ab sofort bei uns gelistet. Ideal für die glasweise Ausschank. Preisliste für Gastronomie auf Anfrage.', category: 'wein', link_url: null, venue_id: null, media: ['rotwein-post'], hoursAgo: 30 },
+  { id: id(208), author_id: P.sofia, kind: 'beitrag', title: null, body: 'Gestern im Kupferkessel einen 12-jährigen Single Malt aus Bayern probiert. Hätte nie gedacht, dass deutscher Whisky so gut sein kann.', category: 'spirituosen', link_url: null, venue_id: V.kupfer, media: ['whisky-post'], hoursAgo: 40 },
   { id: id(209), author_id: P.waldbrand, kind: 'neuheit', title: 'Alkoholfreier Kräuteraperitif', body: 'Nach zwei Jahren Entwicklung: unser erster alkoholfreier Aperitif mit Schwarzwälder Tannenspitzen. Funktioniert pur auf Eis oder als Spritz.', category: 'alkoholfrei', link_url: null, venue_id: null, hoursAgo: 52 },
-  { id: id(210), author_id: P.rebe, kind: 'event', title: 'Naturwein-Abend mit Winzer:innen aus dem Burgenland', body: 'Am Freitag ab 19 Uhr schenken drei Weingüter selbst aus. Kleine Teller aus der Küche, Eintritt frei.', category: 'wein', link_url: null, venue_id: V.rebe, hoursAgo: 70 },
+  { id: id(210), author_id: P.rebe, kind: 'event', title: 'Naturwein-Abend mit Winzer:innen aus dem Burgenland', body: 'Am Freitag ab 19 Uhr schenken drei Weingüter selbst aus. Kleine Teller aus der Küche, Eintritt frei.', category: 'wein', link_url: null, venue_id: V.rebe, media: ['champagner-post'], hoursAgo: 70 },
   { id: id(211), author_id: P.ochsen, kind: 'job', title: 'Commis de Rang und Sommelier-Assistenz', body: 'Für unser Restaurant suchen wir zwei Kolleg:innen im Service. Interesse an Wein ist ein Muss, Weiterbildungen bezahlen wir.', category: 'gastronomie', link_url: null, venue_id: V.ochsen, hoursAgo: 96 },
-  { id: id(213), author_id: P.demo, kind: 'beitrag', title: null, body: 'Neue Hausspirituose im Kupferkessel: ein 5 Jahre alter Haferbrand aus Brandenburg. Wer kennt ähnliche Projekte?', category: 'spirituosen', link_url: null, venue_id: V.kupfer, hoursAgo: 14 },
+  { id: id(213), author_id: P.demo, kind: 'beitrag', title: null, body: 'Neue Hausspirituose im Kupferkessel: ein 5 Jahre alter Haferbrand aus Brandenburg. Wer kennt ähnliche Projekte?', category: 'spirituosen', link_url: null, venue_id: V.kupfer, media: ['keller-post'], hoursAgo: 14 },
+  { id: id(214), author_id: P.max, kind: 'beitrag', title: null, body: 'Smoked Rosemary Negroni in 6 Sekunden 🔥 #negroni #cocktails', category: 'cocktails', link_url: null, venue_id: V.nachtschatten, hoursAgo: 4, media: ['negroni-reel-thumb'], video: 'negroni-reel' },
+  { id: id(215), author_id: P.alpenbrand, kind: 'neuheit', title: 'Zirbe & Tonic', body: 'So schmeckt der Winter: Zirbe Dry Gin mit Tonic und Limette. #gin #neuheit', category: 'spirituosen', link_url: null, venue_id: null, hoursAgo: 9, media: ['gintonic-reel-thumb'], video: 'gintonic-reel' },
+  { id: id(216), author_id: P.nachtschatten, kind: 'beitrag', title: null, body: 'Freitagabend im Nachtschatten. Wir sehen uns ab 20 Uhr! #bar #berlin', category: 'cocktails', link_url: null, venue_id: V.nachtschatten, hoursAgo: 28, media: ['bar-reel-thumb'], video: 'bar-reel' },
   { id: id(212), author_id: P.max, kind: 'beitrag', title: null, body: 'Tipp für alle Kolleg:innen: Zitronenschalen-Oleo-Saccharum hält sich vakuumiert locker zwei Wochen. Spart enorm Zeit im Service.', category: 'cocktails', link_url: null, venue_id: null, hoursAgo: 120 },
 ]
 
@@ -141,4 +147,15 @@ export const seedConversations: { id: string; members: [string, string]; message
       [P.nordlicht, 'Hallo Herr Hartmann, anbei wie besprochen unsere aktuelle Gastro-Preisliste. Die Winteraktion gilt bis 31.12.', 20],
     ],
   },
+]
+
+/** Storys der letzten 24 Stunden (nur Demo-Modus) */
+export const seedStories: { id: string; author_id: string; media: string; caption: string | null; hoursAgo: number }[] = [
+  { id: id(501), author_id: P.nachtschatten, media: 'bar-story', caption: 'Heute DJ ab 22 Uhr 🎶', hoursAgo: 2 },
+  { id: id(502), author_id: P.nachtschatten, media: 'negroni-story', caption: 'Drink des Abends', hoursAgo: 1.5 },
+  { id: id(503), author_id: P.alpenbrand, media: 'gintonic-story', caption: 'Die Musterpakete sind raus!', hoursAgo: 3 },
+  { id: id(504), author_id: P.schieferhang, media: 'weinberg-story', caption: 'Sonnenuntergang über der Steillage', hoursAgo: 5 },
+  { id: id(505), author_id: P.lena, media: 'rotwein-story', caption: 'Weinbegleitung für heute Abend steht', hoursAgo: 6 },
+  { id: id(506), author_id: P.rebe, media: 'champagner-story', caption: 'Freitag = Schaumwein', hoursAgo: 8 },
+  { id: id(507), author_id: P.max, media: 'whisky-story', caption: null, hoursAgo: 10 },
 ]

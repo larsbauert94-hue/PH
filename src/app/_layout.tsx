@@ -57,6 +57,9 @@ function Navigation() {
         <Stack.Screen name="ort/neu" options={{ title: 'Betrieb eintragen', presentation: 'modal' }} />
         <Stack.Screen name="einstellungen" options={{ title: 'Einstellungen' }} />
         <Stack.Screen name="mitteilungen" options={{ title: 'Mitteilungen' }} />
+        <Stack.Screen name="nachrichten" options={{ title: 'Nachrichten' }} />
+        <Stack.Screen name="story/[id]" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'fade', contentStyle: { backgroundColor: '#000' } }} />
+        <Stack.Screen name="story/neu" options={{ headerShown: false, presentation: 'fullScreenModal', contentStyle: { backgroundColor: '#000' } }} />
         <Stack.Screen name="chat/[id]" options={{ title: '' }} />
       </Stack.Protected>
       <Stack.Screen name="rechtliches" options={{ title: 'Nutzungsbedingungen & Datenschutz', presentation: 'modal' }} />

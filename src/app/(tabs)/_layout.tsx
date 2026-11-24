@@ -2,19 +2,17 @@ import { Tabs } from 'expo-router/js-tabs'
 import type { ColorValue } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { colors, fonts } from '../../lib/theme'
-import { useConversations } from '../../lib/queries'
 import type { IconName } from '../../components/ui'
 import { LogoLockup } from '../../components/Logo'
-import { BellButton, MeButton } from '../../components/HeaderButtons'
+import { HeaderActions, MeButton } from '../../components/HeaderButtons'
 
-function icon(name: IconName) {
+function icon(name: IconName, size = 25) {
   return function TabIcon({ color, focused }: { color: ColorValue; focused: boolean }) {
-    return <Ionicons name={focused ? name : (`${name}-outline` as IconName)} size={24} color={color as string} />
+    return <Ionicons name={focused ? name : (`${name}-outline` as IconName)} size={size} color={color as string} />
   }
 }
 
 export default function TabsLayout() {
-  const { unread } = useConversations()
   return (
     <Tabs
       screenOptions={{
@@ -24,7 +22,7 @@ export default function TabsLayout() {
         headerTitleAlign: 'center',
         headerShadowVisible: false,
         headerLeft: () => <MeButton />,
-        headerRight: () => <BellButton />,
+        headerRight: () => <HeaderActions />,
         tabBarStyle: { backgroundColor: colors.bg, borderTopColor: colors.border },
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.faint,
@@ -33,18 +31,16 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: 'Feed', headerTitle: () => <LogoLockup size={28} />, tabBarIcon: icon('home') }} />
-      <Tabs.Screen name="netzwerk" options={{ title: 'Netzwerk', tabBarIcon: icon('people') }} />
-      <Tabs.Screen name="neu" options={{ title: 'Posten', headerTitle: 'Neuer Beitrag', tabBarIcon: icon('add-circle') }} />
-      <Tabs.Screen name="karte" options={{ title: 'Karte', headerShown: false, tabBarIcon: icon('map') }} />
+      <Tabs.Screen name="entdecken" options={{ title: 'Entdecken', tabBarIcon: icon('search') }} />
+      <Tabs.Screen name="neu" options={{ title: 'Posten', headerTitle: 'Neu', tabBarIcon: icon('add-circle', 30) }} />
       <Tabs.Screen
-        name="nachrichten"
+        name="reels"
         options={{
-          title: 'Nachrichten',
-          tabBarIcon: icon('chatbubbles'),
-          tabBarBadge: unread > 0 ? unread : undefined,
-          tabBarBadgeStyle: { backgroundColor: colors.heart, color: '#fff', fontSize: 10 },
+          title: 'Reels', headerShown: false, tabBarIcon: icon('film'),
+          tabBarStyle: { backgroundColor: '#000', borderTopColor: '#111' },
         }}
       />
+      <Tabs.Screen name="karte" options={{ title: 'Karte', headerShown: false, tabBarIcon: icon('map') }} />
     </Tabs>
   )
 }

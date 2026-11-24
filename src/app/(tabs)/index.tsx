@@ -1,13 +1,14 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
-import { router } from 'expo-router'
+import { router, useScrollToTop } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
-import { useFeed } from '../../lib/queries'
+import { useFeed, useStories } from '../../lib/queries'
 import { useMe } from '../../lib/auth'
 import { FEED_TABS } from '../../lib/labels'
 import { colors, radius } from '../../lib/theme'
-import type { FeedTab } from '../../lib/types'
+import type { FeedPost, FeedTab } from '../../lib/types'
 import PostCard from '../../components/PostCard'
+import StoryBar from '../../components/StoryBar'
 import { Avatar, Chip, Empty, ErrorView, Loading } from '../../components/ui'
 
 const EMPTY: Record<FeedTab, string> = {
@@ -24,10 +25,15 @@ export default function Feed() {
   const { profile } = useMe()
   const [tab, setTab] = useState<FeedTab>('alle')
   const feed = useFeed({ tab })
+  const stories = useStories()
   const firstName = profile.name.split(' ')[0]
+  // Erneutes Tippen auf „Feed“ scrollt nach oben
+  const list = useRef<FlatList<FeedPost>>(null)
+  useScrollToTop(list)
 
   const header = (
-    <View style={{ gap: 12, marginBottom: 2 }}>
+    <View style={{ gap: 14, marginBottom: 2 }}>
+      <StoryBar />
       <Pressable style={st.compose} onPress={() => router.navigate('/neu')} accessibilityRole="button" accessibilityLabel="Neuen Beitrag schreiben">
         <Avatar name={profile.name} url={profile.avatar_url} type={profile.account_type} size={38} />
         <Text style={st.composeText} numberOfLines={1}>Was gibt’s Neues, {firstName}?</Text>
@@ -42,6 +48,7 @@ export default function Feed() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <FlatList
+        ref={list}
         data={feed.posts}
         keyExtractor={p => p.id}
         renderItem={({ item }) => <PostCard post={item} />}
@@ -51,7 +58,7 @@ export default function Feed() {
         ListFooterComponent={feed.isFetchingNextPage ? <ActivityIndicator color={colors.accent} style={{ padding: 16 }} /> : undefined}
         onEndReached={feed.loadMore}
         onEndReachedThreshold={0.5}
-        refreshControl={<RefreshControl refreshing={feed.isRefetching && !feed.isFetchingNextPage} onRefresh={() => { feed.refetch() }} tintColor={colors.accent} />}
+        refreshControl={<RefreshControl refreshing={feed.isRefetching && !feed.isFetchingNextPage} onRefresh={() => { feed.refetch(); stories.refetch() }} tintColor={colors.accent} />}
       />
     </View>
   )
