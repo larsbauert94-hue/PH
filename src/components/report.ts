@@ -1,7 +1,14 @@
 import { Alert, Platform } from 'react-native'
 import { api } from '../lib/api'
+import { showDialog, type DialogButton } from './DialogHost'
 
 const REASONS = ['Spam oder Werbung', 'Beleidigung oder Belästigung', 'Unangemessene Inhalte', 'Falsche Angaben', 'Jugendschutz']
+
+/** Dialog mit Buttons: auf iOS/Android der System-Dialog, im Web der eigene (DialogHost) */
+function dialog(title: string, message: string | undefined, buttons: DialogButton[]) {
+  if (Platform.OS === 'web') { showDialog({ title, message, buttons }); return }
+  Alert.alert(title, message, buttons.map(b => ({ text: b.label, style: b.style ?? 'default', onPress: b.onPress })))
+}
 
 /** Meldedialog für Beiträge und Profile (App-Store-Pflicht bei nutzergenerierten Inhalten) */
 export function reportFlow(me: string, target: { postId?: string; profileId?: string }) {
@@ -10,44 +17,28 @@ export function reportFlow(me: string, target: { postId?: string; profileId?: st
       .then(() => notify('Danke für deine Meldung', 'Wir prüfen den Inhalt innerhalb von 24 Stunden.'))
       .catch(e => notify('Fehler', e instanceof Error ? e.message : String(e)))
 
-  if (Platform.OS === 'web') {
-    const choice = window.prompt(`Grund der Meldung:\n${REASONS.map((r, i) => `${i + 1}. ${r}`).join('\n')}`, '1')
-    const reason = REASONS[Number(choice) - 1]
-    if (reason) send(reason)
-    return
-  }
-  Alert.alert('Melden', 'Warum möchtest du das melden?', [
-    ...REASONS.map(r => ({ text: r, onPress: () => send(r) })),
-    { text: 'Abbrechen', style: 'cancel' as const },
+  dialog('Melden', 'Warum möchtest du das melden?', [
+    ...REASONS.map(r => ({ label: r, onPress: () => send(r) })),
+    { label: 'Abbrechen', style: 'cancel' },
   ])
 }
 
 export function notify(title: string, message?: string) {
-  if (Platform.OS === 'web') window.alert([title, message].filter(Boolean).join('\n\n'))
-  else Alert.alert(title, message)
+  dialog(title, message, [{ label: 'OK' }])
 }
 
-/** Bestätigungsdialog, der auch im Web funktioniert */
+/** Bestätigungsdialog */
 export function confirmAction(title: string, message: string, confirmText: string, onConfirm: () => void) {
-  if (Platform.OS === 'web') {
-    if (window.confirm(`${title}\n\n${message}`)) onConfirm()
-    return
-  }
-  Alert.alert(title, message, [
-    { text: 'Abbrechen', style: 'cancel' },
-    { text: confirmText, style: 'destructive', onPress: onConfirm },
+  dialog(title, message, [
+    { label: confirmText, style: 'destructive', onPress: onConfirm },
+    { label: 'Abbrechen', style: 'cancel' },
   ])
 }
 
-/** Einfaches Aktionsmenü (iOS/Android: Dialog mit Buttons, Web: nummerierte Auswahl) */
+/** Aktionsmenü (z. B. „•••“ bei Beiträgen) */
 export function chooseAction(title: string, options: { label: string; destructive?: boolean; onPress: () => void }[]) {
-  if (Platform.OS === 'web') {
-    const choice = window.prompt(`${title}\n${options.map((o, i) => `${i + 1}. ${o.label}`).join('\n')}`, '')
-    options[Number(choice) - 1]?.onPress()
-    return
-  }
-  Alert.alert(title, undefined, [
-    ...options.map(o => ({ text: o.label, style: o.destructive ? ('destructive' as const) : ('default' as const), onPress: o.onPress })),
-    { text: 'Abbrechen', style: 'cancel' as const },
+  dialog(title, undefined, [
+    ...options.map(o => ({ label: o.label, style: o.destructive ? ('destructive' as const) : ('default' as const), onPress: o.onPress })),
+    { label: 'Abbrechen', style: 'cancel' },
   ])
 }

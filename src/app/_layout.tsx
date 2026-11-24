@@ -10,6 +10,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from '../lib/auth'
 import { colors, fonts } from '../lib/theme'
 import { Button, Loading } from '../components/ui'
+import DialogHost from '../components/DialogHost'
 
 // Splash-Screen stehen lassen, bis Schrift und Sitzung geladen sind
 SplashScreen.preventAutoHideAsync().catch(() => {})
@@ -83,6 +84,7 @@ export default function RootLayout() {
         <AuthProvider>
           <StatusBar style="light" />
           <Navigation />
+          <DialogHost />
         </AuthProvider>
       </QueryClientProvider>
     </SafeAreaProvider>

@@ -1,19 +1,39 @@
-import { Suspense, lazy, useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { Platform, Text, View } from 'react-native'
 import { router } from 'expo-router'
 import { editorSession, finishEditor } from '../lib/editor'
 import { colors } from '../lib/theme'
 import { Loading } from '../components/ui'
+import { notify } from '../components/report'
+import type { LocalFile } from '../lib/types'
 
 // Skia (Grafik-Engine des Editors) wird erst geladen, wenn der Editor geöffnet wird.
 // Im Browser muss vorher CanvasKit (WebAssembly) geladen sein.
 const PhotoEditor = lazy(async () => {
-  if (Platform.OS === 'web') {
-    const { LoadSkiaWeb } = await import('@shopify/react-native-skia/lib/module/web')
-    await LoadSkiaWeb({ locateFile: (file: string) => `/${file}` })
+  try {
+    if (Platform.OS === 'web') {
+      const { LoadSkiaWeb } = await import('@shopify/react-native-skia/lib/module/web')
+      // Basis-Pfad wird in der Web-App-Version (Artifact) gesetzt, sonst Wurzel
+      const base = (globalThis as { __POUR_BASE__?: string }).__POUR_BASE__ ?? '/'
+      await LoadSkiaWeb({ locateFile: (file: string) => `${base}${file}` })
+    }
+    return await import('../components/editor/PhotoEditor')
+  } catch {
+    // Ohne Grafik-Engine (z. B. eingeschränkter Browser): Bilder unverändert übernehmen
+    return { default: NoEditor }
   }
-  return import('../components/editor/PhotoEditor')
 })
+
+function NoEditor({ files, onDone }: { files: LocalFile[]; aspect: number; onDone: (r: LocalFile[]) => void; onCancel: () => void }) {
+  const fired = useRef(false)
+  useEffect(() => {
+    if (fired.current) return
+    fired.current = true
+    notify('Filter nicht verfügbar', 'In diesem Browser lassen sich keine Filter anwenden. Das Foto wird unverändert übernommen.')
+    onDone(files)
+  }, [files, onDone])
+  return <Loading />
+}
 
 export default function EditorScreen() {
   const [session] = useState(editorSession)

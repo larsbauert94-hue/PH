@@ -54,7 +54,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "seed:generate": "node --no-warnings scripts/generate-seed.ts",
-    "postinstall": "node scripts/copy-canvaskit.js"
+    "postinstall": "node scripts/copy-canvaskit.js",
+    "build:webapp": "expo export -p web && node scripts/build-artifact.js"
   },
   "private": true
 }
