@@ -134,3 +134,13 @@ Der Foto-Editor nutzt [Skia](https://shopify.github.io/react-native-skia/). Für
 - Admin-Ansicht für Meldungen und Verifizierungen
 - Ausführlichere Ortsseiten mit Öffnungszeiten, Fotos und Getränkekarte
 - Paginierung im Feed (aktuell die neuesten 100 Beiträge)
+
+## Als App auf den iPhone-Home-Bildschirm (Web-Version)
+
+Pour liegt als Home-Bildschirm-App im Ordner `pour/` der GitHub-Pages-Seite dieses Repos (Branch der Pages-Seite, neben Ringfahrt):
+**https://larsbauert94-hue.github.io/PH/pour/**
+
+1. Adresse in **Safari** öffnen → **Teilen → Zum Home-Bildschirm**.
+2. Pour startet dann im Vollbild mit eigenem Symbol, ohne Safari-Leisten.
+
+Neu bauen: `npm run build:pwa` (erzeugt `dist-pages/` für den Pfad `/PH/pour`), dann den Inhalt in den Ordner `pour/` des Pages-Branches kopieren und pushen.

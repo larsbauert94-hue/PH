@@ -47,4 +47,4 @@ yarn-error.*
 # Wird beim Installieren erzeugt (scripts/copy-canvaskit.js)
 public/canvaskit.wasm
 dist-artifact/
-dist-pwa/
+dist-pages/
