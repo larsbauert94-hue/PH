@@ -37,9 +37,10 @@ function wave(level: number, t: number, amp: number) {
  * Das Pour-Zeichen, dessen Tropfen sich mit Roségold füllt (oder nur der Tropfen als Ladesymbol).
  * level: 0 (leer) … 1 (voll), t: Zeit in Sekunden für die Wellenbewegung.
  */
-export default function PourDrop({ size = 120, level = 0.5, t = 0, bare = false, dropOnly = false }: {
+export default function PourDrop({ size = 120, level = 0.5, t = 0, bare = false, dropOnly = false, shine }: {
   size?: number; level?: number; t?: number; bare?: boolean
   /** Nur der Tropfen (Ladesymbol), size = Höhe */ dropOnly?: boolean
+  /** Lichtschimmer über dem „P“: Position 0 … 1 (außerhalb = unsichtbar) */ shine?: number
 }) {
   const id = useId().replace(/[^a-zA-Z0-9]/g, '')
   const amp = level > 0.02 && level < 0.98 ? 0.9 : 0.25
@@ -62,14 +63,28 @@ export default function PourDrop({ size = 120, level = 0.5, t = 0, bare = false,
           <Stop offset="1" stopColor={colors.roseDeep} />
         </LinearGradient>
         <ClipPath id={`c${id}`}><Path d={DROP} /></ClipPath>
+        <ClipPath id={`p${id}`}><Path d={LOGO_PATH} fillRule="evenodd" clipRule="evenodd" /></ClipPath>
+        <LinearGradient id={`s${id}`} x1="0" y1="0" x2="1" y2="0">
+          <Stop offset="0" stopColor="#fff" stopOpacity={0} />
+          <Stop offset="0.5" stopColor="#fff" stopOpacity={0.75} />
+          <Stop offset="1" stopColor="#fff" stopOpacity={0} />
+        </LinearGradient>
       </Defs>
       {!bare && !dropOnly && <Rect width="100" height="100" rx="22" fill={colors.brandNavy} />}
       {!dropOnly && <Path d={LOGO_PATH} fill={`url(#r${id})`} fillRule="evenodd" />}
-      <G clipPath={`url(#c${id})`}>
-        <Path d={liquid.d} fill={`url(#w${id})`} />
-        <Path d={liquid.d.split(' L69 52')[0]} stroke="#fff1e6" strokeWidth={0.6} strokeOpacity={0.7} fill="none" />
-        {bubbles.map((b, i) => <Circle key={i} cx={b.x} cy={b.y} r={b.r} fill="#fff" opacity={0.55 * b.o} />)}
-      </G>
+      {shine != null && shine > 0 && shine < 1 && !dropOnly && (
+        // schräges Lichtband, das über das Roségold gleitet
+        <G clipPath={`url(#p${id})`}>
+          <Path d={`M${shine * 110 - 30} 0 h14 l-30 100 h-14 z`} fill={`url(#s${id})`} opacity={0.55} />
+        </G>
+      )}
+      {level > 0 && (
+        <G clipPath={`url(#c${id})`}>
+          <Path d={liquid.d} fill={`url(#w${id})`} />
+          <Path d={liquid.d.split(' L69 52')[0]} stroke="#fff1e6" strokeWidth={0.6} strokeOpacity={0.7} fill="none" />
+          {bubbles.map((b, i) => <Circle key={i} cx={b.x} cy={b.y} r={b.r} fill="#fff" opacity={0.55 * b.o} />)}
+        </G>
+      )}
       {dropOnly && <Path d={DROP} fill="none" stroke={`url(#r${id})`} strokeWidth={0.9} strokeLinejoin="round" />}
     </Svg>
   )

@@ -26,16 +26,18 @@ export default function Welcome() {
 
   // Einstieg: Zeichen erscheint, Tropfen läuft halb voll, Buchstaben und Zeilen folgen
   const logoIn = ease(t / 0.9)
-  const level = 0.18 + ease((t - 0.4) / 1.4) * 0.4 + Math.sin(t * 0.8) * 0.03
+  // Lichtschimmer gleitet alle 4,5 Sekunden über das „P“ (erstmals nach dem Einblenden)
+  const shine = t < 0.9 ? -1 : ((t - 0.9) % 4.5) / 1.3
+  const float = Math.sin(t * 1.1) * 3
 
   return (
     <View style={st.root} onLayout={e => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
       <Backdrop t={t} w={size.w} h={size.h} />
 
       <View style={[st.center, { paddingTop: insets.top + 24 }]}>
-        <View style={{ opacity: logoIn, transform: [{ scale: 0.7 + logoIn * 0.3 }, { translateY: (1 - logoIn) * 20 }] }}>
+        <View style={{ opacity: logoIn, transform: [{ scale: 0.7 + logoIn * 0.3 }, { translateY: (1 - logoIn) * 20 + float }] }}>
           <View style={st.markGlow}>
-            <PourDrop size={124} level={level} t={t} />
+            <PourDrop size={124} level={0} t={t} shine={shine} />
           </View>
         </View>
 
