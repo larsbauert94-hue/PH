@@ -11,6 +11,8 @@ const root = path.join(__dirname, '..')
 
 execSync(`npx expo export -p web --output-dir "${out}"`, { cwd: root, stdio: 'inherit', env: { ...process.env, POUR_BASE_URL: base } })
 
+// Neue Version sofort laden: GitHub Pages lässt Browser index.html bis zu 10 Minuten zwischenspeichern
+const build = Date.now().toString(36)
 const head = `
     <link rel="manifest" href="${base}/manifest.webmanifest">
     <link rel="apple-touch-icon" href="${base}/icons/icon-180.png">
@@ -19,7 +21,12 @@ const head = `
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Pour">
-    <script>window.__POUR_BASE__ = '${base}/'</script>
+    <script>
+      window.__POUR_BASE__ = '${base}/'
+      fetch('${base}/version.json?' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.json() }).then(function (j) {
+        if (j.v !== '${build}' && location.search.indexOf('v=' + j.v) < 0) location.replace('${base}/?v=' + j.v)
+      }).catch(function () {})
+    </script>
     <style>
       html, body { background: #0b1029; color-scheme: dark; }
       /* iPhone-Home-Bildschirm: App fest an alle Ränder heften, sonst bleibt unten ein Streifen frei */
@@ -45,5 +52,6 @@ fs.writeFileSync(path.join(out, 'manifest.webmanifest'), JSON.stringify({
   ],
 }, null, 2))
 fs.writeFileSync(path.join(out, '.nojekyll'), '')
+fs.writeFileSync(path.join(out, 'version.json'), JSON.stringify({ v: build }))
 fs.rmSync(path.join(out, 'metadata.json'), { force: true })
 console.log(`Home-Bildschirm-App für ${base}/ in ${out}`)
