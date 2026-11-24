@@ -1,0 +1,72 @@
+{
+  "expo": {
+    "name": "Pour",
+    "slug": "pour",
+    "scheme": "pour",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0e0b0c",
+    "ios": {
+      "bundleIdentifier": "app.pour.mobile",
+      "buildNumber": "1",
+      "supportsTablet": false,
+      "usesAppleSignIn": true,
+      "config": {
+        "usesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "app.pour.mobile",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#0e0b0c",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "single",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 160,
+          "resizeMode": "contain",
+          "backgroundColor": "#0e0b0c"
+        }
+      ],
+      "expo-apple-authentication",
+      "expo-web-browser",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Pour nutzt deinen Standort, um dir Bars und Restaurants in deiner Nähe auf der Karte zu zeigen."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Pour benötigt Zugriff auf deine Fotos, damit du Bilder in Beiträgen teilen kannst.",
+          "cameraPermission": "Pour benötigt Zugriff auf die Kamera, damit du Fotos für Beiträge aufnehmen kannst."
+        }
+      ],
+      [
+        "react-native-maps",
+        {
+          "androidGoogleMapsApiKey": "GOOGLE_MAPS_API_KEY_HIER_EINTRAGEN"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

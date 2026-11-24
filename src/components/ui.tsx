@@ -1,88 +1,124 @@
-import { Link } from 'react-router-dom'
-import { Star } from 'lucide-react'
-import type { Drink, User, Venue } from '../types'
-import { CATEGORIES, VENUE_TYPES } from '../data/seed'
+import type { ComponentProps, ReactNode } from 'react'
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native'
+import { Image } from 'expo-image'
+import { Ionicons } from '@expo/vector-icons'
+import { colors, fonts, radius } from '../lib/theme'
+import { ACCOUNT_TYPES } from '../lib/labels'
+import type { AccountType } from '../lib/types'
 
-export function Avatar({ user, size = 36 }: { user: User; size?: number }) {
+export type IconName = ComponentProps<typeof Ionicons>['name']
+
+const hue = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7)
+
+export function Avatar({ name, url, type, size = 40 }: { name: string; url?: string | null; type?: AccountType; size?: number }) {
+  const business = type ? ACCOUNT_TYPES[type].business : false
+  const r = business ? size * 0.28 : size / 2 // Betriebe eckig, Personen rund
+  if (url) return <Image source={{ uri: url }} style={{ width: size, height: size, borderRadius: r }} />
+  const h = hue(name)
+  const initials = name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
   return (
-    <Link
-      to={`/u/${user.id}`}
-      className="shrink-0 rounded-full grid place-items-center font-semibold text-ink-950"
-      style={{
-        width: size, height: size, fontSize: size * 0.4,
-        background: `linear-gradient(135deg, hsl(${user.avatarHue} 70% 70%), hsl(${user.avatarHue + 40} 60% 50%))`,
-      }}
+    <View style={{ width: size, height: size, borderRadius: r, backgroundColor: `hsl(${h}, 45%, 32%)`, alignItems: 'center', justifyContent: 'center' }}>
+      <Text style={{ color: colors.text, fontWeight: '700', fontSize: size * 0.38 }}>{initials}</Text>
+    </View>
+  )
+}
+
+export function Verified({ size = 14 }: { size?: number }) {
+  return <Ionicons name="checkmark-circle" size={size} color={colors.amber} accessibilityLabel="Verifiziert" />
+}
+
+export function Chip({ label, active, onPress, icon }: { label: string; active?: boolean; onPress?: () => void; icon?: IconName }) {
+  return (
+    <Pressable onPress={onPress} style={[s.chip, active && s.chipActive]} accessibilityRole="button" accessibilityState={{ selected: active }}>
+      {icon && <Ionicons name={icon} size={14} color={active ? colors.bg : colors.muted} />}
+      <Text style={[s.chipText, active && { color: colors.bg }]}>{label}</Text>
+    </Pressable>
+  )
+}
+
+export function Badge({ label, icon, color = colors.amber }: { label: string; icon?: IconName; color?: string }) {
+  return (
+    <View style={[s.badge, { borderColor: color + '66', backgroundColor: color + '1a' }]}>
+      {icon && <Ionicons name={icon} size={12} color={color} />}
+      <Text style={[s.badgeText, { color }]}>{label}</Text>
+    </View>
+  )
+}
+
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
+export function Button({ title, onPress, variant = 'primary', icon, loading, disabled, style }: {
+  title: string; onPress?: () => void; variant?: ButtonVariant; icon?: IconName; loading?: boolean; disabled?: boolean; style?: StyleProp<ViewStyle>
+}) {
+  const bg = { primary: colors.wine, secondary: colors.surface2, ghost: 'transparent', danger: 'transparent' }[variant]
+  const fg = variant === 'danger' ? colors.danger : colors.text
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled || loading}
+      accessibilityRole="button"
+      style={({ pressed }) => [s.button, { backgroundColor: bg, opacity: disabled ? 0.45 : pressed ? 0.8 : 1 }, variant === 'danger' && { borderWidth: 1, borderColor: colors.danger + '66' }, style]}
     >
-      {user.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-    </Link>
+      {loading ? <ActivityIndicator color={fg} /> : (
+        <>
+          {icon && <Ionicons name={icon} size={18} color={fg} />}
+          <Text style={[s.buttonText, { color: fg }]}>{title}</Text>
+        </>
+      )}
+    </Pressable>
   )
 }
 
-export function Stars({ value, onChange, size = 16 }: { value: number; onChange?: (v: number) => void; size?: number }) {
+export function Field({ label, style, ...props }: TextInputProps & { label?: string }) {
   return (
-    <div className="flex gap-0.5" role={onChange ? 'radiogroup' : undefined} aria-label={`${value} von 5`}>
-      {[1, 2, 3, 4, 5].map(i => (
-        <button
-          key={i}
-          type="button"
-          disabled={!onChange}
-          onClick={() => onChange?.(i)}
-          aria-label={`${i} Sterne`}
-          className={onChange ? 'p-1' : 'cursor-default'}
-        >
-          <Star size={size} className={i <= value ? 'fill-amber-400 text-amber-400' : 'text-ink-600'} />
-        </button>
-      ))}
-    </div>
+    <View style={{ gap: 6 }}>
+      {label && <Text style={s.label}>{label}</Text>}
+      <TextInput placeholderTextColor={colors.faint} style={[s.input, props.multiline && { minHeight: 96, textAlignVertical: 'top' }, style]} {...props} />
+    </View>
   )
 }
 
-export function CategoryChip({ category, active, onClick }: { category: Drink['category']; active?: boolean; onClick?: () => void }) {
-  const c = CATEGORIES[category]
-  const cls = `inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap border transition ${
-    active ? 'bg-cream text-ink-950 border-cream' : 'border-ink-600 text-cream/80'
-  }`
-  return onClick
-    ? <button type="button" onClick={onClick} className={cls}>{c.emoji} {c.label}</button>
-    : <span className={cls}>{c.emoji} {c.label}</span>
+export function Title({ children, size = 26 }: { children: ReactNode; size?: number }) {
+  return <Text style={{ fontFamily: fonts.serif, fontSize: size, color: colors.text, fontWeight: '700' }}>{children}</Text>
 }
 
-/** Foto oder – ohne Foto – ein generiertes Motiv in der Farbe der Kategorie */
-export function DrinkVisual({ drink, image, className = '', compact = false }: { drink: Drink; image?: string; className?: string; compact?: boolean }) {
-  if (image) return <img src={image} alt={drink.name} className={`object-cover ${className}`} />
-  const c = CATEGORIES[drink.category]
+export function SectionLabel({ children }: { children: ReactNode }) {
+  return <Text style={s.section}>{children}</Text>
+}
+
+export function Empty({ icon = 'wine-outline', text }: { icon?: IconName; text: string }) {
   return (
-    <div
-      className={`relative grid place-items-center overflow-hidden ${className}`}
-      style={{ background: `radial-gradient(circle at 30% 20%, hsl(${c.hue} 55% 38%), hsl(${c.hue} 50% 12%) 70%)` }}
-    >
-      <span className={`${compact ? 'text-5xl' : 'text-[7rem]'} drop-shadow-2xl select-none`}>{c.emoji}</span>
-      {!compact && <span className="absolute bottom-3 left-4 right-4 font-serif text-lg text-cream/90 truncate">{drink.name}</span>}
-    </div>
+    <View style={{ alignItems: 'center', padding: 40, gap: 12 }}>
+      <Ionicons name={icon} size={40} color={colors.faint} />
+      <Text style={{ color: colors.muted, textAlign: 'center' }}>{text}</Text>
+    </View>
   )
 }
 
-export function VenueBanner({ venue, className = '' }: { venue: Venue; className?: string }) {
+export function Loading() {
+  return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, backgroundColor: colors.bg }}><ActivityIndicator color={colors.amber} /></View>
+}
+
+export function ErrorView({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   return (
-    <div
-      className={`grid place-items-center ${className}`}
-      style={{ background: `linear-gradient(135deg, hsl(${venue.hue} 45% 30%), hsl(${venue.hue + 30} 40% 12%))` }}
-    >
-      <span className="font-serif text-2xl text-cream/90 px-4 text-center">{venue.name}</span>
-    </div>
+    <View style={{ alignItems: 'center', padding: 32, gap: 12 }}>
+      <Ionicons name="cloud-offline-outline" size={36} color={colors.faint} />
+      <Text style={{ color: colors.muted, textAlign: 'center' }}>{error instanceof Error ? error.message : 'Etwas ist schiefgelaufen.'}</Text>
+      {onRetry && <Button title="Erneut versuchen" variant="secondary" onPress={onRetry} />}
+    </View>
   )
 }
 
-export function VenueTypeLabel({ venue }: { venue: Venue }) {
-  return <span className="text-xs uppercase tracking-wider text-amber-300">{VENUE_TYPES[venue.type]} · {venue.city}</span>
-}
-
-export function timeAgo(ts: number) {
-  const m = Math.round((Date.now() - ts) / 60000)
-  if (m < 1) return 'gerade eben'
-  if (m < 60) return `vor ${m} Min.`
-  const h = Math.round(m / 60)
-  if (h < 24) return `vor ${h} Std.`
-  const d = Math.round(h / 24)
-  return d === 1 ? 'gestern' : `vor ${d} Tagen`
-}
+export const s = StyleSheet.create({
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, height: 34, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  chipActive: { backgroundColor: colors.text, borderColor: colors.text },
+  chipText: { color: colors.text, fontSize: 13, fontWeight: '500' },
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill, borderWidth: 1 },
+  badgeText: { fontSize: 11, fontWeight: '700', letterSpacing: 0.4, textTransform: 'uppercase' },
+  button: { height: 50, borderRadius: radius.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 18 },
+  buttonText: { fontSize: 16, fontWeight: '600' },
+  label: { color: colors.muted, fontSize: 13, fontWeight: '500' },
+  input: { backgroundColor: colors.surface2, color: colors.text, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 13, fontSize: 16, borderWidth: 1, borderColor: colors.border },
+  section: { color: colors.faint, fontSize: 12, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase' },
+  screen: { flex: 1, backgroundColor: colors.bg },
+  row: { flexDirection: 'row', alignItems: 'center' },
+})
