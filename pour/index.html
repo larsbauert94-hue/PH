@@ -32,15 +32,26 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Pour">
     <script>
-      window.__POUR_BASE__ = '/PH/pour/'
+      window.__POUR_BASE__ = '/PH/pour/';
+      // iPhone-Home-Bildschirm: Safari meldet hier ein um die Statusleiste zu kurzes Fenster.
+      // Daher die echte Bildschirmhöhe nehmen, sonst bleibt unten ein Streifen frei.
+      (function () {
+        var standalone = navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches)
+        function fit() {
+          var portrait = window.innerHeight > window.innerWidth
+          var h = standalone && portrait ? Math.max(window.innerHeight, screen.height) : window.innerHeight
+          document.documentElement.style.setProperty('--app-h', h + 'px')
+        }
+        fit(); window.addEventListener('resize', fit)
+      })();
       fetch('/PH/pour/version.json?' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.json() }).then(function (j) {
-        if (j.v !== 'mwvbib92' && location.search.indexOf('v=' + j.v) < 0) location.replace('/PH/pour/?v=' + j.v)
+        if (j.v !== 'mwvbt8tn' && location.search.indexOf('v=' + j.v) < 0) location.replace('/PH/pour/?v=' + j.v)
       }).catch(function () {})
     </script>
     <style>
       html, body { background: #0b1029; color-scheme: dark; }
       /* iPhone-Home-Bildschirm: App fest an alle Ränder heften, sonst bleibt unten ein Streifen frei */
-      #root { position: fixed; top: 0; right: 0; bottom: 0; left: 0; height: auto !important; }
+      #root { position: fixed; top: 0; right: 0; left: 0; bottom: auto; height: var(--app-h, 100%) !important; }
     </style>
 </head>
 
@@ -49,6 +60,6 @@
     <noscript> You need to enable JavaScript to run this app. </noscript>
     <!-- The root element for your Expo app. -->
     <div id="root"></div>
-  <script src="/PH/pour/_expo/static/js/web/__expo-metro-runtime-8c088df87a31e4e6accd81c554ec290d.js" defer></script><script src="/PH/pour/_expo/static/js/web/__common-266a1b9af648a161185d293d3a361fb6.js" defer></script><script src="/PH/pour/_expo/static/js/web/entry-cc1d848209b4e08f37f293c5fe6b8d43.js" defer></script>
+  <script src="/PH/pour/_expo/static/js/web/__expo-metro-runtime-8c088df87a31e4e6accd81c554ec290d.js" defer></script><script src="/PH/pour/_expo/static/js/web/__common-266a1b9af648a161185d293d3a361fb6.js" defer></script><script src="/PH/pour/_expo/static/js/web/entry-c48ef08a088557f76c8db8cb37e2f1b4.js" defer></script>
 </body>
 </html>
