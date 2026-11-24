@@ -1,6 +1,6 @@
 // Beispieldaten für den Demo-Modus und für supabase/seed.sql (erzeugt über scripts/generate-seed.ts).
 // Alle Betriebe, Marken und Personen sind frei erfunden.
-import type { AccountType, Category, PostKind, VenueType } from './types'
+import type { AccountType, Category, PostKind, StoryOverlay, Track, VenueType } from './types'
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
 
@@ -45,6 +45,7 @@ export interface SeedPost {
   /** Schlüssel aus demo-media.ts (nur Demo-Modus) */
   media?: string[]
   video?: string
+  music?: Track
 }
 
 export const P = {
@@ -107,9 +108,9 @@ export const seedPosts: SeedPost[] = [
   { id: id(210), author_id: P.rebe, kind: 'event', title: 'Naturwein-Abend mit Winzer:innen aus dem Burgenland', body: 'Am Freitag ab 19 Uhr schenken drei Weingüter selbst aus. Kleine Teller aus der Küche, Eintritt frei.', category: 'wein', link_url: null, venue_id: V.rebe, media: ['champagner-post'], hoursAgo: 70 },
   { id: id(211), author_id: P.ochsen, kind: 'job', title: 'Commis de Rang und Sommelier-Assistenz', body: 'Für unser Restaurant suchen wir zwei Kolleg:innen im Service. Interesse an Wein ist ein Muss, Weiterbildungen bezahlen wir.', category: 'gastronomie', link_url: null, venue_id: V.ochsen, hoursAgo: 96 },
   { id: id(213), author_id: P.demo, kind: 'beitrag', title: null, body: 'Neue Hausspirituose im Kupferkessel: ein 5 Jahre alter Haferbrand aus Brandenburg. Wer kennt ähnliche Projekte?', category: 'spirituosen', link_url: null, venue_id: V.kupfer, media: ['keller-post'], hoursAgo: 14 },
-  { id: id(214), author_id: P.max, kind: 'beitrag', title: null, body: 'Smoked Rosemary Negroni in 6 Sekunden 🔥 #negroni #cocktails', category: 'cocktails', link_url: null, venue_id: V.nachtschatten, hoursAgo: 4, media: ['negroni-reel-thumb'], video: 'negroni-reel' },
+  { id: id(214), author_id: P.max, kind: 'beitrag', title: null, body: 'Smoked Rosemary Negroni in 6 Sekunden 🔥 #negroni #cocktails', category: 'cocktails', link_url: null, venue_id: V.nachtschatten, hoursAgo: 4, media: ['negroni-reel-thumb'], video: 'negroni-reel', music: { id: 'demo-track-2', title: 'Negroni Sunset', artist: 'Lisa Marlowe', cover_url: null, spotify_url: null, preview_url: null } },
   { id: id(215), author_id: P.alpenbrand, kind: 'neuheit', title: 'Zirbe & Tonic', body: 'So schmeckt der Winter: Zirbe Dry Gin mit Tonic und Limette. #gin #neuheit', category: 'spirituosen', link_url: null, venue_id: null, hoursAgo: 9, media: ['gintonic-reel-thumb'], video: 'gintonic-reel' },
-  { id: id(216), author_id: P.nachtschatten, kind: 'beitrag', title: null, body: 'Freitagabend im Nachtschatten. Wir sehen uns ab 20 Uhr! #bar #berlin', category: 'cocktails', link_url: null, venue_id: V.nachtschatten, hoursAgo: 28, media: ['bar-reel-thumb'], video: 'bar-reel' },
+  { id: id(216), author_id: P.nachtschatten, kind: 'beitrag', title: null, body: 'Freitagabend im Nachtschatten. Wir sehen uns ab 20 Uhr! #bar #berlin', category: 'cocktails', link_url: null, venue_id: V.nachtschatten, hoursAgo: 28, media: ['bar-reel-thumb'], video: 'bar-reel', music: { id: 'demo-track-5', title: 'Last Call', artist: 'The Backbar Band', cover_url: null, spotify_url: null, preview_url: null } },
   { id: id(212), author_id: P.max, kind: 'beitrag', title: null, body: 'Tipp für alle Kolleg:innen: Zitronenschalen-Oleo-Saccharum hält sich vakuumiert locker zwei Wochen. Spart enorm Zeit im Service.', category: 'cocktails', link_url: null, venue_id: null, hoursAgo: 120 },
 ]
 
@@ -158,4 +159,43 @@ export const seedStories: { id: string; author_id: string; media: string; captio
   { id: id(505), author_id: P.lena, media: 'rotwein-story', caption: 'Weinbegleitung für heute Abend steht', hoursAgo: 6 },
   { id: id(506), author_id: P.rebe, media: 'champagner-story', caption: 'Freitag = Schaumwein', hoursAgo: 8 },
   { id: id(507), author_id: P.max, media: 'whisky-story', caption: null, hoursAgo: 10 },
+]
+
+/** Erfundene Beispiel-Songs für den Demo-Modus (echte Songs kommen über die Spotify-Suche) */
+const track = (n: number, title: string, artist: string): Track => ({ id: `demo-track-${n}`, title, artist, cover_url: null, spotify_url: null, preview_url: null })
+export const DEMO_TRACKS: Track[] = [
+  track(1, 'Mitternachtsblau', 'Die Kellerkinder'),
+  track(2, 'Negroni Sunset', 'Lisa Marlowe'),
+  track(3, 'Steillage', 'Mosel Collective'),
+  track(4, 'Zirbenduft', 'Alpenglühn'),
+  track(5, 'Last Call', 'The Backbar Band'),
+  track(6, 'Rosé am Rhein', 'Hanna & die Trauben'),
+  track(7, 'Barrique', 'Velvet Oak'),
+  track(8, 'Tonic Water', 'Kühl & Klar'),
+  track(9, 'Champagnerlaune', 'Perlage'),
+  track(10, 'Old Fashioned Love', 'Smokey Joe & the Bitters'),
+]
+
+/** Sticker auf einzelnen Beispiel-Storys */
+export const seedStoryExtras: Record<string, { music?: Track; overlays?: StoryOverlay[] }> = {
+  [id(501)]: { music: DEMO_TRACKS[4], overlays: [{ type: 'music', track: DEMO_TRACKS[4], x: 0.5, y: 0.2 }] },
+  [id(503)]: { overlays: [{ type: 'mention', profile_id: P.nordlicht, handle: 'nordlicht.getraenke', x: 0.5, y: 0.78 }] },
+  [id(502)]: { overlays: [{ type: 'location', venue_id: V.nachtschatten, name: 'Nachtschatten', x: 0.5, y: 0.15 }] },
+  [id(504)]: { music: DEMO_TRACKS[2] },
+}
+
+/** Ältere (abgelaufene) Storys, die in Highlights stecken */
+export const seedArchivedStories: { id: string; author_id: string; media: string; caption: string | null; hoursAgo: number }[] = [
+  { id: id(601), author_id: P.nachtschatten, media: 'negroni-story', caption: 'Signature: Smoked Negroni', hoursAgo: 24 * 12 },
+  { id: id(602), author_id: P.nachtschatten, media: 'gintonic-story', caption: 'Zirbe & Tonic', hoursAgo: 24 * 11 },
+  { id: id(603), author_id: P.nachtschatten, media: 'whisky-story', caption: 'Whisky-Abend', hoursAgo: 24 * 9 },
+  { id: id(604), author_id: P.nachtschatten, media: 'bar-story', caption: 'Silvester bei uns', hoursAgo: 24 * 20 },
+  { id: id(605), author_id: P.demo, media: 'keller-story', caption: 'Kellerführung', hoursAgo: 24 * 6 },
+  { id: id(606), author_id: P.demo, media: 'whisky-story', caption: 'Haferbrand-Tasting', hoursAgo: 24 * 4 },
+]
+
+export const seedHighlights: { id: string; owner_id: string; title: string; cover: string; stories: string[] }[] = [
+  { id: id(701), owner_id: P.nachtschatten, title: 'Drinks', cover: 'negroni-story', stories: [id(601), id(602), id(603)] },
+  { id: id(702), owner_id: P.nachtschatten, title: 'Events', cover: 'bar-story', stories: [id(604)] },
+  { id: id(703), owner_id: P.demo, title: 'Kupferkessel', cover: 'keller-story', stories: [id(605), id(606)] },
 ]

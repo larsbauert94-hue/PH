@@ -5,4 +5,5 @@ const expoConfig = require('eslint-config-expo/flat')
 module.exports = defineConfig([
   expoConfig,
   { ignores: ['dist/*', 'supabase/*'] },
+  { files: ['scripts/**/*.js'], languageOptions: { globals: { __dirname: 'readonly', require: 'readonly' } } },
 ])

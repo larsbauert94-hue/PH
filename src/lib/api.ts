@@ -4,7 +4,7 @@ import { isDemo, supabase } from './supabase'
 import { demoApi } from './demo-api'
 import type {
   FeedComment, FeedPost, FeedQuery, NewPost, NewVenue, Profile, ProfileStats, ProfileUpdate, Venue, AccountType,
-  AppNotification, Conversation, Message, LocalFile, NewStory, StoryGroup, Story,
+  AppNotification, Conversation, Message, LocalFile, NewStory, StoryGroup, Story, Track, Highlight,
 } from './types'
 import { groupStories } from './stories'
 import { FEED_PAGE_SIZE } from './types'
@@ -62,7 +62,25 @@ export interface Api {
   createStory(me: string, story: NewStory): Promise<void>
   markStorySeen(me: string, storyId: string): Promise<void>
   deleteStory(storyId: string): Promise<void>
+
+  searchMusic(q: string): Promise<Track[]>
+  getProfileByHandle(handle: string): Promise<Profile | null>
+  setCommentLike(me: string, commentId: string, liked: boolean): Promise<void>
+
+  getHighlights(ownerId: string): Promise<Highlight[]>
+  getHighlightStories(highlightId: string): Promise<Story[]>
+  /** Eigene Storys inkl. abgelaufener, neueste zuerst */
+  getStoryArchive(me: string): Promise<ArchivedStory[]>
+  createHighlight(me: string, title: string, storyIds: string[], coverUrl: string | null): Promise<string>
+  deleteHighlight(id: string): Promise<void>
+
+  setVenueSave(me: string, venueId: string, saved: boolean): Promise<void>
+  getSavedVenues(): Promise<Venue[]>
+  /** Aktive Storys, die an diesem Ort markiert sind */
+  getVenueStories(venueId: string): Promise<Story[]>
 }
+
+export type ArchivedStory = Pick<Story, 'id' | 'media_url' | 'media_type' | 'caption' | 'created_at'>
 
 function check<T>(res: { data: T; error: { message: string } | null }): T {
   if (res.error) throw new Error(res.error.message)
@@ -76,11 +94,20 @@ function rows<T>(res: { data: T[] | null; error: { message: string } | null }): 
 
 const EXT: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/heic': 'heic', 'video/mp4': 'mp4', 'video/quicktime': 'mov' }
 
+/** data:-URI (z. B. aus dem Foto-Editor) in Bytes umwandeln */
+function dataUriToBytes(uri: string) {
+  const bin = atob(uri.slice(uri.indexOf(',') + 1))
+  const bytes = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+  return bytes.buffer
+}
+
 async function uploadImage(me: string, uri: string, mime = 'image/jpeg') {
   const sb = supabase!
   const ext = EXT[mime] ?? mime.split('/')[1] ?? 'bin'
   const path = `${me}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
-  const body = Platform.OS === 'web' ? await (await fetch(uri)).arrayBuffer() : await new File(uri).arrayBuffer()
+  const body = uri.startsWith('data:') ? dataUriToBytes(uri)
+    : Platform.OS === 'web' ? await (await fetch(uri)).arrayBuffer() : await new File(uri).arrayBuffer()
   check(await sb.storage.from('media').upload(path, body, { contentType: mime }))
   return sb.storage.from('media').getPublicUrl(path).data.publicUrl
 }
@@ -113,8 +140,11 @@ const supabaseApi: Api = {
   },
 
   async getFeed(me, q, before) {
-    let query = supabase!.from('feed').select('*').order('created_at', { ascending: false }).limit(FEED_PAGE_SIZE)
-    if (before) query = query.lt('created_at', before)
+    // „Top“: nach Likes sortiert, ohne Nachladen (eine Seite)
+    let query = q.sort === 'top'
+      ? supabase!.from('feed').select('*').order('like_count', { ascending: false }).order('created_at', { ascending: false }).limit(60)
+      : supabase!.from('feed').select('*').order('created_at', { ascending: false }).limit(FEED_PAGE_SIZE)
+    if (before && q.sort !== 'top') query = query.lt('created_at', before)
     if (q.reels) query = query.not('video_url', 'is', null)
     if (q.withMedia) query = query.neq('media', '{}')
     if (q.saved) query = query.eq('saved_by_me', true)
@@ -147,7 +177,7 @@ const supabaseApi: Api = {
     ])
     check(await supabase!.from('posts').insert({
       author_id: me, kind: p.kind, title: p.title || null, body: p.body, category: p.category,
-      link_url: p.link_url || null, venue_id: p.venue_id || null, media, image_url: media[0] ?? null, video_url,
+      link_url: p.link_url || null, venue_id: p.venue_id || null, media, image_url: media[0] ?? null, video_url, music: p.music ?? null,
     }))
   },
   async deletePost(id) {
@@ -190,10 +220,10 @@ const supabaseApi: Api = {
   },
 
   async getVenues() {
-    return rows<Venue>(await supabase!.from('venues').select('*').order('name'))
+    return rows<Venue>(await supabase!.from('venue_feed').select('*').order('name'))
   },
   async getVenue(id) {
-    return check(await supabase!.from('venues').select('*').eq('id', id).maybeSingle())
+    return check(await supabase!.from('venue_feed').select('*').eq('id', id).maybeSingle())
   },
   async createVenue(me, v) {
     const row = check(await supabase!.from('venues').insert({ ...v, owner_id: me }).select('id').single())
@@ -233,13 +263,58 @@ const supabaseApi: Api = {
   },
   async createStory(me, st) {
     const media_url = await uploadImage(me, st.file.uri, st.file.mime)
-    check(await supabase!.from('stories').insert({ author_id: me, media_url, media_type: st.media_type, caption: st.caption || null, venue_id: st.venue_id || null }))
+    check(await supabase!.from('stories').insert({
+      author_id: me, media_url, media_type: st.media_type, caption: st.caption || null, venue_id: st.venue_id || null,
+      music: st.music ?? null, overlays: st.overlays ?? [],
+    }))
   },
   async markStorySeen(me, storyId) {
     check(await supabase!.from('story_views').upsert({ story_id: storyId, viewer_id: me }, { ignoreDuplicates: true }))
   },
   async deleteStory(storyId) {
     check(await supabase!.from('stories').delete().eq('id', storyId))
+  },
+
+  async searchMusic(q) {
+    const { data, error } = await supabase!.functions.invoke('spotify-search', { body: { q } })
+    if (error) throw new Error('Die Musiksuche ist gerade nicht erreichbar.')
+    return (data as { tracks: Track[] }).tracks ?? []
+  },
+  async getProfileByHandle(handle) {
+    return check(await supabase!.from('profiles').select('*').eq('handle', handle.toLowerCase()).maybeSingle())
+  },
+  async setCommentLike(me, commentId, liked) {
+    const t = supabase!.from('comment_likes')
+    check(await (liked ? t.upsert({ comment_id: commentId, user_id: me }) : t.delete().match({ comment_id: commentId, user_id: me })))
+  },
+
+  async getHighlights(ownerId) {
+    return rows<Highlight>(await supabase!.from('highlights').select('*').eq('owner_id', ownerId).order('created_at'))
+  },
+  async getHighlightStories(highlightId) {
+    return rows<Story>(await supabase!.from('highlight_story_feed').select('*').eq('highlight_id', highlightId).order('position'))
+  },
+  async getStoryArchive() {
+    return rows<ArchivedStory>(await supabase!.from('my_story_archive').select('id, media_url, media_type, caption, created_at').order('created_at', { ascending: false }).limit(200))
+  },
+  async createHighlight(me, title, storyIds, coverUrl) {
+    const h = check(await supabase!.from('highlights').insert({ owner_id: me, title, cover_url: coverUrl }).select('id').single()) as { id: string }
+    check(await supabase!.from('highlight_stories').insert(storyIds.map((story_id, position) => ({ highlight_id: h.id, story_id, position }))))
+    return h.id
+  },
+  async deleteHighlight(id) {
+    check(await supabase!.from('highlights').delete().eq('id', id))
+  },
+
+  async setVenueSave(me, venueId, saved) {
+    const t = supabase!.from('venue_saves')
+    check(await (saved ? t.upsert({ user_id: me, venue_id: venueId }) : t.delete().match({ user_id: me, venue_id: venueId })))
+  },
+  async getSavedVenues() {
+    return rows<Venue>(await supabase!.from('venue_feed').select('*').eq('saved_by_me', true).order('name'))
+  },
+  async getVenueStories(venueId) {
+    return rows<Story>(await supabase!.from('story_feed').select('*').eq('venue_id', venueId).order('created_at'))
   },
 }
 

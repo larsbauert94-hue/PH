@@ -249,3 +249,60 @@ export function useDeleteStory() {
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.stories }),
   })
 }
+
+// ---------------------------------------------------------------------------
+// Musik, Kommentar-Likes, Highlights, Orte
+// ---------------------------------------------------------------------------
+
+export const useMusicSearch = (q: string) =>
+  useQuery({ queryKey: ['music', q.trim()], queryFn: () => api.searchMusic(q), staleTime: 5 * 60_000 })
+
+export function useCommentLike(postId: string) {
+  const qc = useQueryClient()
+  const { me } = useMe()
+  return useMutation({
+    mutationFn: (c: { id: string; liked_by_me: boolean }) => api.setCommentLike(me, c.id, !c.liked_by_me),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.comments(postId) }),
+  })
+}
+
+export const useHighlights = (ownerId: string) => useQuery({ queryKey: ['highlights', ownerId], queryFn: () => api.getHighlights(ownerId) })
+export const useHighlightStories = (id: string) => useQuery({ queryKey: ['highlight', id], queryFn: () => api.getHighlightStories(id) })
+export function useStoryArchive() {
+  const { me } = useMe()
+  return useQuery({ queryKey: ['storyArchive'], queryFn: () => api.getStoryArchive(me) })
+}
+
+export function useCreateHighlight() {
+  const qc = useQueryClient()
+  const { me } = useMe()
+  return useMutation({
+    mutationFn: (h: { title: string; storyIds: string[]; coverUrl: string | null }) => api.createHighlight(me, h.title, h.storyIds, h.coverUrl),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['highlights', me] }),
+  })
+}
+
+export function useDeleteHighlight() {
+  const qc = useQueryClient()
+  const { me } = useMe()
+  return useMutation({
+    mutationFn: (id: string) => api.deleteHighlight(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['highlights', me] }),
+  })
+}
+
+export function useVenueSave(venueId: string) {
+  const qc = useQueryClient()
+  const { me } = useMe()
+  return useMutation({
+    mutationFn: (saved: boolean) => api.setVenueSave(me, venueId, saved),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.venue(venueId) })
+      qc.invalidateQueries({ queryKey: keys.venues })
+      qc.invalidateQueries({ queryKey: ['savedVenues'] })
+    },
+  })
+}
+
+export const useSavedVenues = () => useQuery({ queryKey: ['savedVenues'], queryFn: api.getSavedVenues })
+export const useVenueStories = (venueId: string) => useQuery({ queryKey: ['venueStories', venueId], queryFn: () => api.getVenueStories(venueId) })

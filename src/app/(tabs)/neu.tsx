@@ -8,9 +8,13 @@ import { Ionicons } from '@expo/vector-icons'
 import { useMe } from '../../lib/auth'
 import { useCreatePost, useVenues } from '../../lib/queries'
 import { pickMedia, type PickedMedia } from '../../lib/pickImage'
+import { editPhotos } from '../../lib/editor'
+import { musicPicker, venuePicker } from '../../lib/picker'
+import { MusicCover } from '../../components/music'
+import MentionSuggest from '../../components/MentionSuggest'
 import { ACCOUNT_TYPES, CATEGORIES, POST_KINDS } from '../../lib/labels'
 import { colors, radius } from '../../lib/theme'
-import type { Category, LocalFile, PostKind } from '../../lib/types'
+import type { Category, LocalFile, PostKind, Track } from '../../lib/types'
 import { Button, Chip, Field, IconName, SectionLabel } from '../../components/ui'
 import { notify } from '../../components/report'
 
@@ -42,6 +46,7 @@ export default function NewPost() {
   const [venueSearch, setVenueSearch] = useState('')
   const [images, setImages] = useState<PickedMedia[]>([])
   const [video, setVideo] = useState<PickedMedia | null>(null)
+  const [music, setMusic] = useState<Track | null>(null)
   const scroll = useRef<ScrollViewInstance>(null)
   const player = useVideoPlayer(video?.uri ?? null, p => { p.loop = true; p.muted = true; p.play() })
 
@@ -51,7 +56,10 @@ export default function NewPost() {
 
   const addImages = async (camera: boolean) => {
     const picked = await pickMedia({ camera, multiple: !camera, edit: camera, aspect: [4, 5] })
-    if (picked.length) setImages(prev => [...prev, ...picked].slice(0, 10))
+    if (!picked.length) return
+    // Filter und Anpassungen wie bei Instagram
+    const edited = await editPhotos(picked.slice(0, 10 - images.length), 4 / 5)
+    if (edited) setImages(prev => [...prev, ...edited.map(f => ({ ...f, type: 'image' as const }))].slice(0, 10))
   }
   const pickVideo = async (camera: boolean) => {
     const [v] = await pickMedia({ camera, video: true, maxVideoSeconds: 60 })
@@ -61,7 +69,7 @@ export default function NewPost() {
   }
 
   const reset = () => {
-    setKind('beitrag'); setTitle(''); setBody(''); setLink(''); setVenueId(null); setVenueSearch(''); setImages([]); setVideo(null)
+    setKind('beitrag'); setTitle(''); setBody(''); setLink(''); setVenueId(null); setVenueSearch(''); setImages([]); setVideo(null); setMusic(null)
   }
 
   const submit = async () => {
@@ -86,6 +94,7 @@ export default function NewPost() {
       venue_id: venueId ?? undefined,
       media,
       video: isReel && video ? video : undefined,
+      music: music ?? undefined,
     }, {
       onSuccess: () => { reset(); scroll.current?.scrollTo({ y: 0, animated: false }); router.navigate(isReel ? '/reels' : '/') },
       onError: e => notify('Fehler beim Posten', e.message),
@@ -161,7 +170,27 @@ export default function NewPost() {
           </>
         )}
 
-        <Field value={body} onChangeText={setBody} multiline placeholder={isReel ? 'Bildunterschrift … #hashtags' : kind === 'job' ? 'Aufgaben, Anforderungen, wie man sich bewirbt …' : 'Was gibt es Neues? #hashtags'} maxLength={3000} />
+        <View>
+          <Field value={body} onChangeText={setBody} multiline placeholder={isReel ? 'Bildunterschrift … #hashtags @erwähnen' : kind === 'job' ? 'Aufgaben, Anforderungen, wie man sich bewirbt …' : 'Was gibt es Neues? #hashtags @erwähnen'} maxLength={3000} />
+          <MentionSuggest text={body} onChange={setBody} />
+        </View>
+
+        {music ? (
+          <View style={st.venue}>
+            <MusicCover track={music} size={36} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.text, fontWeight: '600' }} numberOfLines={1}>{music.title}</Text>
+              <Text style={{ color: colors.muted, fontSize: 12 }} numberOfLines={1}>{music.artist}</Text>
+            </View>
+            <Pressable onPress={() => setMusic(null)} hitSlop={10} accessibilityLabel="Musik entfernen"><Ionicons name="close-circle" size={20} color={colors.faint} /></Pressable>
+          </View>
+        ) : (
+          <Pressable style={st.venue} onPress={async () => { const t = await musicPicker.open(); if (t) setMusic(t) }} accessibilityRole="button">
+            <Ionicons name="musical-notes-outline" size={20} color={colors.accent} />
+            <Text style={{ color: colors.text, flex: 1 }}>Musik hinzufügen</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.faint} />
+          </Pressable>
+        )}
 
         <SectionLabel>Kategorie</SectionLabel>
         <View style={st.wrap}>
@@ -177,7 +206,12 @@ export default function NewPost() {
           </Pressable>
         ) : (
           <>
-            <Field value={venueSearch} onChangeText={setVenueSearch} placeholder="Bar oder Restaurant suchen" />
+            <Pressable style={st.venue} onPress={async () => { const v = await venuePicker.open(); if (v) setVenueId(v.id) }} accessibilityRole="button">
+              <Ionicons name="location-outline" size={20} color={colors.accent} />
+              <Text style={{ color: colors.text, flex: 1 }}>Ort hinzufügen</Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.faint} />
+            </Pressable>
+            <Field value={venueSearch} onChangeText={setVenueSearch} placeholder="… oder direkt suchen" />
             {venueMatches.map(v => (
               <Pressable key={v.id} style={st.venue} onPress={() => { setVenueId(v.id); setVenueSearch('') }}>
                 <Ionicons name="location-outline" size={18} color={colors.muted} />

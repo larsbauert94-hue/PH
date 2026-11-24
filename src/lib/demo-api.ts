@@ -1,11 +1,11 @@
 // In-Memory-Backend für den Demo-Modus (ohne Supabase-Zugangsdaten).
 // Verhält sich wie die Supabase-Views, damit die App identisch funktioniert.
 import type { Api } from './api'
-import type { AppNotification, Conversation, FeedComment, FeedPost, Message, NotificationType, Post, Profile, Story, Venue } from './types'
+import type { AppNotification, Conversation, FeedComment, FeedPost, Highlight, Message, NotificationType, Post, Profile, Story, StoryOverlay, Track, Venue } from './types'
 import { demoUri } from './demo-media'
 import { groupStories } from './stories'
 import { FEED_PAGE_SIZE } from './types'
-import { seedComments, seedConversations, seedStories, seedFollows, seedLikes, seedPosts, seedProfiles, seedVenues } from './demo-data'
+import { DEMO_TRACKS, seedArchivedStories, seedHighlights, seedStoryExtras, seedComments, seedConversations, seedStories, seedFollows, seedLikes, seedPosts, seedProfiles, seedVenues } from './demo-data'
 
 const ago = (h: number) => new Date(Date.now() - h * 3600_000).toISOString()
 const uid = () => `demo-${Math.random().toString(36).slice(2, 10)}`
@@ -16,15 +16,24 @@ const db = {
     ...p, avatar_url: null as string | null, created_at: ago(24 * 90), terms_accepted_at: ago(24 * 90) as string | null,
   })),
   venues: seedVenues.map(v => ({ ...v, created_at: ago(24 * 60) })) as Venue[],
-  posts: seedPosts.map(({ hoursAgo, media, video, ...p }) => {
+  posts: seedPosts.map(({ hoursAgo, media, video, music, ...p }) => {
     const urls = (media ?? []).map(demoUri)
-    return { ...p, media: urls, image_url: urls[0] ?? null, video_url: video ? demoUri(video) : null, created_at: ago(hoursAgo) }
+    return { ...p, media: urls, image_url: urls[0] ?? null, video_url: video ? demoUri(video) : null, music: music ?? null, created_at: ago(hoursAgo) }
   }) as Post[],
   saves: [] as { user_id: string; post_id: string }[],
-  stories: seedStories.map(st => ({
-    id: st.id, author_id: st.author_id, media_url: demoUri(st.media), media_type: 'image' as 'image' | 'video', caption: st.caption,
-    venue_id: null as string | null, created_at: ago(st.hoursAgo), expires_at: ago(st.hoursAgo - 24),
-  })),
+  stories: [...seedStories, ...seedArchivedStories].map(st => {
+    const extra = seedStoryExtras[st.id] ?? {}
+    const overlays: StoryOverlay[] = extra.overlays ?? []
+    const loc = overlays.find(o => o.type === 'location')
+    return {
+      id: st.id, author_id: st.author_id, media_url: demoUri(st.media), media_type: 'image' as 'image' | 'video', caption: st.caption,
+      venue_id: (loc?.type === 'location' ? loc.venue_id : null) as string | null, created_at: ago(st.hoursAgo), expires_at: ago(st.hoursAgo - 24),
+      music: (extra.music ?? null) as Track | null, overlays,
+    }
+  }),
+  highlights: seedHighlights.map(h => ({ id: h.id, owner_id: h.owner_id, title: h.title, cover_url: demoUri(h.cover) as string | null, created_at: ago(24 * 3), stories: h.stories })),
+  commentLikes: [] as { comment_id: string; user_id: string }[],
+  venueSaves: [] as { user_id: string; venue_id: string }[],
   storyViews: [] as { story_id: string; viewer_id: string }[],
   likes: seedLikes.map(([post_id, user_id]) => ({ post_id, user_id })),
   comments: seedComments.map(({ hoursAgo, ...c }) => ({ ...c, created_at: ago(hoursAgo) })),
@@ -53,6 +62,29 @@ for (const c of db.comments) {
 
 function notify(userId: string, actorId: string, type: NotificationType, postId: string | null = null) {
   if (userId !== actorId) db.notifications.push({ id: uid(), user_id: userId, actor_id: actorId, type, post_id: postId, created_at: new Date().toISOString(), read_at: null })
+}
+
+/** Wie der Datenbank-Trigger: alle @erwähnten Profile benachrichtigen */
+function notifyMentions(text: string, actorId: string, postId: string) {
+  const handles = new Set([...text.matchAll(/@([a-z0-9._]{3,30})/gi)].map(m => m[1].toLowerCase()))
+  for (const h of handles) {
+    const p = db.profiles.find(x => x.handle === h)
+    if (p) notify(p.id, actorId, 'mention', postId)
+  }
+}
+
+function toStory(st: (typeof db.stories)[number], me: string): Story {
+  const a = db.profiles.find(x => x.id === st.author_id)!
+  return {
+    ...st, author_handle: a.handle, author_name: a.name, author_type: a.account_type, author_avatar_url: a.avatar_url, author_verified: a.verified,
+    venue_name: db.venues.find(v => v.id === st.venue_id)?.name ?? null,
+    seen_by_me: db.storyViews.some(v => v.story_id === st.id && v.viewer_id === me),
+    view_count: db.storyViews.filter(v => v.story_id === st.id).length,
+  }
+}
+
+function toVenue(v: Venue): Venue {
+  return { ...v, post_count: db.posts.filter(p => p.venue_id === v.id).length, saved_by_me: db.venueSaves.some(s => s.venue_id === v.id && s.user_id === currentUser) }
 }
 
 let currentUser = ''
@@ -149,10 +181,11 @@ export const demoApi: Api = {
           default: return true
         }
       })
-      .filter(p => !before || p.created_at < before)
+      .filter(p => !before || q.sort === 'top' || p.created_at < before)
       .sort((a, b) => b.created_at.localeCompare(a.created_at))
-      .slice(0, FEED_PAGE_SIZE)
+      .slice(0, q.sort === 'top' ? 60 : FEED_PAGE_SIZE)
       .map(toFeed)
+    if (q.sort === 'top') rows.sort((a, b) => b.like_count - a.like_count)
     return wait(rows)
   },
   async getPost(id) {
@@ -163,8 +196,9 @@ export const demoApi: Api = {
     db.posts.push({
       id: uid(), author_id: me, kind: p.kind, title: p.title || null, body: p.body, category: p.category,
       link_url: p.link_url || null, venue_id: p.venue_id || null, created_at: new Date().toISOString(),
-      media: (p.media ?? []).map(f => f.uri), image_url: p.media?.[0]?.uri ?? null, video_url: p.video?.uri ?? null,
+      media: (p.media ?? []).map(f => f.uri), image_url: p.media?.[0]?.uri ?? null, video_url: p.video?.uri ?? null, music: p.music ?? null,
     })
+    notifyMentions(`${p.title ?? ''} ${p.body}`, me, db.posts[db.posts.length - 1].id)
     return wait(undefined)
   },
   async deletePost(id) {
@@ -186,7 +220,11 @@ export const demoApi: Api = {
       .sort((a, b) => a.created_at.localeCompare(b.created_at))
       .map(c => {
         const a = db.profiles.find(x => x.id === c.author_id)!
-        return { ...c, author_handle: a.handle, author_name: a.name, author_type: a.account_type, author_avatar_url: a.avatar_url }
+        return {
+          ...c, author_handle: a.handle, author_name: a.name, author_type: a.account_type, author_avatar_url: a.avatar_url,
+          like_count: db.commentLikes.filter(l => l.comment_id === c.id).length,
+          liked_by_me: db.commentLikes.some(l => l.comment_id === c.id && l.user_id === currentUser),
+        }
       })
     return wait(rows)
   },
@@ -194,6 +232,7 @@ export const demoApi: Api = {
     db.comments.push({ id: uid(), post_id: postId, author_id: me, body, created_at: new Date().toISOString() })
     const p = db.posts.find(x => x.id === postId)
     if (p) notify(p.author_id, me, 'comment', postId)
+    notifyMentions(body, me, postId)
     return wait(undefined)
   },
 
@@ -242,10 +281,11 @@ export const demoApi: Api = {
   },
 
   async getVenues() {
-    return wait([...db.venues].sort((a, b) => a.name.localeCompare(b.name)))
+    return wait([...db.venues].sort((a, b) => a.name.localeCompare(b.name)).map(toVenue))
   },
   async getVenue(id) {
-    return wait(db.venues.find(v => v.id === id) ?? null)
+    const v = db.venues.find(x => x.id === id)
+    return wait(v ? toVenue(v) : null)
   },
   async createVenue(me, v) {
     const id = uid()
@@ -327,23 +367,13 @@ export const demoApi: Api = {
 
   async getStories(me) {
     const now = new Date().toISOString()
-    const rows: Story[] = db.stories
-      .filter(st => st.expires_at > now && !blocked(st.author_id))
-      .flatMap(st => {
-        const a = db.profiles.find(x => x.id === st.author_id)
-        return a ? [{
-          ...st, author_handle: a.handle, author_name: a.name, author_type: a.account_type, author_avatar_url: a.avatar_url, author_verified: a.verified,
-          venue_name: db.venues.find(v => v.id === st.venue_id)?.name ?? null,
-          seen_by_me: db.storyViews.some(v => v.story_id === st.id && v.viewer_id === me),
-          view_count: db.storyViews.filter(v => v.story_id === st.id).length,
-        }] : []
-      })
-    return wait(groupStories(rows, me))
+    return wait(groupStories(db.stories.filter(st => st.expires_at > now && !blocked(st.author_id)).map(st => toStory(st, me)), me))
   },
   async createStory(me, st) {
     const now = Date.now()
     db.stories.push({
       id: uid(), author_id: me, media_url: st.file.uri, media_type: st.media_type, caption: st.caption || null, venue_id: st.venue_id ?? null,
+      music: st.music ?? null, overlays: st.overlays ?? [],
       created_at: new Date(now).toISOString(), expires_at: new Date(now + 86_400_000).toISOString(),
     })
     return wait(undefined)
@@ -355,5 +385,57 @@ export const demoApi: Api = {
   async deleteStory(storyId) {
     db.stories = db.stories.filter(st => st.id !== storyId)
     return wait(undefined)
+  },
+
+  async searchMusic(q) {
+    const n = q.trim().toLowerCase()
+    return wait(DEMO_TRACKS.filter(t => !n || `${t.title} ${t.artist}`.toLowerCase().includes(n)))
+  },
+  async getProfileByHandle(handle) {
+    const p = db.profiles.find(x => x.handle === handle.toLowerCase())
+    return wait(p ? strip(p) : null)
+  },
+  async setCommentLike(me, commentId, liked) {
+    db.commentLikes = db.commentLikes.filter(l => !(l.comment_id === commentId && l.user_id === me))
+    if (liked) db.commentLikes.push({ comment_id: commentId, user_id: me })
+    return wait(undefined)
+  },
+
+  async getHighlights(ownerId) {
+    return wait(db.highlights.filter(h => h.owner_id === ownerId && !blocked(ownerId)).map(({ stories: _s, ...h }): Highlight => h))
+  },
+  async getHighlightStories(highlightId) {
+    const h = db.highlights.find(x => x.id === highlightId)
+    if (!h) return wait([])
+    return wait(h.stories.flatMap(sid => {
+      const st = db.stories.find(x => x.id === sid)
+      return st ? [{ ...toStory(st, currentUser), seen_by_me: true }] : []
+    }))
+  },
+  async getStoryArchive(me) {
+    return wait(db.stories.filter(st => st.author_id === me).sort((a, b) => b.created_at.localeCompare(a.created_at))
+      .map(({ id, media_url, media_type, caption, created_at }) => ({ id, media_url, media_type, caption, created_at })))
+  },
+  async createHighlight(me, title, storyIds, coverUrl) {
+    const id = uid()
+    db.highlights.push({ id, owner_id: me, title, cover_url: coverUrl, created_at: new Date().toISOString(), stories: storyIds })
+    return wait(id)
+  },
+  async deleteHighlight(id) {
+    db.highlights = db.highlights.filter(h => h.id !== id)
+    return wait(undefined)
+  },
+
+  async setVenueSave(me, venueId, saved) {
+    db.venueSaves = db.venueSaves.filter(x => !(x.user_id === me && x.venue_id === venueId))
+    if (saved) db.venueSaves.push({ user_id: me, venue_id: venueId })
+    return wait(undefined)
+  },
+  async getSavedVenues() {
+    return wait(db.venues.filter(v => db.venueSaves.some(x => x.venue_id === v.id && x.user_id === currentUser)).map(toVenue))
+  },
+  async getVenueStories(venueId) {
+    const now = new Date().toISOString()
+    return wait(db.stories.filter(st => st.venue_id === venueId && st.expires_at > now && !blocked(st.author_id)).map(st => toStory(st, currentUser)))
   },
 }

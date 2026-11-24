@@ -105,13 +105,15 @@ export function ReelPlayer({ post }: { post: FeedPost }) {
 
 /** Text, in dem #hashtags antippbar sind (öffnen die Suche) */
 export function RichText({ text, style, numberOfLines, prefix }: { text: string; style?: object; numberOfLines?: number; prefix?: ReactNode }) {
-  const parts = text.split(/(#[\p{L}\p{N}_]+)/u)
+  const parts = text.split(/(#[\p{L}\p{N}_]+|@[a-z0-9._]{3,30})/iu)
   return (
     <Text style={style} numberOfLines={numberOfLines}>
       {prefix}
       {parts.map((part, i) => part.startsWith('#')
         ? <Text key={i} style={{ color: colors.accentLight, fontWeight: '600' }} onPress={() => router.navigate({ pathname: '/entdecken', params: { q: part } })}>{part}</Text>
-        : part)}
+        : part.startsWith('@') && part.length > 3
+          ? <Text key={i} style={{ color: colors.lavender, fontWeight: '600' }} onPress={() => router.push(`/u/${part.slice(1).replace(/\.$/, '').toLowerCase()}`)}>{part}</Text>
+          : part)}
     </Text>
   )
 }

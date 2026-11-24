@@ -3,13 +3,14 @@ import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View,
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useMe } from '../lib/auth'
-import { useBlock, useFeed, useFollow, useProfile, useProfileStats, useStartConversation, useStories, useUploadAvatar } from '../lib/queries'
+import { useBlock, useFeed, useFollow, useProfile, useProfileStats, useSavedVenues, useStartConversation, useStories, useUploadAvatar } from '../lib/queries'
 import { pickImage } from '../lib/pickImage'
 import { ACCOUNT_TYPES, subtitle } from '../lib/labels'
 import { colors, fonts } from '../lib/theme'
 import PostCard from './PostCard'
 import { PostGrid } from './media'
 import { StoryRing } from './StoryBar'
+import Highlights from './Highlights'
 import { Badge, Button, Empty, ErrorView, IconName, Loading, Verified } from './ui'
 import { chooseAction, confirmAction, notify, reportFlow } from './report'
 
@@ -24,6 +25,7 @@ export default function ProfileView({ id, onEdit }: { id: string; onEdit?: () =>
   const startChat = useStartConversation()
   const avatar = useUploadAvatar()
   const stories = useStories()
+  const savedVenues = useSavedVenues()
   const isMe = id === me
   const [tab, setTab] = useState<Tab>('grid')
   const posts = useFeed(tab === 'saved' ? { saved: true } : tab === 'reels' ? { authorId: id, reels: true } : { authorId: id })
@@ -129,6 +131,8 @@ export default function ProfileView({ id, onEdit }: { id: string; onEdit?: () =>
         )}
       </View>
 
+      {!blocked && <Highlights ownerId={id} isMe={isMe} />}
+
       {!blocked && (
         <View style={st.tabs}>
           {tabs.map(t => (
@@ -136,6 +140,20 @@ export default function ProfileView({ id, onEdit }: { id: string; onEdit?: () =>
               <Ionicons name={tab === t.key ? t.icon : (`${t.icon}-outline` as IconName)} size={22} color={tab === t.key ? colors.text : colors.faint} />
             </Pressable>
           ))}
+        </View>
+      )}
+
+      {tab === 'saved' && !!savedVenues.data?.length && (
+        <View style={{ paddingVertical: 12, gap: 8 }}>
+          <Text style={st.savedTitle}>Gemerkte Orte</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}>
+            {savedVenues.data.map(v => (
+              <Pressable key={v.id} style={st.placeChip} onPress={() => router.push(`/ort/${v.id}`)}>
+                <Ionicons name="location" size={14} color={colors.accent} />
+                <Text style={{ color: colors.text, fontWeight: '600' }}>{v.name}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
         </View>
       )}
 
@@ -176,6 +194,8 @@ const st = StyleSheet.create({
   smallBtn: { flex: 1, height: 38, borderRadius: 10 },
   iconBtn: { width: 42, height: 38, borderRadius: 10, backgroundColor: colors.surface2, alignItems: 'center', justifyContent: 'center' },
   camera: { position: 'absolute', right: 2, bottom: 2, width: 28, height: 28, borderRadius: 14, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.bg },
+  savedTitle: { color: colors.text, fontWeight: '700', paddingHorizontal: 16 },
+  placeChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.surface2, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 },
   tabs: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1.5, borderBottomColor: 'transparent' },
   tabActive: { borderBottomColor: colors.text },

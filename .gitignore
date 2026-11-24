@@ -43,3 +43,6 @@ yarn-error.*
 # Lokale Zugangsdaten
 .env
 .env.local
+
+# Wird beim Installieren erzeugt (scripts/copy-canvaskit.js)
+public/canvaskit.wasm

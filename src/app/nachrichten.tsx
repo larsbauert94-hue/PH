@@ -5,6 +5,7 @@ import { useConversations } from '../lib/queries'
 import { subtitle, timeAgo } from '../lib/labels'
 import { colors, radius } from '../lib/theme'
 import { Avatar, Button, Empty, ErrorView, Loading } from '../components/ui'
+import { sharedPostId } from '../components/SharedPost'
 
 export default function Inbox() {
   const { me } = useMe()
@@ -28,7 +29,8 @@ export default function Inbox() {
       }
       renderItem={({ item: c }) => {
         const unread = c.unread_count > 0
-        const preview = c.last_body ? `${c.last_sender_id === me ? 'Du: ' : ''}${c.last_body}` : 'Noch keine Nachrichten'
+        const body = c.last_body && sharedPostId(c.last_body) ? 'Hat einen Beitrag geteilt' : c.last_body
+        const preview = body ? `${c.last_sender_id === me ? 'Du: ' : ''}${body}` : 'Noch keine Nachrichten'
         return (
           <Pressable style={st.row} onPress={() => router.push(`/chat/${c.id}`)} accessibilityLabel={`Unterhaltung mit ${c.other_name}${unread ? `, ${c.unread_count} ungelesen` : ''}`}>
             <Avatar name={c.other_name} url={c.other_avatar_url} type={c.other_type} size={52} />

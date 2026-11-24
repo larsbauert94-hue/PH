@@ -2,11 +2,11 @@ import { useState } from 'react'
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
-import { useFeed, useProfiles } from '../../lib/queries'
+import { useFeed, useProfiles, useVenues } from '../../lib/queries'
 import { useMe } from '../../lib/auth'
-import { ACCOUNT_TYPES, subtitle } from '../../lib/labels'
+import { ACCOUNT_TYPES, VENUE_TYPES, subtitle } from '../../lib/labels'
 import { colors, radius } from '../../lib/theme'
-import type { AccountType, Profile } from '../../lib/types'
+import type { AccountType, Profile, Venue } from '../../lib/types'
 import { Avatar, Chip, Empty, Loading, Verified } from '../../components/ui'
 import { PostGrid } from '../../components/media'
 
@@ -31,7 +31,7 @@ const nearEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
 export default function Explore() {
   const params = useLocalSearchParams<{ q?: string; tab?: string }>()
   const [query, setQuery] = useState(params.q ?? '')
-  const [mode, setMode] = useState<'fuerdich' | 'personen'>(params.tab === 'personen' ? 'personen' : 'fuerdich')
+  const [mode, setMode] = useState<'fuerdich' | 'personen' | 'orte'>(params.tab === 'personen' ? 'personen' : 'fuerdich')
   // Neue Parameter (z. B. Hashtag angetippt) übernehmen, ohne zusätzlichen Effekt
   const [seen, setSeen] = useState({ q: params.q, tab: params.tab })
   if (seen.q !== params.q || seen.tab !== params.tab) {
@@ -51,7 +51,7 @@ export default function Explore() {
         </View>
         {!q && (
           <View style={st.segment}>
-            {([['fuerdich', 'Für dich'], ['personen', 'Personen & Betriebe']] as const).map(([k, label]) => (
+            {([['fuerdich', 'Für dich'], ['personen', 'Personen'], ['orte', 'Orte']] as const).map(([k, label]) => (
               <Pressable key={k} onPress={() => setMode(k)} style={[st.segItem, mode === k && st.segActive]}>
                 <Text style={[st.segText, mode === k && { color: colors.onAccent }]}>{label}</Text>
               </Pressable>
@@ -59,7 +59,7 @@ export default function Explore() {
           </View>
         )}
       </View>
-      {q ? <SearchResults q={q} /> : mode === 'fuerdich' ? <ForYou onTag={setQuery} /> : <People />}
+      {q ? <SearchResults q={q} /> : mode === 'fuerdich' ? <ForYou onTag={setQuery} /> : mode === 'orte' ? <Places /> : <People />}
     </View>
   )
 }
@@ -87,6 +87,9 @@ function SearchResults({ q }: { q: string }) {
   const posts = useFeed({ search: q })
   const { me } = useMe()
   const persons = isTag ? [] : (people.data ?? []).filter(p => p.id !== me).slice(0, 12)
+  const venues = useVenues()
+  const n = q.toLowerCase()
+  const places = isTag ? [] : (venues.data ?? []).filter(v => `${v.name} ${v.city}`.toLowerCase().includes(n)).slice(0, 12)
   return (
     <ScrollView onScroll={e => { if (nearEnd(e)) posts.loadMore() }} scrollEventThrottle={200} contentContainerStyle={{ maxWidth: 680, width: '100%', alignSelf: 'center', paddingBottom: 24, gap: 12 }} keyboardShouldPersistTaps="handled">
       {persons.length > 0 && (
@@ -97,9 +100,60 @@ function SearchResults({ q }: { q: string }) {
           </ScrollView>
         </View>
       )}
+      {places.length > 0 && (
+        <View style={{ gap: 8 }}>
+          <Text style={st.section}>Orte</Text>
+          <View style={{ paddingHorizontal: 16, gap: 8 }}>{places.map(v => <PlaceRow key={v.id} v={v} />)}</View>
+        </View>
+      )}
       <Text style={st.section}>{isTag ? q : 'Beiträge'}</Text>
       {posts.isPending ? <Loading /> : posts.posts.length ? <PostGrid posts={posts.posts} /> : <Empty icon="search-outline" text={`Nichts gefunden zu „${q}“.`} />}
     </ScrollView>
+  )
+}
+
+function PlaceRow({ v }: { v: Venue }) {
+  const t = VENUE_TYPES[v.type]
+  return (
+    <Pressable style={st.row} onPress={() => router.push(`/ort/${v.id}`)}>
+      <View style={[st.placeIcon, { backgroundColor: t.color + '22' }]}>
+        <Ionicons name="location" size={22} color={t.color} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={st.name} numberOfLines={1}>{v.name}</Text>
+        <Text style={st.meta} numberOfLines={1}>{t.label} · {v.city} · {v.post_count ?? 0} Beiträge</Text>
+      </View>
+      {v.saved_by_me && <Ionicons name="bookmark" size={16} color={colors.accent} />}
+      <Ionicons name="chevron-forward" size={18} color={colors.faint} />
+    </Pressable>
+  )
+}
+
+/** Orte: meistgepostete zuerst, gemerkte oben */
+function Places() {
+  const venues = useVenues()
+  const [type, setType] = useState<string | null>(null)
+  const list = [...(venues.data ?? [])]
+    .filter(v => !type || v.type === type)
+    .sort((a, b) => Number(!!b.saved_by_me) - Number(!!a.saved_by_me) || (b.post_count ?? 0) - (a.post_count ?? 0))
+  return (
+    <View style={{ flex: 1 }}>
+      <View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingBottom: 10 }}>
+          <Chip label="Alle" active={!type} onPress={() => setType(null)} />
+          {Object.entries(VENUE_TYPES).map(([k, t]) => <Chip key={k} label={t.label} active={type === k} onPress={() => setType(type === k ? null : k)} />)}
+        </ScrollView>
+      </View>
+      {venues.isPending ? <Loading /> : (
+        <FlatList
+          data={list}
+          keyExtractor={v => v.id}
+          contentContainerStyle={{ padding: 16, paddingTop: 4, gap: 10, maxWidth: 680, width: '100%', alignSelf: 'center' }}
+          ListEmptyComponent={<Empty icon="location-outline" text="Keine Orte gefunden." />}
+          renderItem={({ item }) => <PlaceRow v={item} />}
+        />
+      )}
+    </View>
   )
 }
 
@@ -167,4 +221,5 @@ const st = StyleSheet.create({
   name: { color: colors.text, fontSize: 16, fontWeight: '600', flexShrink: 1 },
   meta: { color: colors.muted, fontSize: 13, marginTop: 2 },
   city: { color: colors.faint, fontSize: 12, marginTop: 2 },
+  placeIcon: { width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },
 })

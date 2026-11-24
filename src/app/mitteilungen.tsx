@@ -12,6 +12,7 @@ const TEXT: Record<AppNotification['type'], { verb: string; icon: IconName; colo
   like: { verb: 'gefällt dein Beitrag', icon: 'heart', color: colors.heart },
   comment: { verb: 'hat deinen Beitrag kommentiert', icon: 'chatbubble', color: colors.lavender },
   follow: { verb: 'folgt dir jetzt', icon: 'person-add', color: colors.accent },
+  mention: { verb: 'hat dich erwähnt', icon: 'at', color: colors.lavender },
 }
 
 export default function Notifications() {

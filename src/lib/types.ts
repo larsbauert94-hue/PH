@@ -44,6 +44,9 @@ export interface Venue {
   website: string | null
   phone: string | null
   created_at: string
+  /** aus der View venue_feed */
+  post_count?: number
+  saved_by_me?: boolean
 }
 
 export interface Post {
@@ -61,6 +64,7 @@ export interface Post {
   media: string[]
   /** gesetzt = Reel */
   video_url: string | null
+  music: Track | null
 }
 
 /** Zeile aus der View `feed` */
@@ -90,6 +94,8 @@ export interface FeedComment {
   author_name: string
   author_type: AccountType
   author_avatar_url: string | null
+  like_count: number
+  liked_by_me: boolean
 }
 
 export type FeedTab = 'alle' | 'folge' | 'neuheiten' | 'handel' | 'gastro' | 'jobs' | 'events'
@@ -106,6 +112,8 @@ export interface FeedQuery {
   saved?: boolean
   /** Volltext bzw. #hashtag */
   search?: string
+  /** 'top' = meiste Likes zuerst */
+  sort?: 'top'
 }
 
 export interface LocalFile { uri: string; mime?: string }
@@ -121,6 +129,7 @@ export interface NewPost {
   media?: LocalFile[]
   /** Video → Reel */
   video?: LocalFile
+  music?: Track
 }
 
 export interface NewVenue {
@@ -148,7 +157,7 @@ export interface SignUpData {
 
 export type ProfileUpdate = Partial<Pick<Profile, 'name' | 'headline' | 'workplace' | 'bio' | 'city' | 'website'>>
 
-export type NotificationType = 'like' | 'comment' | 'follow'
+export type NotificationType = 'like' | 'comment' | 'follow' | 'mention'
 
 /** Zeile aus der View `notification_feed` */
 export interface AppNotification {
@@ -211,6 +220,8 @@ export interface Story {
   venue_name: string | null
   seen_by_me: boolean
   view_count: number
+  music: Track | null
+  overlays: StoryOverlay[]
 }
 
 /** Storys einer Person, wie sie in der Leiste oben im Feed erscheinen */
@@ -229,4 +240,32 @@ export interface NewStory {
   media_type: 'image' | 'video'
   caption?: string
   venue_id?: string
+  music?: Track
+  overlays?: StoryOverlay[]
+}
+
+/** Song aus der Spotify-Suche (nur Verweis, kein Audio in der App) */
+export interface Track {
+  id: string
+  title: string
+  artist: string
+  cover_url: string | null
+  spotify_url: string | null
+  preview_url: string | null
+}
+
+/** Sticker und Texte auf einer Story; x/y sind relative Positionen (0–1) der Mitte */
+export type StoryOverlay = { x: number; y: number } & (
+  | { type: 'text'; text: string; color: string; background: boolean }
+  | { type: 'music'; track: Track }
+  | { type: 'location'; venue_id: string; name: string }
+  | { type: 'mention'; profile_id: string; handle: string }
+)
+
+export interface Highlight {
+  id: string
+  owner_id: string
+  title: string
+  cover_url: string | null
+  created_at: string
 }

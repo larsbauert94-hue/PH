@@ -58,6 +58,14 @@ function Navigation() {
         <Stack.Screen name="einstellungen" options={{ title: 'Einstellungen' }} />
         <Stack.Screen name="mitteilungen" options={{ title: 'Mitteilungen' }} />
         <Stack.Screen name="nachrichten" options={{ title: 'Nachrichten' }} />
+        <Stack.Screen name="editor" options={{ headerShown: false, presentation: 'fullScreenModal', gestureEnabled: false }} />
+        <Stack.Screen name="auswahl/musik" options={{ title: 'Musik hinzufügen', presentation: 'modal' }} />
+        <Stack.Screen name="auswahl/ort" options={{ title: 'Ort hinzufügen', presentation: 'modal' }} />
+        <Stack.Screen name="auswahl/person" options={{ title: 'Person erwähnen', presentation: 'modal' }} />
+        <Stack.Screen name="highlight/[id]" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'fade', contentStyle: { backgroundColor: '#000' } }} />
+        <Stack.Screen name="highlight/neu" options={{ title: 'Neues Highlight', presentation: 'modal' }} />
+        <Stack.Screen name="teilen/[id]" options={{ title: 'Senden an', presentation: 'modal' }} />
+        <Stack.Screen name="u/[handle]" options={{ title: '' }} />
         <Stack.Screen name="story/[id]" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'fade', contentStyle: { backgroundColor: '#000' } }} />
         <Stack.Screen name="story/neu" options={{ headerShown: false, presentation: 'fullScreenModal', contentStyle: { backgroundColor: '#000' } }} />
         <Stack.Screen name="chat/[id]" options={{ title: '' }} />

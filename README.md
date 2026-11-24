@@ -10,6 +10,12 @@ Das soziale Netzwerk für die Wein-, Spirituosen- und Gastroszene. Es mischt Lin
 | --- | --- |
 | **Login** | Apple (nativ auf iOS), Google, E-Mail mit Passwort |
 | **Onboarding** | Kontotyp wählen. Betriebe: Bar, Restaurant, Händler, Lieferant, Marke. Personen: Gastro-Profi, Genießer:in. Dazu Name, Nutzername, Position und Arbeitsplatz, Bestätigung „18+“ und Zustimmung zu den Nutzungsbedingungen |
+| **Foto-Editor** | Für alle Foto-Uploads (Beiträge, Storys, Profilbild): 12 Filter, zwischen denen man auf dem Bild wischt (Rosé, Bordeaux, Champagner, Whisky, Gin, Noir, Vintage, Neon, Kellerlicht, Morgen, Absinth), Filterstärke, Helligkeit, Kontrast, Sättigung, Wärme, Verblassen. Wird beim Speichern ins Bild gerechnet |
+| **Musik** | Songsuche über Spotify, Musik an Beiträgen, Reels und Storys (Zeile „♪ Interpret · Titel“ bzw. Musik-Sticker), Tippen öffnet den Song in Spotify |
+| **Story-Editor** | Text in sechs Farben mit/ohne Hintergrund, Sticker für Musik, Ort und @Erwähnung, alles frei verschiebbar, zum Löschen auf den Papierkorb ziehen |
+| **Highlights** | Story-Sammlungen dauerhaft im Profil, aus dem eigenen Story-Archiv zusammenstellen |
+| **Orte** | Ortsseite mit Karte, Beitragszahl, Merken, Route, Senden, Storys von hier und Raster „Top / Neueste / Reels“; Orte in Entdecken und gemerkte Orte unter „Gespeichert“ |
+| **Interaktion** | @Erwähnungen mit Vorschlägen und Mitteilung, Likes und „Antworten“ bei Kommentaren, Schnell-Emojis, Beiträge per Direktnachricht senden (Vorschaukarte im Chat) |
 | **Storys** | Kreise oben im Feed (Roségold-Ring = neu), Vollbild mit Fortschrittsbalken, tippen vor/zurück, gedrückt halten pausiert, nach unten wischen schließt, Antworten per Direktnachricht, Aufrufzähler bei eigenen Storys, nach 24 Stunden weg |
 | **Reels** | Eigener Tab mit Kurzvideos im Vollbild, Wischen zum nächsten, Ton per Tippen an/aus, Like, Kommentar, Teilen, Speichern |
 | **Beiträge** | Bis zu 10 Fotos als Galerie zum Wischen, Doppeltippen zum Liken mit Herz-Animation, Speichern-Lesezeichen, #hashtags antippbar |
@@ -46,7 +52,7 @@ Zum Ausprobieren auf dem Handy die App **Expo Go** installieren und den QR-Code 
    npx supabase link --project-ref <projekt-ref>
    npx supabase db push
    ```
-   oder die drei Dateien aus `supabase/migrations/` der Reihe nach im SQL Editor ausführen (`…_init.sql`, `…_messages_notifications.sql`, `…_stories_reels_saves.sql`).
+   oder alle Dateien aus `supabase/migrations/` der Reihe nach (nach Datum im Dateinamen) im SQL Editor ausführen.
 3. Optional die Beispieldaten laden: `supabase/seed.sql` im SQL Editor ausführen. Neu erzeugen lässt sich die Datei mit `npm run seed:generate`.
 4. `.env.example` nach `.env` kopieren und URL sowie Publishable Key eintragen (zu finden unter Project Settings → API).
 5. Unter **Authentication → Providers**:
@@ -54,12 +60,20 @@ Zum Ausprobieren auf dem Handy die App **Expo Go** installieren und den QR-Code 
    - **Apple**: aktivieren. Bei „Client IDs“ die Bundle-ID `app.pour.mobile` eintragen.
    - **Google**: aktivieren. Client-ID und Secret aus der Google Cloud Console eintragen (OAuth-Client vom Typ „Web“).
 6. Unter **Authentication → URL Configuration** die Redirect-URL `pour://**` hinzufügen.
+7. **Spotify-Suche** (für Musik): Auf [developer.spotify.com](https://developer.spotify.com/dashboard) eine App anlegen und Client-ID und Client-Secret kopieren, dann:
+   ```bash
+   npx supabase secrets set SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=...
+   npx supabase functions deploy spotify-search
+   ```
+   Der Schlüssel bleibt auf dem Server (`supabase/functions/spotify-search`). Spotify erlaubt anderen Apps nur, Songs zu verlinken und in Spotify zu öffnen. Das Abspielen in der App oder das Unterlegen eigener Videos ist nicht gestattet (Instagram hat dafür eigene Lizenzverträge mit den Plattenfirmen).
 
 ### Datenbank
 
 - **Tabellen**: `profiles`, `venues`, `posts` (mit `media` für Galerien und `video_url` für Reels), `likes`, `comments`, `follows`, `saves`, `stories`, `story_views`, `blocks`, `reports`, `notifications`, `conversations`, `conversation_members`, `messages`.
 - **Views** für die App: `feed`, `comment_feed`, `profile_stats`, `story_feed`, `notification_feed`, `my_conversations`.
-- **Storys** verschwinden nach 24 Stunden automatisch aus `story_feed`; Aufrufe sieht nur, wer die Story gepostet hat.
+- **Storys** verschwinden nach 24 Stunden automatisch aus `story_feed`, bleiben aber in Highlights sichtbar; Aufrufe sieht nur, wer die Story gepostet hat. Sticker liegen als JSON in `stories.overlays`.
+- **Weitere Tabellen**: `highlights`, `highlight_stories`, `comment_likes`, `venue_saves`; Views `highlight_story_feed`, `my_story_archive`, `venue_feed`.
+- **@Erwähnungen** in Beiträgen und Kommentaren erzeugen per Trigger eine Mitteilung.
 - **Mitteilungen** entstehen automatisch per Trigger. Nachrichten und Mitteilungen werden regelmäßig abgefragt (Chat alle 4 Sekunden), eine Echtzeit-Verbindung ist nicht nötig.
 - **Row Level Security** auf allen Tabellen: Lesen ist nur angemeldet möglich, schreiben darf man nur eigene Daten. Den Haken „verifiziert“ und den Kontotyp können Nutzer nicht selbst ändern. Blockieren blendet Inhalte in beide Richtungen aus.
 - **Funktionen**: `complete_onboarding()`, `delete_account()`, `start_conversation()`, `mark_notifications_read()`.
@@ -103,6 +117,8 @@ npm run lint           # ESLint
 npm run web            # im Browser ansehen (Karte dort nur als vereinfachte Vorschau)
 ```
 
+Der Foto-Editor nutzt [Skia](https://shopify.github.io/react-native-skia/). Für die Web-Version kopiert `npm install` automatisch die nötige Datei `canvaskit.wasm` nach `public/`. Skia ist in Expo Go enthalten.
+
 **Struktur**
 
 - `src/app/`: Bildschirme (Expo Router). `(auth)` enthält den Login, `(tabs)` die Hauptnavigation.
@@ -113,6 +129,7 @@ npm run web            # im Browser ansehen (Karte dort nur als vereinfachte Vor
 ## Nächste Schritte (Vorschläge)
 
 - Push-Benachrichtigungen aufs Handy (die Mitteilungen in der App gibt es schon)
+- Filter auch für Videos (aktuell nur Fotos)
 - Bilder in Nachrichten verschicken
 - Admin-Ansicht für Meldungen und Verifizierungen
 - Ausführlichere Ortsseiten mit Öffnungszeiten, Fotos und Getränkekarte

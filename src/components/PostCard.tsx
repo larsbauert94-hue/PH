@@ -10,6 +10,7 @@ import { useMe } from '../lib/auth'
 import { useDeletePost, useStartConversation, useToggleLike, useToggleSave } from '../lib/queries'
 import { chooseAction, confirmAction, notify, reportFlow } from './report'
 import { MediaCarousel, ReelPlayer, ReelPreview, RichText } from './media'
+import { MusicLine } from './music'
 import { Avatar, Badge, IconName, Verified } from './ui'
 
 const KIND_COLORS = { beitrag: colors.muted, neuheit: colors.accent, angebot: '#7cc47f', event: colors.lavender, job: colors.heart }
@@ -35,11 +36,12 @@ function PostCard({ post, detail = false }: { post: FeedPost; detail?: boolean }
   })
   const likeOnce = () => { if (!post.liked_by_me) like.mutate(post) }
   const menu = () => chooseAction('Beitrag', mine ? [
-    { label: 'Teilen', onPress: share },
+    { label: 'Teilen über …', onPress: share },
     { label: 'Löschen', destructive: true, onPress: () => confirmAction('Beitrag löschen?', 'Das kann nicht rückgängig gemacht werden.', 'Löschen',
       () => del.mutate(post.id, { onSuccess: () => { if (detail) router.back() } })) },
   ] : [
-    { label: 'Teilen', onPress: share },
+    { label: 'Per Nachricht senden', onPress: () => router.push(`/teilen/${post.id}`) },
+    { label: 'Teilen über …', onPress: share },
     { label: `${post.author_name} schreiben`, onPress: contact },
     { label: 'Beitrag melden', destructive: true, onPress: () => reportFlow(me, { postId: post.id }) },
   ])
@@ -63,6 +65,7 @@ function PostCard({ post, detail = false }: { post: FeedPost; detail?: boolean }
               ) : (
                 <Text style={st.meta} numberOfLines={1}>{subtitle({ account_type: post.author_type, headline: post.author_headline })}</Text>
               )}
+              {post.music && <MusicLine track={post.music} />}
             </View>
           </Pressable>
         </Link>
@@ -89,7 +92,7 @@ function PostCard({ post, detail = false }: { post: FeedPost; detail?: boolean }
         <Pressable onPress={open} hitSlop={8} accessibilityLabel="Kommentieren">
           <Ionicons name="chatbubble-outline" size={24} color={colors.text} />
         </Pressable>
-        <Pressable onPress={share} hitSlop={8} accessibilityLabel="Teilen">
+        <Pressable onPress={() => router.push(`/teilen/${post.id}`)} hitSlop={8} accessibilityLabel="Senden an">
           <Ionicons name="paper-plane-outline" size={24} color={colors.text} />
         </Pressable>
         <Pressable onPress={() => save.mutate(post)} hitSlop={8} style={{ marginLeft: 'auto' }} accessibilityLabel={post.saved_by_me ? 'Nicht mehr speichern' : 'Speichern'}>

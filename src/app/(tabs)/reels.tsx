@@ -1,16 +1,16 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
-import { FlatList, Pressable, Share, StyleSheet, Text, View } from 'react-native'
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { Image } from 'expo-image'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import { Ionicons } from '@expo/vector-icons'
-import * as ExpoLinking from 'expo-linking'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFeed, useToggleLike, useToggleSave } from '../../lib/queries'
 import { colors } from '../../lib/theme'
 import type { FeedPost } from '../../lib/types'
 import { Avatar, Empty, Loading, Verified } from '../../components/ui'
 import { DoubleTap, RichText } from '../../components/media'
+import { MusicLine } from '../../components/music'
 
 type ViewToken = { index?: number | null; isViewable?: boolean }
 
@@ -89,7 +89,6 @@ const Reel = memo(function Reel({ post, height, playing, muted, onToggleMute }: 
     setShowMute(true)
     setTimeout(() => setShowMute(false), 700)
   }
-  const share = () => Share.share({ message: `${post.body}\n\n– ${post.author_name} auf Pour\n${ExpoLinking.createURL(`/post/${post.id}`)}` }).catch(() => {})
 
   return (
     <View style={{ height, backgroundColor: '#000' }}>
@@ -107,7 +106,7 @@ const Reel = memo(function Reel({ post, height, playing, muted, onToggleMute }: 
       <View style={st.side}>
         <SideButton icon={post.liked_by_me ? 'heart' : 'heart-outline'} color={post.liked_by_me ? colors.heart : '#fff'} label={String(post.like_count)} onPress={() => like.mutate(post)} a11y="Gefällt mir" />
         <SideButton icon="chatbubble-outline" label={String(post.comment_count)} onPress={() => router.push(`/post/${post.id}`)} a11y="Kommentare" />
-        <SideButton icon="paper-plane-outline" label="Teilen" onPress={share} a11y="Teilen" />
+        <SideButton icon="paper-plane-outline" label="Senden" onPress={() => router.push(`/teilen/${post.id}`)} a11y="Senden an" />
         <SideButton icon={post.saved_by_me ? 'bookmark' : 'bookmark-outline'} color={post.saved_by_me ? colors.accent : '#fff'} label="" onPress={() => save.mutate(post)} a11y="Speichern" />
       </View>
 
@@ -119,6 +118,7 @@ const Reel = memo(function Reel({ post, height, playing, muted, onToggleMute }: 
         </Pressable>
         {post.title && <Text style={st.title}>{post.title}</Text>}
         <RichText text={post.body} style={st.caption} numberOfLines={3} />
+        {post.music && <MusicLine track={post.music} light />}
         {post.venue_name && <Text style={st.venue}><Ionicons name="location" size={12} color="#fff" /> {post.venue_name}, {post.venue_city}</Text>}
       </View>
     </View>

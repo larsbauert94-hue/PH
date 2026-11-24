@@ -1,13 +1,16 @@
 import * as ImagePicker from 'expo-image-picker'
 import { notify } from '../components/report'
 import type { LocalFile } from './types'
+import { editPhotos } from './editor'
 
 export interface PickedMedia extends LocalFile { type: 'image' | 'video'; duration?: number | null }
 
-/** Foto aus der Mediathek oder (camera=true) mit der Kamera aufnehmen */
+/** Foto aus der Mediathek oder (camera=true) mit der Kamera aufnehmen, danach Filter-Editor */
 export async function pickImage(opts: { camera?: boolean; square?: boolean } = {}) {
   const res = await pickMedia({ camera: opts.camera, aspect: opts.square ? [1, 1] : [4, 3], edit: true })
-  return res[0] ?? null
+  if (!res[0]) return null
+  const edited = await editPhotos([res[0]], opts.square ? 1 : 4 / 3)
+  return edited?.[0] ?? null
 }
 
 /**

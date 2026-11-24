@@ -8,6 +8,8 @@ import { useConversations, useMarkConversationRead, useMessages, useSendMessage 
 import { colors, radius } from '../../lib/theme'
 import type { Message } from '../../lib/types'
 import { Avatar, ErrorView, Loading } from '../../components/ui'
+import SharedPost, { sharedPostId } from '../../components/SharedPost'
+import { RichText } from '../../components/media'
 import { notify } from '../../components/report'
 
 function dayLabel(iso: string) {
@@ -72,10 +74,14 @@ export default function Chat() {
             return (
               <View>
                 {newDay && <Text style={st.day}>{dayLabel(m.created_at)}</Text>}
-                <View style={[st.bubble, mine ? st.mine : st.theirs]}>
-                  <Text style={[st.text, mine && { color: colors.onAccent }]}>{m.body}</Text>
-                  <Text style={[st.clock, mine && { color: 'rgba(11,16,41,0.6)' }]}>{clock(m.created_at)}</Text>
-                </View>
+                {sharedPostId(m.body) ? (
+                  <View style={{ alignSelf: mine ? 'flex-end' : 'flex-start' }}><SharedPost id={sharedPostId(m.body)!} /></View>
+                ) : (
+                  <View style={[st.bubble, mine ? st.mine : st.theirs]}>
+                    <RichText text={m.body} style={[st.text, mine && { color: colors.onAccent }]} />
+                    <Text style={[st.clock, mine && { color: 'rgba(11,16,41,0.6)' }]}>{clock(m.created_at)}</Text>
+                  </View>
+                )}
               </View>
             )
           }}
