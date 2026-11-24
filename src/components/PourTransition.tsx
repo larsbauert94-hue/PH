@@ -27,7 +27,7 @@ export default function PourTransition({ onDone, quick = false }: { onDone: () =
   return (
     <View style={[StyleSheet.absoluteFill, st.root, { opacity: 1 - exit * exit }]} pointerEvents={exit > 0 ? 'none' : 'auto'} accessibilityLabel="Pour wird geladen">
       <View style={{ transform: [{ scale: 1 + Math.pow(exit, 2.2) * 14 }] }}>
-        <PourDrop size={190} level={fill} t={t} dropOnly />
+        <PourDrop size={190} level={fill} t={t} dropOnly fromTop />
       </View>
       <View style={{ opacity: 1 - exit * 3, marginTop: 22 }}>
         <Wordmark size={30} />

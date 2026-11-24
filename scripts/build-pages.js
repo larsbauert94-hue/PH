@@ -22,7 +22,18 @@ const head = `
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Pour">
     <script>
-      window.__POUR_BASE__ = '${base}/'
+      window.__POUR_BASE__ = '${base}/';
+      // iPhone-Home-Bildschirm: Safari meldet hier ein um die Statusleiste zu kurzes Fenster.
+      // Daher die echte Bildschirmhöhe nehmen, sonst bleibt unten ein Streifen frei.
+      (function () {
+        var standalone = navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches)
+        function fit() {
+          var portrait = window.innerHeight > window.innerWidth
+          var h = standalone && portrait ? Math.max(window.innerHeight, screen.height) : window.innerHeight
+          document.documentElement.style.setProperty('--app-h', h + 'px')
+        }
+        fit(); window.addEventListener('resize', fit)
+      })();
       fetch('${base}/version.json?' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.json() }).then(function (j) {
         if (j.v !== '${build}' && location.search.indexOf('v=' + j.v) < 0) location.replace('${base}/?v=' + j.v)
       }).catch(function () {})
@@ -30,7 +41,7 @@ const head = `
     <style>
       html, body { background: #0b1029; color-scheme: dark; }
       /* iPhone-Home-Bildschirm: App fest an alle Ränder heften, sonst bleibt unten ein Streifen frei */
-      #root { position: fixed; top: 0; right: 0; bottom: 0; left: 0; height: auto !important; }
+      #root { position: fixed; top: 0; right: 0; left: 0; bottom: auto; height: var(--app-h, 100%) !important; }
     </style>
 `
 const index = path.join(out, 'index.html')

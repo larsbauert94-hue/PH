@@ -23,31 +23,36 @@ export function useClock(running = true) {
   return t
 }
 
-function wave(level: number, t: number, amp: number) {
-  const y = DROP_BOTTOM - level * (DROP_BOTTOM - DROP_TOP + 1)
+function wave(level: number, t: number, amp: number, fromTop = false) {
+  const span = DROP_BOTTOM - DROP_TOP + 1
+  // von unten: Pegel steigt; von oben: Füllung läuft von der Spitze nach unten
+  const y = fromTop ? DROP_TOP - 1 + level * span : DROP_BOTTOM - level * span
   let d = `M44 ${y.toFixed(2)}`
   for (let x = 44; x <= 69; x += 1) {
     const dy = Math.sin(x * 0.55 + t * 3.2) * amp + Math.sin(x * 0.23 - t * 2.1) * amp * 0.6
     d += ` L${x} ${(y + dy).toFixed(2)}`
   }
-  return { d: d + ' L69 52 L44 52 Z', y }
+  return { d: d + (fromTop ? ' L69 20 L44 20 Z' : ' L69 52 L44 52 Z'), y }
 }
 
 /**
  * Das Pour-Zeichen, dessen Tropfen sich mit Roségold füllt (oder nur der Tropfen als Ladesymbol).
  * level: 0 (leer) … 1 (voll), t: Zeit in Sekunden für die Wellenbewegung.
  */
-export default function PourDrop({ size = 120, level = 0.5, t = 0, bare = false, dropOnly = false, shine }: {
+export default function PourDrop({ size = 120, level = 0.5, t = 0, bare = false, dropOnly = false, fromTop = false, shine }: {
   size?: number; level?: number; t?: number; bare?: boolean
   /** Nur der Tropfen (Ladesymbol), size = Höhe */ dropOnly?: boolean
+  /** Füllt sich von oben nach unten */ fromTop?: boolean
   /** Lichtschimmer über dem „P“: Position 0 … 1 (außerhalb = unsichtbar) */ shine?: number
 }) {
   const id = useId().replace(/[^a-zA-Z0-9]/g, '')
   const amp = level > 0.02 && level < 0.98 ? 0.9 : 0.25
-  const liquid = wave(Math.max(0, Math.min(1, level)), t, amp)
+  const liquid = wave(Math.max(0, Math.min(1, level)), t, amp, fromTop)
   const bubbles = level > 0.15 ? [0, 1, 2].map(i => {
     const phase = (t * 0.55 + i * 0.37) % 1
-    return { x: 53.5 + i * 3 + Math.sin(t * 2 + i) * 0.6, y: DROP_BOTTOM - 2 - phase * (DROP_BOTTOM - liquid.y - 2), r: 0.55 + i * 0.15, o: 1 - phase }
+    // Perlen steigen bzw. sinken innerhalb der Füllung
+    const y = fromTop ? DROP_TOP + 3 + phase * Math.max(0, liquid.y - DROP_TOP - 4) : DROP_BOTTOM - 2 - phase * (DROP_BOTTOM - liquid.y - 2)
+    return { x: 53.5 + i * 3 + Math.sin(t * 2 + i) * 0.6, y, r: 0.55 + i * 0.15, o: 1 - phase }
   }) : []
 
   return (
@@ -81,7 +86,7 @@ export default function PourDrop({ size = 120, level = 0.5, t = 0, bare = false,
       {level > 0 && (
         <G clipPath={`url(#c${id})`}>
           <Path d={liquid.d} fill={`url(#w${id})`} />
-          <Path d={liquid.d.split(' L69 52')[0]} stroke="#fff1e6" strokeWidth={0.6} strokeOpacity={0.7} fill="none" />
+          <Path d={liquid.d.split(fromTop ? ' L69 20' : ' L69 52')[0]} stroke="#fff1e6" strokeWidth={0.6} strokeOpacity={0.7} fill="none" />
           {bubbles.map((b, i) => <Circle key={i} cx={b.x} cy={b.y} r={b.r} fill="#fff" opacity={0.55 * b.o} />)}
         </G>
       )}
