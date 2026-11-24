@@ -4,7 +4,9 @@ import { isDemo, supabase } from './supabase'
 import { demoApi } from './demo-api'
 import type {
   FeedComment, FeedPost, FeedQuery, NewPost, NewVenue, Profile, ProfileStats, ProfileUpdate, Venue, AccountType,
+  AppNotification, Conversation, Message,
 } from './types'
+import { FEED_PAGE_SIZE } from './types'
 
 export interface OnboardingData {
   name: string
@@ -20,8 +22,11 @@ export interface Api {
   completeOnboarding(data: OnboardingData): Promise<void>
   updateProfile(userId: string, data: ProfileUpdate): Promise<void>
   deleteAccount(userId: string): Promise<void>
+  /** Lädt ein Profilbild hoch und setzt es am Profil; gibt die neue URL zurück */
+  uploadAvatar(userId: string, uri: string, mime?: string): Promise<string>
 
-  getFeed(me: string, q: FeedQuery): Promise<FeedPost[]>
+  /** Eine Seite des Feeds; `before` = created_at des letzten geladenen Beitrags */
+  getFeed(me: string, q: FeedQuery, before?: string): Promise<FeedPost[]>
   getPost(id: string): Promise<FeedPost | null>
   createPost(me: string, post: NewPost): Promise<void>
   deletePost(id: string): Promise<void>
@@ -39,6 +44,16 @@ export interface Api {
   getVenues(): Promise<Venue[]>
   getVenue(id: string): Promise<Venue | null>
   createVenue(me: string, v: NewVenue): Promise<string>
+
+  getNotifications(): Promise<AppNotification[]>
+  markNotificationsRead(): Promise<void>
+
+  getConversations(): Promise<Conversation[]>
+  /** Unterhaltung mit einer Person öffnen (bestehende oder neue); gibt die ID zurück */
+  startConversation(otherId: string): Promise<string>
+  getMessages(conversationId: string): Promise<Message[]>
+  sendMessage(me: string, conversationId: string, body: string): Promise<void>
+  markConversationRead(me: string, conversationId: string): Promise<void>
 }
 
 function check<T>(res: { data: T; error: { message: string } | null }): T {
@@ -81,9 +96,15 @@ const supabaseApi: Api = {
     check(await sb.rpc('delete_account'))
     await sb.auth.signOut()
   },
+  async uploadAvatar(userId, uri, mime) {
+    const url = await uploadImage(userId, uri, mime)
+    check(await supabase!.from('profiles').update({ avatar_url: url }).eq('id', userId))
+    return url
+  },
 
-  async getFeed(me, q) {
-    let query = supabase!.from('feed').select('*').order('created_at', { ascending: false }).limit(100)
+  async getFeed(me, q, before) {
+    let query = supabase!.from('feed').select('*').order('created_at', { ascending: false }).limit(FEED_PAGE_SIZE)
+    if (before) query = query.lt('created_at', before)
     if (q.authorId) query = query.eq('author_id', q.authorId)
     if (q.venueId) query = query.eq('venue_id', q.venueId)
     switch (q.tab) {
@@ -158,6 +179,29 @@ const supabaseApi: Api = {
   async createVenue(me, v) {
     const row = check(await supabase!.from('venues').insert({ ...v, owner_id: me }).select('id').single())
     return (row as { id: string }).id
+  },
+
+  async getNotifications() {
+    return rows<AppNotification>(await supabase!.from('notification_feed').select('*').order('created_at', { ascending: false }).limit(100))
+  },
+  async markNotificationsRead() {
+    check(await supabase!.rpc('mark_notifications_read'))
+  },
+
+  async getConversations() {
+    return rows<Conversation>(await supabase!.from('my_conversations').select('*').order('last_message_at', { ascending: false }))
+  },
+  async startConversation(otherId) {
+    return check(await supabase!.rpc('start_conversation', { other: otherId })) as string
+  },
+  async getMessages(conversationId) {
+    return rows<Message>(await supabase!.from('messages').select('*').eq('conversation_id', conversationId).order('created_at').limit(500))
+  },
+  async sendMessage(me, conversationId, body) {
+    check(await supabase!.from('messages').insert({ conversation_id: conversationId, sender_id: me, body }))
+  },
+  async markConversationRead(me, conversationId) {
+    check(await supabase!.from('conversation_members').update({ last_read_at: new Date().toISOString() }).match({ conversation_id: conversationId, user_id: me }))
   },
 }
 

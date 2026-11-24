@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { router } from 'expo-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth, useMe } from '../lib/auth'
@@ -7,8 +7,10 @@ import { api } from '../lib/api'
 import { isDemo } from '../lib/supabase'
 import { ACCOUNT_TYPES } from '../lib/labels'
 import { colors } from '../lib/theme'
-import { Button, Field, SectionLabel } from '../components/ui'
-import { confirmAction, notify } from '../components/report'
+import { Avatar, Button, Field, SectionLabel } from '../components/ui'
+import { useUploadAvatar } from '../lib/queries'
+import { pickImage } from '../lib/pickImage'
+import { chooseAction, confirmAction, notify } from '../components/report'
 
 export default function Settings() {
   const { me, profile } = useMe()
@@ -23,6 +25,11 @@ export default function Settings() {
   const [website, setWebsite] = useState(profile.website ?? '')
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const avatar = useUploadAvatar()
+  const changePhoto = () => chooseAction('Profilbild', [
+    { label: 'Aus Fotos wählen', onPress: async () => { const img = await pickImage({ square: true }); if (img) avatar.mutate(img, { onError: e => notify('Fehler', e.message) }) } },
+    { label: 'Foto aufnehmen', onPress: async () => { const img = await pickImage({ square: true, camera: true }); if (img) avatar.mutate(img, { onError: e => notify('Fehler', e.message) }) } },
+  ])
 
   const save = async () => {
     setSaving(true)
@@ -61,6 +68,13 @@ export default function Settings() {
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
       <ScrollView contentContainerStyle={st.content} keyboardShouldPersistTaps="handled">
+        <Pressable style={st.photo} onPress={changePhoto} accessibilityRole="button">
+          <Avatar name={profile.name} url={profile.avatar_url} type={profile.account_type} size={72} />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600' }}>{avatar.isPending ? 'Wird hochgeladen …' : 'Profilbild ändern'}</Text>
+            <Text style={st.text}>{person ? 'Ein freundliches Foto von dir' : 'Euer Logo oder ein Foto vom Betrieb'}</Text>
+          </View>
+        </Pressable>
         <SectionLabel>Profil</SectionLabel>
         <Field label={person ? 'Name' : 'Name des Betriebs'} value={name} onChangeText={setName} />
         {person && <Field label={profile.account_type === 'privat' ? 'Lieblingsgetränke' : 'Position'} value={headline} onChangeText={setHeadline} />}
@@ -85,6 +99,7 @@ export default function Settings() {
 const st = StyleSheet.create({
   content: { padding: 16, gap: 14, paddingBottom: 48, maxWidth: 680, width: '100%', alignSelf: 'center' },
   text: { color: colors.muted, fontSize: 14, lineHeight: 20 },
+  photo: { flexDirection: 'row', alignItems: 'center', gap: 16, padding: 12, borderRadius: 16, backgroundColor: colors.surface, marginBottom: 8 },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: 12 },
   demo: { color: colors.accentLight, fontSize: 12, textAlign: 'center' },
 })

@@ -38,3 +38,16 @@ export function confirmAction(title: string, message: string, confirmText: strin
     { text: confirmText, style: 'destructive', onPress: onConfirm },
   ])
 }
+
+/** Einfaches Aktionsmenü (iOS/Android: Dialog mit Buttons, Web: nummerierte Auswahl) */
+export function chooseAction(title: string, options: { label: string; destructive?: boolean; onPress: () => void }[]) {
+  if (Platform.OS === 'web') {
+    const choice = window.prompt(`${title}\n${options.map((o, i) => `${i + 1}. ${o.label}`).join('\n')}`, '')
+    options[Number(choice) - 1]?.onPress()
+    return
+  }
+  Alert.alert(title, undefined, [
+    ...options.map(o => ({ text: o.label, style: o.destructive ? ('destructive' as const) : ('default' as const), onPress: o.onPress })),
+    { text: 'Abbrechen', style: 'cancel' as const },
+  ])
+}

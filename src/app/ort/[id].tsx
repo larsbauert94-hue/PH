@@ -55,11 +55,12 @@ export default function VenueScreen() {
       <Stack.Screen options={{ title: v.name }} />
       <FlatList
         style={{ backgroundColor: colors.bg }}
-        data={posts.data ?? []}
+        data={posts.posts}
         keyExtractor={p => p.id}
         ListHeaderComponent={header}
         renderItem={({ item }) => <PostCard post={item} />}
         contentContainerStyle={{ padding: 16, gap: 14, maxWidth: 680, width: '100%', alignSelf: 'center' }}
+        onEndReached={posts.loadMore}
         ListEmptyComponent={posts.isPending ? <Loading /> : <Empty icon="chatbubbles-outline" text="Noch niemand hat diesen Ort markiert." />}
       />
     </>

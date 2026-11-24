@@ -103,6 +103,7 @@ export const seedPosts: SeedPost[] = [
   { id: id(209), author_id: P.waldbrand, kind: 'neuheit', title: 'Alkoholfreier Kräuteraperitif', body: 'Nach zwei Jahren Entwicklung: unser erster alkoholfreier Aperitif mit Schwarzwälder Tannenspitzen. Funktioniert pur auf Eis oder als Spritz.', category: 'alkoholfrei', link_url: null, venue_id: null, hoursAgo: 52 },
   { id: id(210), author_id: P.rebe, kind: 'event', title: 'Naturwein-Abend mit Winzer:innen aus dem Burgenland', body: 'Am Freitag ab 19 Uhr schenken drei Weingüter selbst aus. Kleine Teller aus der Küche, Eintritt frei.', category: 'wein', link_url: null, venue_id: V.rebe, hoursAgo: 70 },
   { id: id(211), author_id: P.ochsen, kind: 'job', title: 'Commis de Rang und Sommelier-Assistenz', body: 'Für unser Restaurant suchen wir zwei Kolleg:innen im Service. Interesse an Wein ist ein Muss, Weiterbildungen bezahlen wir.', category: 'gastronomie', link_url: null, venue_id: V.ochsen, hoursAgo: 96 },
+  { id: id(213), author_id: P.demo, kind: 'beitrag', title: null, body: 'Neue Hausspirituose im Kupferkessel: ein 5 Jahre alter Haferbrand aus Brandenburg. Wer kennt ähnliche Projekte?', category: 'spirituosen', link_url: null, venue_id: V.kupfer, hoursAgo: 14 },
   { id: id(212), author_id: P.max, kind: 'beitrag', title: null, body: 'Tipp für alle Kolleg:innen: Zitronenschalen-Oleo-Saccharum hält sich vakuumiert locker zwei Wochen. Spart enorm Zeit im Service.', category: 'cocktails', link_url: null, venue_id: null, hoursAgo: 120 },
 ]
 
@@ -116,10 +117,28 @@ export const seedLikes: [string, string][] = [
   [id(201), P.max], [id(201), P.lena], [id(201), P.sofia], [id(202), P.demo], [id(202), P.sofia],
   [id(203), P.max], [id(205), P.schieferhang], [id(205), P.demo], [id(206), P.lena], [id(207), P.lena],
   [id(208), P.demo], [id(209), P.max], [id(210), P.lena], [id(212), P.demo], [id(212), P.lena],
+  [id(213), P.max], [id(213), P.sofia], [id(213), P.lena],
 ]
 
 export const seedComments: { id: string; post_id: string; author_id: string; body: string; hoursAgo: number }[] = [
   { id: id(301), post_id: id(201), author_id: P.max, body: 'Muster bitte an uns! Klingt perfekt für einen Winter-Martini.', hoursAgo: 0.5 },
   { id: id(302), post_id: id(205), author_id: P.schieferhang, body: 'Danke für die schöne Empfehlung, Lena!', hoursAgo: 18 },
   { id: id(303), post_id: id(204), author_id: P.demo, body: 'Kenne jemanden, schicke ich euch rüber.', hoursAgo: 6 },
+  { id: id(304), post_id: id(213), author_id: P.max, body: 'Spannend! Bring mal eine Flasche mit.', hoursAgo: 10 },
+]
+
+/** Unterhaltungen mit Nachrichten (Absender, Text, vor wie vielen Stunden) */
+export const seedConversations: { id: string; members: [string, string]; messages: [string, string, number][] }[] = [
+  {
+    id: id(401), members: [P.demo, P.max], messages: [
+      [P.max, 'Hey Jonas, danke für den Tipp mit der Stelle!', 7],
+      [P.demo, 'Gern. Sie meldet sich die Tage bei euch.', 6.5],
+      [P.max, 'Top. Kommst du Freitag zum Tasting?', 2],
+    ],
+  },
+  {
+    id: id(402), members: [P.demo, P.nordlicht], messages: [
+      [P.nordlicht, 'Hallo Herr Hartmann, anbei wie besprochen unsere aktuelle Gastro-Preisliste. Die Winteraktion gilt bis 31.12.', 20],
+    ],
+  },
 ]

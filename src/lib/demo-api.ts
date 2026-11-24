@@ -1,8 +1,9 @@
 // In-Memory-Backend für den Demo-Modus (ohne Supabase-Zugangsdaten).
 // Verhält sich wie die Supabase-Views, damit die App identisch funktioniert.
 import type { Api } from './api'
-import type { FeedComment, FeedPost, Post, Profile, Venue } from './types'
-import { seedComments, seedFollows, seedLikes, seedPosts, seedProfiles, seedVenues } from './demo-data'
+import type { AppNotification, Conversation, FeedComment, FeedPost, Message, NotificationType, Post, Profile, Venue } from './types'
+import { FEED_PAGE_SIZE } from './types'
+import { seedComments, seedConversations, seedFollows, seedLikes, seedPosts, seedProfiles, seedVenues } from './demo-data'
 
 const ago = (h: number) => new Date(Date.now() - h * 3600_000).toISOString()
 const uid = () => `demo-${Math.random().toString(36).slice(2, 10)}`
@@ -10,7 +11,7 @@ const wait = <T,>(v: T) => new Promise<T>(r => setTimeout(() => r(v), 120))
 
 const db = {
   profiles: seedProfiles.map(({ email: _email, ...p }) => ({
-    ...p, avatar_url: null, created_at: ago(24 * 90), terms_accepted_at: ago(24 * 90) as string | null,
+    ...p, avatar_url: null as string | null, created_at: ago(24 * 90), terms_accepted_at: ago(24 * 90) as string | null,
   })),
   venues: seedVenues.map(v => ({ ...v, created_at: ago(24 * 60) })) as Venue[],
   posts: seedPosts.map(({ hoursAgo, ...p }) => ({ ...p, image_url: null, created_at: ago(hoursAgo) })) as Post[],
@@ -18,6 +19,29 @@ const db = {
   comments: seedComments.map(({ hoursAgo, ...c }) => ({ ...c, created_at: ago(hoursAgo) })),
   follows: seedFollows.map(([follower_id, following_id]) => ({ follower_id, following_id })),
   blocks: [] as { blocker_id: string; blocked_id: string }[],
+  notifications: [] as { id: string; user_id: string; actor_id: string; type: NotificationType; post_id: string | null; created_at: string; read_at: string | null }[],
+  conversations: seedConversations.map(c => ({
+    id: c.id,
+    members: c.members.map(m => ({ user_id: m, last_read_at: ago(c.messages[c.messages.length - 1][2] + 0.1) })),
+  })),
+  messages: seedConversations.flatMap(c => c.messages.map(([sender_id, body, h], i) => ({
+    id: `${c.id}-${i}`, conversation_id: c.id, sender_id, body, created_at: ago(h),
+  }))) as Message[],
+}
+
+// Mitteilungen wie die Datenbank-Trigger aus den Beispieldaten ableiten
+for (const f of db.follows) db.notifications.push({ id: uid(), user_id: f.following_id, actor_id: f.follower_id, type: 'follow', post_id: null, created_at: ago(30), read_at: null })
+for (const l of db.likes) {
+  const p = db.posts.find(x => x.id === l.post_id)
+  if (p && p.author_id !== l.user_id) db.notifications.push({ id: uid(), user_id: p.author_id, actor_id: l.user_id, type: 'like', post_id: p.id, created_at: ago(12), read_at: null })
+}
+for (const c of db.comments) {
+  const p = db.posts.find(x => x.id === c.post_id)
+  if (p && p.author_id !== c.author_id) db.notifications.push({ id: uid(), user_id: p.author_id, actor_id: c.author_id, type: 'comment', post_id: p.id, created_at: c.created_at, read_at: null })
+}
+
+function notify(userId: string, actorId: string, type: NotificationType, postId: string | null = null) {
+  if (userId !== actorId) db.notifications.push({ id: uid(), user_id: userId, actor_id: actorId, type, post_id: postId, created_at: new Date().toISOString(), read_at: null })
 }
 
 let currentUser = ''
@@ -67,6 +91,10 @@ export const demoApi: Api = {
     Object.assign(p, { ...d, handle, terms_accepted_at: new Date().toISOString() })
     return wait(undefined)
   },
+  async uploadAvatar(userId, uri) {
+    db.profiles.find(p => p.id === userId)!.avatar_url = uri
+    return wait(uri)
+  },
   async updateProfile(userId, data) {
     Object.assign(db.profiles.find(p => p.id === userId)!, data)
     return wait(undefined)
@@ -79,11 +107,14 @@ export const demoApi: Api = {
     db.comments = db.comments.filter(c => c.author_id !== userId && !mine.has(c.post_id))
     db.follows = db.follows.filter(f => f.follower_id !== userId && f.following_id !== userId)
     db.venues.forEach(v => { if (v.owner_id === userId) v.owner_id = null })
+    db.notifications = db.notifications.filter(n => n.user_id !== userId && n.actor_id !== userId)
+    db.conversations.forEach(c => { c.members = c.members.filter(m => m.user_id !== userId) })
+    db.messages = db.messages.filter(m => m.sender_id !== userId)
     currentUser = ''
     return wait(undefined)
   },
 
-  async getFeed(me, q) {
+  async getFeed(me, q, before) {
     const following = new Set([me, ...db.follows.filter(f => f.follower_id === me).map(f => f.following_id)])
     const authorType = (p: Post) => db.profiles.find(a => a.id === p.author_id)?.account_type
     const rows = db.posts
@@ -101,7 +132,9 @@ export const demoApi: Api = {
           default: return true
         }
       })
+      .filter(p => !before || p.created_at < before)
       .sort((a, b) => b.created_at.localeCompare(a.created_at))
+      .slice(0, FEED_PAGE_SIZE)
       .map(toFeed)
     return wait(rows)
   },
@@ -122,7 +155,11 @@ export const demoApi: Api = {
   },
   async setLike(me, postId, liked) {
     db.likes = db.likes.filter(l => !(l.post_id === postId && l.user_id === me))
-    if (liked) db.likes.push({ post_id: postId, user_id: me })
+    if (liked) {
+      db.likes.push({ post_id: postId, user_id: me })
+      const p = db.posts.find(x => x.id === postId)
+      if (p) notify(p.author_id, me, 'like', postId)
+    }
     return wait(undefined)
   },
   async getComments(postId) {
@@ -137,6 +174,8 @@ export const demoApi: Api = {
   },
   async addComment(me, postId, body) {
     db.comments.push({ id: uid(), post_id: postId, author_id: me, body, created_at: new Date().toISOString() })
+    const p = db.posts.find(x => x.id === postId)
+    if (p) notify(p.author_id, me, 'comment', postId)
     return wait(undefined)
   },
 
@@ -166,7 +205,10 @@ export const demoApi: Api = {
   },
   async setFollow(me, id, follow) {
     db.follows = db.follows.filter(f => !(f.follower_id === me && f.following_id === id))
-    if (follow) db.follows.push({ follower_id: me, following_id: id })
+    if (follow) {
+      db.follows.push({ follower_id: me, following_id: id })
+      notify(id, me, 'follow')
+    }
     return wait(undefined)
   },
   async setBlock(me, id, block) {
@@ -191,5 +233,71 @@ export const demoApi: Api = {
     const id = uid()
     db.venues.push({ ...v, id, owner_id: me, website: v.website ?? null, phone: v.phone ?? null, created_at: new Date().toISOString() })
     return wait(id)
+  },
+
+  async getNotifications() {
+    const rows: AppNotification[] = db.notifications
+      .filter(n => n.user_id === currentUser && !blocked(n.actor_id))
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+      .map(n => {
+        const a = db.profiles.find(x => x.id === n.actor_id)!
+        const p = db.posts.find(x => x.id === n.post_id)
+        return { ...n, actor_handle: a.handle, actor_name: a.name, actor_type: a.account_type, actor_avatar_url: a.avatar_url, post_snippet: p ? (p.title ?? p.body.slice(0, 80)) : null }
+      })
+    return wait(rows)
+  },
+  async markNotificationsRead() {
+    const now = new Date().toISOString()
+    db.notifications.forEach(n => { if (n.user_id === currentUser && !n.read_at) n.read_at = now })
+    return wait(undefined)
+  },
+
+  async getConversations() {
+    const rows: Conversation[] = db.conversations
+      .filter(c => c.members.some(m => m.user_id === currentUser))
+      .map((c): Conversation | null => {
+        const me = c.members.find(m => m.user_id === currentUser)!
+        const other = c.members.find(m => m.user_id !== currentUser)!
+        const p = db.profiles.find(x => x.id === other.user_id)
+        const msgs = db.messages.filter(m => m.conversation_id === c.id).sort((a, b) => a.created_at.localeCompare(b.created_at))
+        const last = msgs[msgs.length - 1]
+        return p ? {
+          id: c.id, last_message_at: last?.created_at ?? new Date().toISOString(),
+          other_id: p.id, other_handle: p.handle, other_name: p.name, other_type: p.account_type, other_avatar_url: p.avatar_url, other_headline: p.headline,
+          last_body: last?.body ?? null, last_sender_id: last?.sender_id ?? null,
+          unread_count: msgs.filter(m => m.sender_id !== currentUser && m.created_at > me.last_read_at).length,
+          blocked: blocked(p.id),
+        } : null
+      })
+      .filter((c): c is Conversation => !!c)
+      .sort((a, b) => b.last_message_at.localeCompare(a.last_message_at))
+    return wait(rows)
+  },
+  async startConversation(otherId) {
+    if (otherId === currentUser) throw new Error('Du kannst dir nicht selbst schreiben.')
+    if (blocked(otherId)) throw new Error('Mit diesem Profil ist kein Kontakt möglich.')
+    const existing = db.conversations.find(c => c.members.some(m => m.user_id === currentUser) && c.members.some(m => m.user_id === otherId))
+    if (existing) return wait(existing.id)
+    const now = new Date().toISOString()
+    const id = uid()
+    db.conversations.push({ id, members: [{ user_id: currentUser, last_read_at: now }, { user_id: otherId, last_read_at: now }] })
+    return wait(id)
+  },
+  async getMessages(conversationId) {
+    return wait(db.messages.filter(m => m.conversation_id === conversationId).sort((a, b) => a.created_at.localeCompare(b.created_at)))
+  },
+  async sendMessage(me, conversationId, body) {
+    const c = db.conversations.find(x => x.id === conversationId)
+    const other = c?.members.find(m => m.user_id !== me)
+    if (!c || (other && blocked(other.user_id))) throw new Error('Nachricht konnte nicht gesendet werden.')
+    const now = new Date().toISOString()
+    db.messages.push({ id: uid(), conversation_id: conversationId, sender_id: me, body, created_at: now })
+    c.members.find(m => m.user_id === me)!.last_read_at = now
+    return wait(undefined)
+  },
+  async markConversationRead(me, conversationId) {
+    const m = db.conversations.find(x => x.id === conversationId)?.members.find(x => x.user_id === me)
+    if (m) m.last_read_at = new Date().toISOString()
+    return wait(undefined)
   },
 }

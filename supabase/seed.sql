@@ -61,6 +61,7 @@ insert into public.posts (id, author_id, kind, title, body, category, link_url, 
   ('00000000-0000-4000-8000-000000000209', '00000000-0000-4000-8000-000000000006', 'neuheit', 'Alkoholfreier Kräuteraperitif', 'Nach zwei Jahren Entwicklung: unser erster alkoholfreier Aperitif mit Schwarzwälder Tannenspitzen. Funktioniert pur auf Eis oder als Spritz.', 'alkoholfrei', null, null, now() - interval '52 hours'),
   ('00000000-0000-4000-8000-000000000210', '00000000-0000-4000-8000-000000000012', 'event', 'Naturwein-Abend mit Winzer:innen aus dem Burgenland', 'Am Freitag ab 19 Uhr schenken drei Weingüter selbst aus. Kleine Teller aus der Küche, Eintritt frei.', 'wein', null, '00000000-0000-4000-8000-000000000102', now() - interval '70 hours'),
   ('00000000-0000-4000-8000-000000000211', '00000000-0000-4000-8000-000000000008', 'job', 'Commis de Rang und Sommelier-Assistenz', 'Für unser Restaurant suchen wir zwei Kolleg:innen im Service. Interesse an Wein ist ein Muss, Weiterbildungen bezahlen wir.', 'gastronomie', null, '00000000-0000-4000-8000-000000000103', now() - interval '96 hours'),
+  ('00000000-0000-4000-8000-000000000213', '00000000-0000-4000-8000-000000000001', 'beitrag', null, 'Neue Hausspirituose im Kupferkessel: ein 5 Jahre alter Haferbrand aus Brandenburg. Wer kennt ähnliche Projekte?', 'spirituosen', null, '00000000-0000-4000-8000-000000000104', now() - interval '14 hours'),
   ('00000000-0000-4000-8000-000000000212', '00000000-0000-4000-8000-000000000010', 'beitrag', null, 'Tipp für alle Kolleg:innen: Zitronenschalen-Oleo-Saccharum hält sich vakuumiert locker zwei Wochen. Spart enorm Zeit im Service.', 'cocktails', null, null, now() - interval '120 hours');
 
 insert into public.follows (follower_id, following_id) values
@@ -92,9 +93,25 @@ insert into public.likes (post_id, user_id) values
   ('00000000-0000-4000-8000-000000000209', '00000000-0000-4000-8000-000000000010'),
   ('00000000-0000-4000-8000-000000000210', '00000000-0000-4000-8000-000000000009'),
   ('00000000-0000-4000-8000-000000000212', '00000000-0000-4000-8000-000000000001'),
-  ('00000000-0000-4000-8000-000000000212', '00000000-0000-4000-8000-000000000009');
+  ('00000000-0000-4000-8000-000000000212', '00000000-0000-4000-8000-000000000009'),
+  ('00000000-0000-4000-8000-000000000213', '00000000-0000-4000-8000-000000000010'),
+  ('00000000-0000-4000-8000-000000000213', '00000000-0000-4000-8000-000000000011'),
+  ('00000000-0000-4000-8000-000000000213', '00000000-0000-4000-8000-000000000009');
 
 insert into public.comments (id, post_id, author_id, body, created_at) values
   ('00000000-0000-4000-8000-000000000301', '00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-000000000010', 'Muster bitte an uns! Klingt perfekt für einen Winter-Martini.', now() - interval '0.5 hours'),
   ('00000000-0000-4000-8000-000000000302', '00000000-0000-4000-8000-000000000205', '00000000-0000-4000-8000-000000000005', 'Danke für die schöne Empfehlung, Lena!', now() - interval '18 hours'),
-  ('00000000-0000-4000-8000-000000000303', '00000000-0000-4000-8000-000000000204', '00000000-0000-4000-8000-000000000001', 'Kenne jemanden, schicke ich euch rüber.', now() - interval '6 hours');
+  ('00000000-0000-4000-8000-000000000303', '00000000-0000-4000-8000-000000000204', '00000000-0000-4000-8000-000000000001', 'Kenne jemanden, schicke ich euch rüber.', now() - interval '6 hours'),
+  ('00000000-0000-4000-8000-000000000304', '00000000-0000-4000-8000-000000000213', '00000000-0000-4000-8000-000000000010', 'Spannend! Bring mal eine Flasche mit.', now() - interval '10 hours');
+
+-- Unterhaltungen (Mitteilungen zu Likes, Kommentaren und Follows erzeugen die Trigger automatisch)
+insert into public.conversations (id) values ('00000000-0000-4000-8000-000000000401');
+insert into public.conversation_members (conversation_id, user_id, last_read_at) values ('00000000-0000-4000-8000-000000000401', '00000000-0000-4000-8000-000000000001', now() - interval '2.1 hours'), ('00000000-0000-4000-8000-000000000401', '00000000-0000-4000-8000-000000000010', now() - interval '2.1 hours');
+insert into public.messages (conversation_id, sender_id, body, created_at) values
+  ('00000000-0000-4000-8000-000000000401', '00000000-0000-4000-8000-000000000010', 'Hey Jonas, danke für den Tipp mit der Stelle!', now() - interval '7 hours'),
+  ('00000000-0000-4000-8000-000000000401', '00000000-0000-4000-8000-000000000001', 'Gern. Sie meldet sich die Tage bei euch.', now() - interval '6.5 hours'),
+  ('00000000-0000-4000-8000-000000000401', '00000000-0000-4000-8000-000000000010', 'Top. Kommst du Freitag zum Tasting?', now() - interval '2 hours');
+insert into public.conversations (id) values ('00000000-0000-4000-8000-000000000402');
+insert into public.conversation_members (conversation_id, user_id, last_read_at) values ('00000000-0000-4000-8000-000000000402', '00000000-0000-4000-8000-000000000001', now() - interval '20.1 hours'), ('00000000-0000-4000-8000-000000000402', '00000000-0000-4000-8000-000000000003', now() - interval '20.1 hours');
+insert into public.messages (conversation_id, sender_id, body, created_at) values
+  ('00000000-0000-4000-8000-000000000402', '00000000-0000-4000-8000-000000000003', 'Hallo Herr Hartmann, anbei wie besprochen unsere aktuelle Gastro-Preisliste. Die Winteraktion gilt bis 31.12.', now() - interval '20 hours');

@@ -1,5 +1,6 @@
 import { memo } from 'react'
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Linking, Pressable, Share, StyleSheet, Text, View } from 'react-native'
+import * as ExpoLinking from 'expo-linking'
 import { Image } from 'expo-image'
 import { Link, router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -7,8 +8,8 @@ import type { FeedPost } from '../lib/types'
 import { CATEGORIES, POST_KINDS, subtitle, timeAgo } from '../lib/labels'
 import { colors, fonts, radius } from '../lib/theme'
 import { useMe } from '../lib/auth'
-import { useDeletePost, useToggleLike } from '../lib/queries'
-import { confirmAction, reportFlow } from './report'
+import { useDeletePost, useStartConversation, useToggleLike } from '../lib/queries'
+import { chooseAction, confirmAction, notify, reportFlow } from './report'
 import { Avatar, Badge, IconName, Verified } from './ui'
 
 const KIND_COLORS = { beitrag: colors.muted, neuheit: colors.accent, angebot: '#7cc47f', event: colors.lavender, job: colors.heart }
@@ -17,17 +18,27 @@ function PostCard({ post, detail = false }: { post: FeedPost; detail?: boolean }
   const { me } = useMe()
   const like = useToggleLike()
   const del = useDeletePost()
+  const startChat = useStartConversation()
   const kind = POST_KINDS[post.kind]
   const mine = post.author_id === me
 
-  const menu = () => {
-    if (mine) {
-      confirmAction('Beitrag löschen?', 'Das kann nicht rückgängig gemacht werden.', 'Löschen',
-        () => del.mutate(post.id, { onSuccess: () => { if (detail) router.back() } }))
-    } else {
-      reportFlow(me, { postId: post.id })
-    }
+  const share = () => {
+    const text = [post.title, post.body].filter(Boolean).join('\n\n')
+    Share.share({ message: `${text}\n\n– ${post.author_name} auf Pour\n${ExpoLinking.createURL(`/post/${post.id}`)}` }).catch(() => {})
   }
+  const contact = () => startChat.mutate(post.author_id, {
+    onSuccess: id => router.push(`/chat/${id}`),
+    onError: e => notify('Nachricht', e.message),
+  })
+  const menu = () => chooseAction('Beitrag', mine ? [
+    { label: 'Teilen', onPress: share },
+    { label: 'Löschen', destructive: true, onPress: () => confirmAction('Beitrag löschen?', 'Das kann nicht rückgängig gemacht werden.', 'Löschen',
+      () => del.mutate(post.id, { onSuccess: () => { if (detail) router.back() } })) },
+  ] : [
+    { label: 'Teilen', onPress: share },
+    { label: `${post.author_name} schreiben`, onPress: contact },
+    { label: 'Beitrag melden', destructive: true, onPress: () => reportFlow(me, { postId: post.id }) },
+  ])
 
   const open = () => !detail && router.push(`/post/${post.id}`)
 
@@ -84,6 +95,13 @@ function PostCard({ post, detail = false }: { post: FeedPost; detail?: boolean }
         </Pressable>
       )}
 
+      {!mine && (post.kind === 'job' || post.kind === 'angebot' || post.kind === 'neuheit') && (
+        <Pressable style={st.cta} onPress={contact} disabled={startChat.isPending} accessibilityRole="button">
+          <Ionicons name="chatbubble-ellipses-outline" size={18} color={colors.onAccent} />
+          <Text style={st.ctaText}>{post.kind === 'job' ? 'Jetzt bewerben' : post.kind === 'angebot' ? 'Angebot anfragen' : 'Mehr erfahren'}</Text>
+        </Pressable>
+      )}
+
       <View style={st.actions}>
         <Pressable onPress={() => like.mutate(post)} style={st.action} hitSlop={8} accessibilityLabel={post.liked_by_me ? 'Gefällt mir nicht mehr' : 'Gefällt mir'}>
           <Ionicons name={post.liked_by_me ? 'heart' : 'heart-outline'} size={22} color={post.liked_by_me ? colors.heart : colors.muted} />
@@ -92,6 +110,9 @@ function PostCard({ post, detail = false }: { post: FeedPost; detail?: boolean }
         <Pressable onPress={open} style={st.action} hitSlop={8} accessibilityLabel="Kommentare">
           <Ionicons name="chatbubble-outline" size={20} color={colors.muted} />
           <Text style={st.count}>{post.comment_count}</Text>
+        </Pressable>
+        <Pressable onPress={share} style={[st.action, { marginLeft: 'auto' }]} hitSlop={8} accessibilityLabel="Teilen">
+          <Ionicons name="paper-plane-outline" size={20} color={colors.muted} />
         </Pressable>
       </View>
     </View>
@@ -116,6 +137,8 @@ const st = StyleSheet.create({
   placeText: { color: colors.muted, fontSize: 13 },
   link: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.surface2, padding: 10, borderRadius: radius.sm },
   linkText: { color: colors.muted, fontSize: 13, flex: 1 },
+  cta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 44, borderRadius: radius.md, backgroundColor: colors.accent },
+  ctaText: { color: colors.onAccent, fontWeight: '700', fontSize: 15 },
   actions: { flexDirection: 'row', gap: 22, paddingTop: 4, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, marginTop: 2 },
   action: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: 10 },
   count: { color: colors.muted, fontSize: 14 },

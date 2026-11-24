@@ -56,6 +56,8 @@ function Navigation() {
         <Stack.Screen name="ort/[id]" options={{ title: '' }} />
         <Stack.Screen name="ort/neu" options={{ title: 'Betrieb eintragen', presentation: 'modal' }} />
         <Stack.Screen name="einstellungen" options={{ title: 'Einstellungen' }} />
+        <Stack.Screen name="mitteilungen" options={{ title: 'Mitteilungen' }} />
+        <Stack.Screen name="chat/[id]" options={{ title: '' }} />
       </Stack.Protected>
       <Stack.Screen name="rechtliches" options={{ title: 'Nutzungsbedingungen & Datenschutz', presentation: 'modal' }} />
     </Stack>

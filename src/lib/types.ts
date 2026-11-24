@@ -131,3 +131,48 @@ export interface SignUpData {
 }
 
 export type ProfileUpdate = Partial<Pick<Profile, 'name' | 'headline' | 'workplace' | 'bio' | 'city' | 'website'>>
+
+export type NotificationType = 'like' | 'comment' | 'follow'
+
+/** Zeile aus der View `notification_feed` */
+export interface AppNotification {
+  id: string
+  user_id: string
+  actor_id: string
+  type: NotificationType
+  post_id: string | null
+  created_at: string
+  read_at: string | null
+  actor_handle: string
+  actor_name: string
+  actor_type: AccountType
+  actor_avatar_url: string | null
+  post_snippet: string | null
+}
+
+/** Zeile aus der View `my_conversations` */
+export interface Conversation {
+  id: string
+  last_message_at: string
+  other_id: string
+  other_handle: string
+  other_name: string
+  other_type: AccountType
+  other_avatar_url: string | null
+  other_headline: string
+  last_body: string | null
+  last_sender_id: string | null
+  unread_count: number
+  blocked: boolean
+}
+
+export interface Message {
+  id: string
+  conversation_id: string
+  sender_id: string
+  body: string
+  created_at: string
+}
+
+/** Beiträge pro Seite im Feed */
+export const FEED_PAGE_SIZE = 20

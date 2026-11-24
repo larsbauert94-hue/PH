@@ -2,7 +2,7 @@
 // Aufruf: npm run seed:generate
 // @ts-expect-error Node-Typen sind im App-Projekt nicht installiert
 import { writeFileSync } from 'node:fs'
-import { seedComments, seedFollows, seedLikes, seedPosts, seedProfiles, seedVenues } from '../src/lib/demo-data.ts'
+import { seedComments, seedConversations, seedFollows, seedLikes, seedPosts, seedProfiles, seedVenues } from '../src/lib/demo-data.ts'
 
 const q = (v: unknown): string =>
   v === null || v === undefined ? 'null' : typeof v === 'number' || typeof v === 'boolean' ? String(v) : `'${String(v).replace(/'/g, "''")}'`
@@ -34,6 +34,17 @@ const lines: string[] = [
   '',
   'insert into public.comments (id, post_id, author_id, body, created_at) values',
   seedComments.map(c => `  (${[c.id, c.post_id, c.author_id, c.body].map(q).join(', ')}, ${ago(c.hoursAgo)})`).join(',\n') + ';',
+  '',
+  '-- Unterhaltungen (Mitteilungen zu Likes, Kommentaren und Follows erzeugen die Trigger automatisch)',
+  ...seedConversations.flatMap(c => {
+    const lastH = c.messages[c.messages.length - 1][2]
+    return [
+      `insert into public.conversations (id) values (${q(c.id)});`,
+      `insert into public.conversation_members (conversation_id, user_id, last_read_at) values ${c.members.map(m => `(${q(c.id)}, ${q(m)}, ${ago(lastH + 0.1)})`).join(', ')};`,
+      'insert into public.messages (conversation_id, sender_id, body, created_at) values',
+      c.messages.map(([from, body, h]) => `  (${q(c.id)}, ${q(from)}, ${q(body)}, ${ago(h)})`).join(',\n') + ';',
+    ]
+  }),
   '',
 ]
 
