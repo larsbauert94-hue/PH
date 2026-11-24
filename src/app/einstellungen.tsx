@@ -86,5 +86,5 @@ const st = StyleSheet.create({
   content: { padding: 16, gap: 14, paddingBottom: 48, maxWidth: 680, width: '100%', alignSelf: 'center' },
   text: { color: colors.muted, fontSize: 14, lineHeight: 20 },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: 12 },
-  demo: { color: colors.amberLight, fontSize: 12, textAlign: 'center' },
+  demo: { color: colors.accentLight, fontSize: 12, textAlign: 'center' },
 })

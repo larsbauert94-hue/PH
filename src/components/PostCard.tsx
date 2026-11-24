@@ -11,7 +11,7 @@ import { useDeletePost, useToggleLike } from '../lib/queries'
 import { confirmAction, reportFlow } from './report'
 import { Avatar, Badge, IconName, Verified } from './ui'
 
-const KIND_COLORS = { beitrag: colors.muted, neuheit: colors.amber, angebot: '#7cc47f', event: '#5ab4e8', job: colors.wineLight }
+const KIND_COLORS = { beitrag: colors.muted, neuheit: colors.accent, angebot: '#7cc47f', event: colors.lavender, job: colors.heart }
 
 function PostCard({ post, detail = false }: { post: FeedPost; detail?: boolean }) {
   const { me } = useMe()
@@ -70,7 +70,7 @@ function PostCard({ post, detail = false }: { post: FeedPost; detail?: boolean }
         {post.venue_name && (
           <Link href={`/ort/${post.venue_id}`} asChild>
             <Pressable style={st.place}>
-              <Ionicons name="location" size={13} color={colors.amber} />
+              <Ionicons name="location" size={13} color={colors.accent} />
               <Text style={st.placeText}>{post.venue_name}, {post.venue_city}</Text>
             </Pressable>
           </Link>
@@ -86,7 +86,7 @@ function PostCard({ post, detail = false }: { post: FeedPost; detail?: boolean }
 
       <View style={st.actions}>
         <Pressable onPress={() => like.mutate(post)} style={st.action} hitSlop={8} accessibilityLabel={post.liked_by_me ? 'Gefällt mir nicht mehr' : 'Gefällt mir'}>
-          <Ionicons name={post.liked_by_me ? 'heart' : 'heart-outline'} size={22} color={post.liked_by_me ? colors.wineLight : colors.muted} />
+          <Ionicons name={post.liked_by_me ? 'heart' : 'heart-outline'} size={22} color={post.liked_by_me ? colors.heart : colors.muted} />
           <Text style={st.count}>{post.like_count}</Text>
         </Pressable>
         <Pressable onPress={open} style={st.action} hitSlop={8} accessibilityLabel="Kommentare">
@@ -111,7 +111,7 @@ const st = StyleSheet.create({
   body: { color: colors.text, fontSize: 15, lineHeight: 22, opacity: 0.92 },
   image: { width: '100%', aspectRatio: 4 / 3, borderRadius: radius.md, backgroundColor: colors.surface2 },
   tags: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12 },
-  tag: { color: colors.amberLight, fontSize: 13, fontWeight: '500' },
+  tag: { color: colors.accentLight, fontSize: 13, fontWeight: '500' },
   place: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   placeText: { color: colors.muted, fontSize: 13 },
   link: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.surface2, padding: 10, borderRadius: radius.sm },

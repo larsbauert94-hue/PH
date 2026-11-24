@@ -1,6 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Text, View } from 'react-native'
 import { Stack } from 'expo-router'
+import * as SplashScreen from 'expo-splash-screen'
+import { useFonts } from 'expo-font'
+import { BodoniModa_700Bold } from '@expo-google-fonts/bodoni-moda/700Bold'
 import { StatusBar } from 'expo-status-bar'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -8,9 +11,15 @@ import { AuthProvider, useAuth } from '../lib/auth'
 import { colors, fonts } from '../lib/theme'
 import { Button, Loading } from '../components/ui'
 
+// Splash-Screen stehen lassen, bis Schrift und Sitzung geladen sind
+SplashScreen.preventAutoHideAsync().catch(() => {})
+
 function Navigation() {
   const { ready, userId, profile, needsOnboarding, refreshProfile, signOut } = useAuth()
-  if (!ready) return <Loading />
+  const [fontsLoaded, fontError] = useFonts({ BodoniModa_700Bold })
+  const loaded = ready && (fontsLoaded || !!fontError)
+  useEffect(() => { if (loaded) SplashScreen.hideAsync().catch(() => {}) }, [loaded])
+  if (!loaded) return <Loading />
 
   if (userId && !profile) {
     return (

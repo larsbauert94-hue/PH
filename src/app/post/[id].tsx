@@ -51,7 +51,7 @@ export default function PostScreen() {
       <View style={[st.composer, { paddingBottom: Math.max(insets.bottom, 10) }]}>
         <TextInput value={text} onChangeText={setText} placeholder="Kommentieren …" placeholderTextColor={colors.faint} style={st.input} multiline maxLength={1000} />
         <Pressable onPress={send} disabled={!text.trim() || add.isPending} accessibilityLabel="Senden" style={{ opacity: text.trim() ? 1 : 0.4 }}>
-          <Ionicons name="send" size={22} color={colors.amber} />
+          <Ionicons name="send" size={22} color={colors.accent} />
         </Pressable>
       </View>
     </KeyboardAvoidingView>

@@ -28,7 +28,7 @@ export default function Legal() {
 
 const st = StyleSheet.create({
   content: { padding: 20, gap: 18, paddingBottom: 48, maxWidth: 680, width: '100%', alignSelf: 'center' },
-  draft: { color: colors.amber, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
+  draft: { color: colors.accent, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
   h: { fontFamily: fonts.serif, fontSize: 18, fontWeight: '700', color: colors.text },
   p: { color: colors.muted, fontSize: 15, lineHeight: 23 },
 })

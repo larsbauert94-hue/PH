@@ -91,7 +91,7 @@ export default function MapScreen() {
               </Pressable>
             )}
             <Pressable style={st.round} onPress={locate} accessibilityLabel="Mein Standort">
-              <Ionicons name="locate" size={22} color={colors.amber} />
+              <Ionicons name="locate" size={22} color={colors.accent} />
             </Pressable>
           </View>
           {sel && (
@@ -157,5 +157,5 @@ const st = StyleSheet.create({
   rowIcon: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   rowName: { color: colors.text, fontSize: 16, fontWeight: '600' },
   rowMeta: { color: colors.muted, fontSize: 13, marginTop: 2 },
-  rowDist: { color: colors.amberLight, fontSize: 13 },
+  rowDist: { color: colors.accentLight, fontSize: 13 },
 })

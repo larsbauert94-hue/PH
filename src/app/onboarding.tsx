@@ -113,14 +113,14 @@ function TypeCard({ type, selected, onPress }: { type: AccountType; selected: bo
   const t = ACCOUNT_TYPES[type]
   return (
     <Pressable onPress={onPress} style={[st.card, selected && st.cardActive]} accessibilityRole="radio" accessibilityState={{ checked: selected }}>
-      <View style={[st.cardIcon, selected && { backgroundColor: colors.wine }]}>
-        <Ionicons name={t.icon as IconName} size={20} color={selected ? colors.text : colors.amber} />
+      <View style={[st.cardIcon, selected && { backgroundColor: colors.accent }]}>
+        <Ionicons name={t.icon as IconName} size={20} color={selected ? colors.onAccent : colors.accent} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={st.cardTitle}>{t.label}</Text>
         <Text style={st.cardHint}>{HINTS[type]}</Text>
       </View>
-      <Ionicons name={selected ? 'radio-button-on' : 'radio-button-off'} size={22} color={selected ? colors.amber : colors.faint} />
+      <Ionicons name={selected ? 'radio-button-on' : 'radio-button-off'} size={22} color={selected ? colors.accent : colors.faint} />
     </Pressable>
   )
 }
@@ -128,7 +128,7 @@ function TypeCard({ type, selected, onPress }: { type: AccountType; selected: bo
 function Check({ checked, onPress, children }: { checked: boolean; onPress: () => void; children: React.ReactNode }) {
   return (
     <Pressable onPress={onPress} style={st.check} accessibilityRole="checkbox" accessibilityState={{ checked }}>
-      <Ionicons name={checked ? 'checkbox' : 'square-outline'} size={24} color={checked ? colors.amber : colors.muted} />
+      <Ionicons name={checked ? 'checkbox' : 'square-outline'} size={24} color={checked ? colors.accent : colors.muted} />
       <Text style={st.checkText}>{children}</Text>
     </Pressable>
   )
@@ -142,12 +142,12 @@ const st = StyleSheet.create({
   text: { color: colors.muted, fontSize: 15, lineHeight: 22 },
   hint: { color: colors.faint, fontSize: 12, marginTop: -8 },
   card: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  cardActive: { borderColor: colors.amber, backgroundColor: '#1f1714' },
+  cardActive: { borderColor: colors.accent, backgroundColor: '#1a2045' },
   cardIcon: { width: 42, height: 42, borderRadius: 12, backgroundColor: colors.surface2, alignItems: 'center', justifyContent: 'center' },
   cardTitle: { color: colors.text, fontSize: 16, fontWeight: '600' },
   cardHint: { color: colors.muted, fontSize: 13, marginTop: 2 },
   check: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
   checkText: { color: colors.text, fontSize: 14, lineHeight: 21, flex: 1 },
-  link: { color: colors.amberLight, textDecorationLine: 'underline', marginLeft: 36, marginTop: -6 },
+  link: { color: colors.accentLight, textDecorationLine: 'underline', marginLeft: 36, marginTop: -6 },
   error: { color: colors.danger, fontSize: 14 },
 })

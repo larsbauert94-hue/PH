@@ -115,6 +115,6 @@ const st = StyleSheet.create({
   job: { color: colors.text, fontSize: 15, fontWeight: '500' },
   meta: { color: colors.muted, fontSize: 13 },
   bio: { color: colors.text, fontSize: 15, lineHeight: 21, opacity: 0.9 },
-  web: { color: colors.amberLight, fontSize: 14 },
+  web: { color: colors.accentLight, fontSize: 14 },
   iconBtn: { width: 50, height: 50, borderRadius: radius.md, backgroundColor: colors.surface2, alignItems: 'center', justifyContent: 'center' },
 })

@@ -41,7 +41,7 @@ export default function EmailAuth() {
 
         {confirmSent ? (
           <View style={{ gap: 16 }}>
-            <Ionicons name="mail-open-outline" size={48} color={colors.amber} />
+            <Ionicons name="mail-open-outline" size={48} color={colors.accent} />
             <Title>Fast geschafft</Title>
             <Text style={st.text}>Wir haben dir eine E-Mail an {email.trim()} geschickt. Tippe auf den Link darin, um dein Konto zu bestätigen. Danach kannst du dich hier anmelden.</Text>
             <Button title="Zur Anmeldung" onPress={() => { setConfirmSent(false); setMode('login') }} />

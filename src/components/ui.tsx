@@ -24,7 +24,7 @@ export function Avatar({ name, url, type, size = 40 }: { name: string; url?: str
 }
 
 export function Verified({ size = 14 }: { size?: number }) {
-  return <Ionicons name="checkmark-circle" size={size} color={colors.amber} accessibilityLabel="Verifiziert" />
+  return <Ionicons name="checkmark-circle" size={size} color={colors.accent} accessibilityLabel="Verifiziert" />
 }
 
 export function Chip({ label, active, onPress, icon }: { label: string; active?: boolean; onPress?: () => void; icon?: IconName }) {
@@ -36,7 +36,7 @@ export function Chip({ label, active, onPress, icon }: { label: string; active?:
   )
 }
 
-export function Badge({ label, icon, color = colors.amber }: { label: string; icon?: IconName; color?: string }) {
+export function Badge({ label, icon, color = colors.accent }: { label: string; icon?: IconName; color?: string }) {
   return (
     <View style={[s.badge, { borderColor: color + '66', backgroundColor: color + '1a' }]}>
       {icon && <Ionicons name={icon} size={12} color={color} />}
@@ -49,8 +49,8 @@ type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
 export function Button({ title, onPress, variant = 'primary', icon, loading, disabled, style }: {
   title: string; onPress?: () => void; variant?: ButtonVariant; icon?: IconName; loading?: boolean; disabled?: boolean; style?: StyleProp<ViewStyle>
 }) {
-  const bg = { primary: colors.wine, secondary: colors.surface2, ghost: 'transparent', danger: 'transparent' }[variant]
-  const fg = variant === 'danger' ? colors.danger : colors.text
+  const bg = { primary: colors.accent, secondary: colors.surface2, ghost: 'transparent', danger: 'transparent' }[variant]
+  const fg = variant === 'danger' ? colors.danger : variant === 'primary' ? colors.onAccent : colors.text
   return (
     <Pressable
       onPress={onPress}
@@ -95,7 +95,7 @@ export function Empty({ icon = 'wine-outline', text }: { icon?: IconName; text: 
 }
 
 export function Loading() {
-  return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, backgroundColor: colors.bg }}><ActivityIndicator color={colors.amber} /></View>
+  return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, backgroundColor: colors.bg }}><ActivityIndicator color={colors.accent} /></View>
 }
 
 export function ErrorView({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
@@ -110,7 +110,7 @@ export function ErrorView({ error, onRetry }: { error: unknown; onRetry?: () => 
 
 export const s = StyleSheet.create({
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, height: 34, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  chipActive: { backgroundColor: colors.text, borderColor: colors.text },
+  chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
   chipText: { color: colors.text, fontSize: 13, fontWeight: '500' },
   badge: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill, borderWidth: 1 },
   badgeText: { fontSize: 11, fontWeight: '700', letterSpacing: 0.4, textTransform: 'uppercase' },

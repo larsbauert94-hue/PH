@@ -35,7 +35,7 @@ export default function Feed() {
           renderItem={({ item }) => <PostCard post={item} />}
           contentContainerStyle={{ padding: 16, paddingTop: 4, gap: 14, maxWidth: 680, width: '100%', alignSelf: 'center' }}
           ListEmptyComponent={<Empty icon="newspaper-outline" text={EMPTY[tab]} />}
-          refreshControl={<RefreshControl refreshing={feed.isRefetching} onRefresh={() => { feed.refetch() }} tintColor={colors.amber} />}
+          refreshControl={<RefreshControl refreshing={feed.isRefetching} onRefresh={() => { feed.refetch() }} tintColor={colors.accent} />}
         />
       )}
     </View>

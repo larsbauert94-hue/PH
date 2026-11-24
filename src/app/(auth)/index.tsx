@@ -7,9 +7,10 @@ import * as AppleAuthentication from 'expo-apple-authentication'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '../../lib/auth'
 import { isDemo } from '../../lib/supabase'
-import { colors, fonts, radius } from '../../lib/theme'
+import { colors, radius } from '../../lib/theme'
 import { notify } from '../../components/report'
 import type { IconName } from '../../components/ui'
+import { LogoMark, Wordmark } from '../../components/Logo'
 
 const PILLARS: { icon: IconName; label: string }[] = [
   { icon: 'wine', label: 'Bars & Restaurants' },
@@ -38,21 +39,21 @@ export default function Welcome() {
 
   return (
     <View style={st.root}>
-      <LinearGradient colors={['#4a1424', '#1c0f13', colors.bg]} locations={[0, 0.45, 0.85]} style={StyleSheet.absoluteFill} />
-      <LinearGradient colors={['rgba(232,173,90,0.22)', 'transparent']} start={{ x: 1, y: 0 }} end={{ x: 0.2, y: 0.5 }} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['#1e2a62', '#111839', colors.bg]} locations={[0, 0.5, 0.9]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['rgba(227,165,133,0.2)', 'transparent']} start={{ x: 1, y: 0 }} end={{ x: 0.25, y: 0.55 }} style={StyleSheet.absoluteFill} />
 
       <ScrollView contentContainerStyle={st.scroll} bounces={false}>
       <View style={[st.hero, { paddingTop: insets.top + 40 }]}>
         <View style={st.mark}>
-          <Ionicons name="wine" size={30} color={colors.amber} />
+          <LogoMark size={88} />
         </View>
-        <Text style={st.logo}>Pour<Text style={{ color: colors.wineLight }}>.</Text></Text>
+        <Wordmark size={54} />
         <Text style={st.claim}>Das Netzwerk der Wein-, Spirituosen- und Gastroszene.</Text>
 
         <View style={st.pillars}>
           {PILLARS.map(p => (
             <View key={p.label} style={st.pillar}>
-              <Ionicons name={p.icon} size={14} color={colors.amberLight} />
+              <Ionicons name={p.icon} size={14} color={colors.accentLight} />
               <Text style={st.pillarText}>{p.label}</Text>
             </View>
           ))}
@@ -62,7 +63,7 @@ export default function Welcome() {
       <View style={[st.sheet, { paddingBottom: insets.bottom + 20 }]}>
         {isDemo && (
           <View style={st.demo}>
-            <Ionicons name="flask" size={14} color={colors.amber} />
+            <Ionicons name="flask" size={14} color={colors.accent} />
             <Text style={st.demoText}>Demo-Modus: Anmeldung ohne echte Konten, Daten sind Beispiele.</Text>
           </View>
         )}
@@ -122,15 +123,14 @@ const st = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   scroll: { flexGrow: 1, justifyContent: 'space-between' },
   hero: { paddingHorizontal: 28, paddingBottom: 12, maxWidth: 520, width: '100%', alignSelf: 'center' },
-  mark: { width: 60, height: 60, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(232,173,90,0.4)', backgroundColor: 'rgba(232,173,90,0.08)', alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
-  logo: { fontFamily: fonts.serif, fontSize: 58, fontWeight: '700', color: colors.text, letterSpacing: -1 },
-  claim: { color: colors.muted, fontSize: 18, lineHeight: 26, marginTop: 8, maxWidth: 320 },
+  mark: { alignSelf: 'flex-start', borderRadius: 20, marginBottom: 28, shadowColor: '#e3a585', shadowOpacity: 0.35, shadowRadius: 24, shadowOffset: { width: 0, height: 8 }, elevation: 10 },
+  claim: { color: colors.muted, fontSize: 18, lineHeight: 26, marginTop: 14, maxWidth: 320 },
   pillars: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 28 },
   pillar: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
   pillarText: { color: colors.text, fontSize: 13 },
   sheet: { paddingHorizontal: 24, paddingTop: 24, gap: 12, maxWidth: 520, width: '100%', alignSelf: 'center' },
-  demo: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, borderRadius: radius.sm, backgroundColor: 'rgba(232,173,90,0.1)', marginBottom: 4 },
-  demoText: { color: colors.amberLight, fontSize: 12, flex: 1 },
+  demo: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, borderRadius: radius.sm, backgroundColor: 'rgba(227,165,133,0.12)', marginBottom: 4 },
+  demoText: { color: colors.accentLight, fontSize: 12, flex: 1 },
   btn: { height: 52, borderRadius: radius.md, borderWidth: 1, borderColor: 'transparent', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   btnIcon: { position: 'absolute', left: 18 },
   btnText: { fontSize: 16, fontWeight: '600' },

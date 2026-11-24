@@ -1,22 +1,37 @@
 import { Platform } from 'react-native'
 
+// Markenfarben „Mitternacht & Roségold“ (siehe Logo Pour B)
 export const colors = {
-  bg: '#0e0b0c',
-  surface: '#171213',
-  surface2: '#221b1d',
-  border: '#2e2427',
-  text: '#f4ece4',
-  muted: 'rgba(244,236,228,0.62)',
-  faint: 'rgba(244,236,228,0.38)',
-  wine: '#b23a55',
-  wineLight: '#d0627a',
-  amber: '#e8ad5a',
-  amberLight: '#f3c98b',
-  danger: '#e5484d',
-  success: '#5cbf7a',
+  bg: '#0b1029',
+  surface: '#121a3a',
+  surface2: '#1a2349',
+  border: '#263060',
+  text: '#f3ede6',
+  muted: 'rgba(243,237,230,0.66)',
+  faint: 'rgba(243,237,230,0.42)',
+
+  /** Logo-Hintergrund */
+  brandNavy: '#141c40',
+  /** Roségold: Hauptakzent für Buttons, aktive Tabs, Icons */
+  accent: '#e3a585',
+  accentLight: '#eeb999',
+  roseLight: '#f8d6bd',
+  roseDeep: '#c4785a',
+  /** Text auf Roségold-Flächen */
+  onAccent: '#0b1029',
+  /** Herz/Likes und Jobs */
+  heart: '#f07d8c',
+  /** Lavendel als zweiter Akzent (Events, Infos) */
+  lavender: '#8f99e6',
+
+  danger: '#f06a6f',
+  success: '#6cc596',
 }
 
 export const fonts = {
+  /** Schriftzug „POUR“ */
+  brand: 'BodoniModa_700Bold',
+  /** Überschriften */
   serif: Platform.select({ ios: 'Georgia', android: 'serif', default: 'Georgia, serif' }),
 }
 

@@ -104,7 +104,7 @@ export default function NewPost() {
         <SectionLabel>Ort markieren (optional)</SectionLabel>
         {chosenVenue ? (
           <Pressable style={st.venue} onPress={() => setVenueId(null)}>
-            <Ionicons name="location" size={18} color={colors.amber} />
+            <Ionicons name="location" size={18} color={colors.accent} />
             <Text style={{ color: colors.text, flex: 1 }}>{chosenVenue.name}, {chosenVenue.city}</Text>
             <Ionicons name="close-circle" size={18} color={colors.faint} />
           </Pressable>

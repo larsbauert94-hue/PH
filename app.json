@@ -7,7 +7,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "backgroundColor": "#0e0b0c",
+    "backgroundColor": "#0b1029",
     "ios": {
       "bundleIdentifier": "app.pour.mobile",
       "buildNumber": "1",
@@ -21,7 +21,7 @@
       "package": "app.pour.mobile",
       "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#0e0b0c",
+        "backgroundColor": "#141c40",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -38,9 +38,9 @@
         "expo-splash-screen",
         {
           "image": "./assets/splash-icon.png",
-          "imageWidth": 160,
+          "imageWidth": 140,
           "resizeMode": "contain",
-          "backgroundColor": "#0e0b0c"
+          "backgroundColor": "#0b1029"
         }
       ],
       "expo-apple-authentication",
