@@ -175,6 +175,12 @@ function bookCards(cat) {
 function bookDone(cat) { const L = bookCards(cat); return L.length > 0 && L.every(c => c.seen); }
 function bookAura() { const o = {}; for (const B of BOOK) if (bookDone(B.id)) for (const [k, v] of Object.entries(B.e)) o[k] = (o[k] || 0) + v; return o; }
 function fameRank(k) { const f = G.heroes[k]?.fame || 0; let r = 0; FAME.forEach(([need], i) => { if (f >= need) r = i; }); return r; }
+/* Spiegelbild: alle Farben ins Dunkle gezogen, Augen und Waffen leuchten violett */
+function mirrorLook(L) {
+  const M = {}, mix = (c, k) => { const n = parseInt(c.slice(1), 16), r = n >> 16, g = n >> 8 & 255, b = n & 255, t = [26, 12, 40]; return '#' + [r, g, b].map((v, i) => Math.round(v + (t[i] - v) * k).toString(16).padStart(2, '0')).join(''); };
+  for (const k in L) { const v = L[k]; M[k] = typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v) ? mix(v, k === 'skin' ? .76 : k === 'hair' || k === 'bc' ? .6 : .66) : v; }
+  Object.assign(M, { eyeC: '#d8a0ff', glowC: '#b878ff', wglow: '#a868ff', fame: 0, mirror: 1 }); return M;
+}
 function heroLook(key) { const H = HEROES[key], hs = G.heroes[key] || { stage: 0 }; const L = Object.assign({ wpn: H.wpn }, H.look); for (let i = 1; i <= hs.stage; i++) Object.assign(L, H.stageLook[i] || {}); for (const k in L) if (L[k] === null) delete L[k];
   const mt = mountOf(key); if (mt) L.mount = { kind: mt.kind, look: mt.look };
   L.fame = fameRank(key);

@@ -515,6 +515,15 @@ const ESK = {
   heal:    { n: 'Dunkle Heilung', anim: 'cast', fx: 'dark', tgt: 'lowestAlly', heal: 1.6, w: 1.4, cd: 2 },
   spear:   { n: 'Speerstoß', anim: 'melee', fx: 'slash', tgt: 'single', dmg: 1.2, w: 3 },
   forge:   { n: 'Schmiedefeuer', anim: 'cast', fx: 'fire', tgt: 'all', dmg: 1.1, stat: 'mag', w: 2, cd: 2, st: [['burn', .5, 3]] },
+  tentacle: { n: 'Fangarm', anim: 'cast', fx: 'tentacle', tgt: 'single', dmg: 1.2, w: 3, ranged: 1 },
+  grab:    { n: 'Umschlingen', anim: 'cast', fx: 'tentacle', tgt: 'random', dmg: .8, w: 1.6, cd: 3, st: [['stun', .85, 1]], ranged: 1 },
+  lash:    { n: 'Peitschende Arme', anim: 'cast', fx: 'tentacle', tgt: 'all', dmg: .6, w: 1.2, cd: 2, st: [['slow', .4, 2]], ranged: 1 },
+  gravespell: { n: 'Grabesbann', anim: 'cast', fx: 'ice', tgt: 'single', dmg: .6, stat: 'mag', w: 1.4, cd: 3, st: [['stun', .8, 1], ['atkDown', .5, 2]], ranged: 1 },
+  roots:   { n: 'Wurzelgriff', anim: 'cast', fx: 'roots', tgt: 'all', dmg: .55, w: 1.6, cd: 3, st: [['slow', .7, 2], ['stun', .15, 1]], ranged: 1 },
+  bark:    { n: 'Borkenhaut', anim: 'shout', fx: 'leaf', tgt: 'self', w: 1, cd: 5, self: [['defUp', 3], ['regen', 3]] },
+  boulder: { n: 'Felsbrocken', anim: 'throw', fx: 'boulder', tgt: 'single', dmg: 1.5, splash: .5, w: 2.2, cd: 2, st: [['stun', .3, 1]], ranged: 1 },
+  bombard: { n: 'Brandgeschoss', anim: 'throw', fx: 'firepot', tgt: 'single', dmg: 1.4, splash: .6, w: 3, st: [['burn', .6, 3]], ranged: 1 },
+  pitch:   { n: 'Pechregen', anim: 'throw', fx: 'firepot', tgt: 'all', dmg: .55, w: 1.2, cd: 3, st: [['burn', .4, 2]], ranged: 1 },
   deceive: { n: 'Gabe der Täuschung', anim: 'cast', fx: 'light', tgt: 'all', dmg: .5, stat: 'mag', w: 1.4, cd: 3, st: [['atkDown', .6, 2], ['defDown', .5, 2]] }
 };
 
@@ -522,7 +531,7 @@ const ESK = {
 const ENEMIES = {
   wolf:      { n: 'Wilder Wolf', type: 'quad', look: { fur: '#6a6258', belly: '#8a8070', eye: '#ffd040', size: 0 }, hp: 60, atk: 11, def: 5, mag: 3, res: 4, spd: 13, sk: ['bite', 'bite', 'howl'], xp: 18, g: 6, tags: ['tier'] },
   warg:      { n: 'Warg', type: 'quad', look: { fur: '#3a3028', belly: '#5a4a3a', eye: '#ff4020', size: 1, mane: 1 }, hp: 95, atk: 14, def: 6, mag: 3, res: 5, spd: 14, sk: ['bite', 'bite', 'howl'], xp: 26, g: 10, tags: ['tier'] },
-  wight:     { n: 'Grabunhold', type: 'hum', look: { body: 'man', skin: '#b8c8d0', hair: '#d8e0e8', hs: 'long', tunic: '#3a4a52', robe: 1, hat: 'crown', hatC: '#8a9a9a', wc: '#a8b0b8', glow: '#9ff' }, hp: 105, atk: 10, def: 6, mag: 14, res: 11, spd: 9, sk: ['drain', 'slash'], xp: 30, g: 14, tags: ['geist'], wpn: 'sword' },
+  wight:     { n: 'Grabunhold', type: 'hum', look: { body: 'man', skin: '#b8c8d0', hair: '#d8e0e8', hs: 'long', tunic: '#3a4a52', robe: 1, hat: 'crown', hatC: '#8a9a9a', wc: '#a8b0b8', glow: '#9ff' }, hp: 105, atk: 10, def: 6, mag: 14, res: 11, spd: 9, sk: ['drain', 'slash', 'gravespell'], xp: 30, g: 14, tags: ['geist'], wpn: 'sword' },
   orc:       { n: 'Ork', type: 'hum', look: { emblem: 'eye', body: 'orc', skin: '#6f7f3a', hair: '#1a1a1a', hs: 'wild', tunic: '#4a3a2a', pants: '#3a2e22', armor: '#5a5048', wc: '#8a8a80', glow: '#ffd040' }, wpn: 'sword', hp: 78, atk: 13, def: 7, mag: 3, res: 5, spd: 10, sk: ['slash', 'heavy'], xp: 20, g: 8, tags: ['ork'] },
   orc_archer:{ n: 'Ork-Schütze', type: 'hum', look: { emblem: 'eye', body: 'orc', skin: '#7a7a3a', hair: '#1a1a1a', hs: 'bald', tunic: '#3a3022', pants: '#2e2620', wc: '#5a4030', glow: '#ffd040' }, wpn: 'bow', hp: 60, atk: 13, def: 5, mag: 3, res: 5, spd: 12, sk: ['arrow', 'arrow', 'volley'], xp: 20, g: 9, tags: ['ork'], ranged: 1 },
   goblin:    { n: 'Moria-Ork', type: 'hum', look: { body: 'goblin', skin: '#8a9478', hair: '#1a1a1a', hs: 'bald', tunic: '#2e2a26', pants: '#26221e', wc: '#7a7a70', glow: '#ffe080' }, wpn: 'spear', hp: 55, atk: 11, def: 4, mag: 2, res: 4, spd: 14, sk: ['spear', 'slash'], xp: 15, g: 6, tags: ['ork'] },
@@ -600,7 +609,11 @@ const ENEMIES = {
   ancalagon:  { n: 'Ancalagon der Schwarze', type: 'dragon', look: { skin: '#1c1a1e', belly: '#6a4a32', wing: '#120e12', eye: '#ff4a10', horn: '#9a8a7a', huge: 1 }, hp: 740, atk: 27, def: 20, mag: 29, res: 18, spd: 9, sk: ['firebreath', 'claw', 'tailswipe'], xp: 700, g: 450, tags: ['drache'], boss: 1 },
   ungoliant:  { n: 'Ungoliant', type: 'spider', look: { body: '#0c0a0e', mark: '#3a2a52', eye: '#d0f0ff', size: 2 }, hp: 760, atk: 26, def: 18, mag: 27, res: 19, spd: 10, sk: ['sting', 'web', 'bite', 'summonSpider'], xp: 720, g: 460, tags: ['tier'], boss: 1 },
   draugluin:  { n: 'Draugluin, Vater der Werwölfe', type: 'quad', look: { fur: '#2a2420', belly: '#4a3a30', eye: '#ff2a10', size: 1, mane: 1, huge: 1 }, hp: 700, atk: 28, def: 17, mag: 8, res: 15, spd: 12, sk: ['bite', 'bite', 'howl', 'summonWolf'], xp: 680, g: 440, tags: ['tier'], boss: 1 },
-  nazgul_fell:{ n: 'Nazgûl auf Flugbestie', type: 'hum', look: { body: 'man', skin: '#0a0a0c', tunic: '#121216', robe: 1, cape: '#0e0e12', hat: 'spikehelm', hatC: '#3a3a42', wc: '#b8c0c8', glow: '#ff3030', noface: 1, mount: { kind: 'fell', look: { skin: '#2a2a2e', belly: '#4a4a50', wing: '#18181c', eye: '#ff3030', horn: '#5a5a60' } } }, wpn: 'mace', hp: 300, atk: 18, def: 9, mag: 18, res: 13, spd: 12, sk: ['morgul', 'shriek', 'mace'], xp: 90, g: 36, tags: ['geist'], elite: 1, fly: 1 }
+  nazgul_fell:{ n: 'Nazgûl auf Flugbestie', type: 'hum', look: { body: 'man', skin: '#0a0a0c', tunic: '#121216', robe: 1, cape: '#0e0e12', hat: 'spikehelm', hatC: '#3a3a42', wc: '#b8c0c8', glow: '#ff3030', noface: 1, mount: { kind: 'fell', look: { skin: '#2a2a2e', belly: '#4a4a50', wing: '#18181c', eye: '#ff3030', horn: '#5a5a60' } } }, wpn: 'mace', hp: 300, atk: 18, def: 9, mag: 18, res: 13, spd: 12, sk: ['morgul', 'shriek', 'mace'], xp: 90, g: 36, tags: ['geist'], elite: 1, fly: 1 },
+  watcher:   { n: 'Wächter im Wasser', type: 'watcher', look: { skin: '#2e3a34', eye: '#c8ffb0' }, wpn: 'claws', hp: 330, atk: 20, def: 10, mag: 12, res: 10, spd: 8, sk: ['tentacle', 'grab', 'lash'], xp: 90, g: 40, tags: ['tier'], elite: 1, ranged: 1 },
+  huorn:     { n: 'Huorn', type: 'hum', look: { body: 'ent', skin: '#3e3022', hair: '#2e3a1c', hs: 'leaves', tunic: '#2e2418', pants: '#241a10', bark: 1, glow: '#c8ff60', wc: '#3a2a1a' }, wpn: 'claws', hp: 250, atk: 17, def: 13, mag: 12, res: 9, spd: 6, sk: ['roots', 'heavy', 'bark'], xp: 70, g: 28, tags: ['pflanze'], elite: 1 },
+  hill_troll:{ n: 'Hügeltroll', type: 'hum', look: { body: 'troll', skin: '#6a5e4a', hair: '#2a2218', hs: 'wild', tunic: '#4a3a26', pants: '#3a2e1e', fur: '#5a4a34', wc: '#7a7068', glow: '#ffb040' }, wpn: 'club', hp: 290, atk: 22, def: 12, mag: 3, res: 6, spd: 6, sk: ['boulder', 'smash', 'heavy'], xp: 75, g: 30, tags: ['troll'], elite: 1 },
+  catapult:  { n: 'Ork-Katapult', type: 'engine', look: { wood: '#6a4a2a', iron: '#4a4a4e', fire: '#ff7a20', crew: 1, skin: '#6f7f3a' }, wpn: 'claws', hp: 230, atk: 21, def: 9, mag: 3, res: 5, spd: 6, sk: ['bombard', 'pitch'], xp: 80, g: 34, tags: ['ork'], elite: 1, ranged: 1 },
 };
 
 
@@ -642,7 +655,7 @@ const STORY = [
     outro: [['bilbo', 'Ich gehe nach Hause, Gandalf. Zurück ins Auenland.'], ['gandalf', 'Und den Ring, mein Freund … behalte ihn gut im Auge.'], ['narr', 'Sechzig Jahre vergehen. Aus der Geschichte des Hobbits wird die Geschichte des Ringkriegs.']] },
   { part: 'Teil II · Der Ringkrieg', n: 'Das Auenland', map: [22, 32], bg: 'shire', lvl: 1, join: ['frodo', 'sam', 'gandalf'],
     intro: [['narr', 'Beutelsend, Hobbingen. Ein schlichter goldener Ring liegt auf dem Kaminsims.'], ['gandalf', 'Er ist der Eine Ring, Frodo. Und die Neun sind bereits unterwegs, um ihn zu holen.'], ['frodo', 'Dann muss ich fort. Bis nach Bree, und weiter, wenn es sein muss.'], ['sam', 'Ohne mich gehen Sie nirgendwohin, Herr Frodo!']],
-    waves: [['wolf', 'wolf'], ['wolf', 'wolf', 'wolf'], ['wight'], ['wolf', 'wight', 'wolf'], ['wolf', 'wolf', 'wolf', 'wolf']],
+    waves: [['wolf', 'wolf'], ['huorn', 'wolf', 'wolf'], ['wight'], ['wolf', 'wight', 'wolf'], ['wolf', 'wolf', 'wolf', 'wolf']],
     mid: { 2: ['merry', 'pippin'] }, midLine: { 2: [['pippin', 'Merry! Das sind Frodo und Sam!'], ['merry', 'Wir kommen mit. Keine Widerrede, Vetter.']] },
     boss: ['black_rider', 'wolf'], bossLine: [['narr', 'Hufschlag auf der Straße. Ein Schatten in schwarzem Mantel versperrt den Weg.'], ['e:black_rider', 'Beutlin … Gib ihn mir …']],
     outro: [['frodo', 'Er ist fort. Aber er wird wiederkommen.'], ['gandalf', 'Ich muss nach Isengart, Rat suchen. Wir treffen uns in Bree.']] },
@@ -653,7 +666,7 @@ const STORY = [
     outro: [['narr', 'Eine Elbe reitet aus dem Licht heran und hebt den verwundeten Frodo auf ihr Pferd.'], ['arwen', 'Ich bin Arwen. Mein Vater erwartet euch in Bruchtal.']], end: ['arwen'] },
   { part: 'Teil II · Der Ringkrieg', n: 'Bruchtal & die Minen von Moria', map: [44, 34], bg: 'rivendell', bgAt: { 4: 'moria' }, lvl: 5, join: ['elrond', 'legolas', 'gimli', 'boromir'],
     intro: [['elrond', 'Neun sollen es sein, gegen die Neun Reiter. Wer begleitet den Ringträger?'], ['aragorn', 'Du hast mein Schwert.'], ['legolas', 'Und meinen Bogen.'], ['gimli', 'Und meine Axt!'], ['boromir', 'Gondor wird an eurer Seite stehen.']],
-    waves: [['goblin', 'goblin', 'goblin'], ['goblin', 'goblin', 'orc_archer'], ['orc', 'goblin', 'goblin'], ['cave_troll', 'goblin'], ['goblin', 'goblin', 'goblin', 'orc_archer']],
+    waves: [['goblin', 'goblin', 'goblin'], ['watcher'], ['orc', 'goblin', 'goblin'], ['cave_troll', 'goblin'], ['goblin', 'goblin', 'goblin', 'orc_archer']],
     midLine: { 3: [['gimli', 'Trommeln … Trommeln in der Tiefe.'], ['gandalf', 'Wir können nicht hinaus. Sie kommen.']] },
     boss: ['balrog'], bossLine: [['narr', 'Eine Mauer aus Feuer steigt aus dem Abgrund. Darin ein Schatten mit Flügeln.'], ['gandalf', 'Ein Balrog! Ein Dämon der Alten Welt. Flieht, ihr Narren!']],
     outro: [['narr', 'Die Brücke von Khazad-dûm bricht. Gandalf stürzt mit dem Balrog in die Tiefe.'], ['aragorn', 'Er ist fort … Wir dürfen nicht stehen bleiben.']], away: ['gandalf'] },
@@ -675,12 +688,12 @@ const STORY = [
     outro: [['frodo', 'Sam … ohne dich wäre ich nie so weit gekommen.'], ['sam', 'Dann gehen wir das letzte Stück eben auch zusammen.']] },
   { part: 'Teil II · Der Ringkrieg', n: 'Die Pelennor-Felder', map: [64, 64], bg: 'pelennor', lvl: 17,
     intro: [['gandalf', 'Minas Tirith wird belagert. Gondor braucht jedes Schwert.'], ['theoden', 'Erhebt euch, Reiter Théodens! Speere werden splittern, Schilde zerbrechen!']],
-    waves: [['haradrim', 'haradrim', 'orc'], ['orc', 'orc', 'mordor_troll'], ['olifant', 'haradrim'], ['nazgul_fell', 'haradrim', 'orc_archer'], ['nazgul_fell', 'orc', 'orc']],
+    waves: [['haradrim', 'haradrim', 'orc'], ['catapult', 'orc', 'orc'], ['olifant', 'haradrim'], ['nazgul_fell', 'haradrim', 'orc_archer'], ['hill_troll', 'orc', 'catapult']],
     boss: ['witch_king', 'orc', 'orc'], bossLine: [['e:witch_king', 'Kein lebender Mann kann mich aufhalten.'], ['eowyn', 'Ich bin kein Mann!']],
     outro: [['aragorn', 'Die Stadt ist gerettet. Doch solange der Ring besteht, ist nichts gewonnen.']] },
   { part: 'Teil II · Der Ringkrieg', n: 'Der Schicksalsberg', map: [77, 61], bg: 'doom', lvl: 20,
     intro: [['aragorn', 'Für Frodo. Wir ziehen zum Schwarzen Tor und lenken das Auge ab.'], ['gandalf', 'Jede Stunde, die wir ihm abringen, ist ein Schritt für den Ringträger.']],
-    waves: [['mordor_troll', 'orc', 'orc'], ['nazgul', 'orc_archer', 'orc'], ['uruk', 'uruk', 'berserker'], ['mordor_troll', 'mordor_troll'], ['nazgul', 'nazgul']],
+    waves: [['mordor_troll', 'orc', 'orc'], ['nazgul', 'orc_archer', 'orc'], ['uruk', 'uruk', 'berserker'], ['hill_troll', 'mordor_troll'], ['nazgul', 'nazgul']],
     boss: ['sauron'], bossLine: [['narr', 'Der Himmel über Mordor färbt sich rot. Eine Gestalt in schwarzer Rüstung tritt hervor.'], ['e:sauron', 'Ihr könnt mich nicht besiegen. Alles, was lebt, wird sich mir beugen.']],
     outro: [['narr', 'Der Ring fällt in das Feuer, aus dem er kam. Barad-dûr stürzt in sich zusammen.'], ['sam', 'Es ist vorbei, Herr Frodo. Es ist wirklich vorbei.']] },
   { part: 'Teil II · Der Ringkrieg', n: 'Die Säuberung des Auenlands', bg: 'shire', map: [14, 40],
@@ -910,6 +923,30 @@ const PHASE2 = {
   damrod: { msg: 'Damrod reißt die Decke ein!', add: ['trample'] }, willow: { msg: 'Die Wurzeln des Waldes erwachen!', add: ['frost'] },
   wight_king: { msg: 'Die Gräber öffnen sich!', summon: ['wight', 'wight'] }, king_dead: { msg: 'Das Heer der Toten erhebt sich!', summon: ['dead_soldier', 'dead_soldier'] },
   uruk_captain: { msg: 'Der Hauptmann ruft Verstärkung!', summon: ['adar_orc', 'adar_orc'] }
+};
+
+/* Sichtbarer Gestaltwandel in Phase 2 (bei 50 % LP) */
+const PHASE_LOOK = {
+  balrog: { wings: '#4a1206', aura: '#ff6a1a', glow: '#ffe060' },
+  witch_king: { mount: { kind: 'fell', look: { skin: '#2a2a2e', belly: '#4a4a50', wing: '#18181c', eye: '#ff3030', horn: '#5a5a60' } } },
+  saruman: { tunic: '#dcd4e8', cape: '#b8a8d8', glowC: '#ff9060', wglow: '#ff7040', aura: '#c8b8ff' },
+  sauron: { glow: '#ffb030', aura: '#ff4010' }, sauron_bund: { aura: '#ff4010' }, necromancer: { aura: '#ff6020' }, azog: { glow: '#ff4040', aura: '#c03030' },
+  morgoth: { aura: '#9a4ae0' }, gothmog: { aura: '#ff5a1a' }, khamul: { aura: '#6a2a8a' }, adar: { aura: '#8a6aff' }, dark_wizard: { aura: '#a040ff' }, lurtz: { glow: '#ff3020' }, uruk_captain: { glow: '#ff3020' }
+};
+/* Großer Auftritt der Bosse (statt Heranmarschieren) */
+const ENTRANCE = {
+  balrog: 'fire', gothmog: 'fire', balrog_minor: 'fire', smaug: 'flyover', glaurung: 'flyover', ancalagon: 'flyover',
+  witch_king: 'swoop', black_rider: 'gallop', khamul: 'shadow', shelob: 'drop', spider_mother: 'drop', ungoliant: 'drop',
+  sauron: 'shadow', sauron_bund: 'shadow', morgoth: 'shadow', necromancer: 'shadow', dark_wizard: 'shadow', mouth: 'shadow',
+  saruman: 'bolt', annatar: 'light', sauron_rop: 'light', seawurm: 'water', willow: 'roots', king_dead: 'ghost', wight_king: 'ghost',
+  carcharoth: 'gallop', draugluin: 'gallop', azog: 'gallop', snow_boss: 'shadow', pharazon: 'light'
+};
+/* Letztes Aufbäumen bei 25 % LP: schneller, stärker, mit eigener Lichtfarbe */
+const PHASE3 = {
+  balrog: { c: '#ff5a1a', look: { aura: '#ff3a0a' } }, witch_king: { c: '#ff3030', look: { aura: '#a02020' } }, saruman: { c: '#e8e0ff', look: { aura: '#ffffff' } },
+  sauron: { c: '#ffb030', look: { ring: '#ffd040', ringOne: 1, aura: '#ff6010' } }, smaug: { c: '#ff8020' }, shelob: { c: '#ff3030' }, morgoth: { c: '#b060ff', look: { aura: '#c070ff' } },
+  azog: { c: '#ff4040' }, necromancer: { c: '#ff6020', look: { aura: '#ff8030' } }, sauron_bund: { c: '#ffb030', look: { ring: '#ffd040', ringOne: 1 } }, glaurung: { c: '#ffb030' }, gothmog: { c: '#ff5a1a' },
+  carcharoth: { c: '#ff6030' }, annatar: { c: '#ffd080' }, sauron_rop: { c: '#ff6010' }, king_dead: { c: '#a0ffd0' }, seawurm: { c: '#80d0ff' }, snow_boss: { c: '#c8f0ff' }
 };
 
 /* ---------------- Begleiter ---------------- */
@@ -1169,6 +1206,8 @@ const UNLOCKS = [
   { id: 'raids', n: 'Prüfungen der Macht', ic: '⚔', at: 9, d: '45 Sekunden gegen Balrog, Smaug, den Hexenkönig und Sauron.', price: 6000 },
   { id: 'trialL', n: 'Kapitel-Prüfung: Legendär', ic: '✪', at: 10, d: 'Die härteste Stufe jeder Kapitel-Prüfung – hier fallen mythische Schätze.', price: 6000 },
   { id: 'helm', n: 'Helms Klamm', ic: '⚔', at: 11, d: 'Haltet das Tor der Hornburg so lange wie möglich.', price: 8000 },
+  { id: 'halle', n: 'Heldenhalle', ic: '🏛', at: 14, d: 'Eine Halle voller Erinnerungen: deine Helden, Banner, Ringe und die Trophäen besiegter Bosse.' },
+  { id: 'mirror', n: 'Spiegel der Galadriel', ic: '◐', at: 17, d: 'Kämpfe gegen dunkle Spiegelbilder deiner eigenen Gruppe – jede Stufe tiefer, jede Stufe stärker.', price: 15000 },
   { id: 'saga', n: 'Sagen-Bosse', ic: '☬', at: 22, d: 'Riesen aus den Liedern der Ersten Zeit: Ancalagon, Ungoliant und Draugluin.', price: 20000 },
   { id: 'pfad', n: 'Pfad der Verzweiflung', ic: '☠', at: 13, d: '15 Kämpfe ohne Heilung, nach jedem Sieg ein Segen – die beste Beute im Spiel.', price: 12000 }
 ];

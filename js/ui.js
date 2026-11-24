@@ -28,34 +28,74 @@ const SFX = {
 };
 function sfx(n) { try { const now = performance.now(); if (lastSfx[n] && now - lastSfx[n] < 40) return; lastSfx[n] = now; SFX[n] && SFX[n](); } catch (e) { } }
 
-/* ---------- Musik (selbst erzeugt) ---------- */
+/* ---------- Musik (selbst erzeugt, eigene Motive je Region) ---------- */
 const MUSIC = (() => {
-  let timer = 0, next = 0, step = 0, bus = null, mode = 'explore';
-  const CH = { explore: [[50, 53, 57], [46, 50, 53], [53, 57, 60], [48, 52, 55]], battle: [[50, 53, 57], [46, 50, 53], [48, 52, 55], [45, 49, 52]], boss: [[50, 53, 57], [46, 50, 53], [43, 46, 50], [45, 49, 52]] };
-  const BPM = { explore: 72, battle: 100, boss: 116 };
+  let timer = 0, next = 0, step = 0, bus = null, mode = 'explore', th = 'shire', noise = null, wantM = 'explore', wantT = 'shire';
+  const _ = null;
+  const REG = { shire: 'shire', lake: 'shire', rivendell: 'elves', eregion: 'elves', lorien: 'lorien', mirkwood: 'dark', dolguldur: 'dark', cirith: 'dark', khazad: 'dwarves', moria: 'dwarves', erebor: 'dwarves', helm: 'rohan', pelennor: 'rohan', amonhen: 'rohan', rhun: 'rohan', south: 'rohan', doom: 'mordor', snow: 'wild', weather: 'wild', sea: 'sea' };
+  // Akkorde (Halbtöne über dem Grundton) für 4 Takte, Melodie in Vierteln (16 pro Durchlauf), Klangfarben & Schlagwerk je Region
+  const TH = {
+    shire:   { root: 62, bpm: 84, ch: [[0, 4, 7], [5, 9, 12], [7, 11, 14], [0, 4, 7]], mel: [12, 14, 16, 19, 17, 16, 14, _, 14, 16, 19, 21, 19, 16, 12, _], lead: 'flute', pad: 'soft', perc: 'tick', bat: 'light' },
+    elves:   { root: 65, bpm: 70, ch: [[0, 4, 7], [2, 6, 9], [9, 12, 16], [0, 4, 7]], mel: [16, _, 19, 18, 14, _, 21, _, 16, 19, 21, 23, 24, _, 19, _], lead: 'harp', pad: 'choir', perc: _, bat: 'light' },
+    lorien:  { root: 57, bpm: 58, ch: [[0, 3, 7], [8, 12, 15], [3, 7, 10], [10, 14, 17]], mel: [12, _, _, 15, 19, _, 17, _, 15, _, 14, _, 12, _, _, _], lead: 'choir', pad: 'choir', perc: _, bat: 'light' },
+    dark:    { root: 52, bpm: 66, ch: [[0, 3, 7], [1, 5, 8], [0, 3, 7], [10, 13, 17]], mel: [12, 13, _, 12, 10, _, 7, _, 12, 15, 13, 12, 10, 8, 7, _], lead: 'strings', pad: 'strings', perc: 'pulse', bat: 'pulse' },
+    dwarves: { root: 50, bpm: 76, ch: [[0, 3, 7], [10, 14, 17], [5, 9, 12], [0, 3, 7]], mel: [12, _, 15, 17, 14, _, 12, 10, 9, 12, 14, _, 12, _, _, _], lead: 'horn', pad: 'strings', perc: 'doom', bat: 'doom' },
+    rohan:   { root: 57, bpm: 88, ch: [[0, 3, 7], [10, 14, 17], [5, 9, 12], [7, 10, 14]], mel: [12, 15, 17, 19, 17, 15, 14, _, 12, 14, 15, 17, 19, _, 12, _], lead: 'fiddle', pad: 'soft', perc: 'gallop', bat: 'gallop' },
+    mordor:  { root: 49, bpm: 72, ch: [[0, 3, 7], [1, 4, 8], [0, 3, 6], [1, 5, 8]], mel: [0, _, 0, 1, 0, _, 6, _, 0, _, 0, 1, 3, _, 1, _], lead: 'brass', pad: 'strings', perc: 'anvil', bat: 'anvil' },
+    wild:    { root: 59, bpm: 64, ch: [[0, 3, 7], [5, 8, 12], [8, 12, 15], [7, 10, 14]], mel: [19, _, _, 15, 17, _, _, _, 20, _, 19, _, 14, _, _, _], lead: 'bells', pad: 'soft', perc: 'wind', bat: 'light' },
+    sea:     { root: 55, bpm: 74, ch: [[0, 4, 7], [9, 12, 16], [5, 9, 12], [7, 11, 14]], mel: [12, 16, 19, _, 21, 19, 16, _, 17, 16, 14, 12, 14, _, _, _], lead: 'harp', pad: 'choir', perc: 'tick', bat: 'light' }
+  };
+  const PERC = { tick: [0, 0, .5, 0, 0, 0, .5, 0], pulse: [1, .6, 0, 0, 0, 0, 0, 0], doom: [1, 0, 0, .8, 0, 0, 0, 0], gallop: [1, 0, .45, .65, 1, 0, .45, .65], anvil: [1, 0, 0, 0, .7, 0, 0, 0], light: [1, 0, 0, 0, .7, 0, 0, 0] };
   const f = m => 440 * Math.pow(2, (m - 69) / 12);
   function out() {
     const a = ac(); if (!a) return null;
     if (!bus) { bus = a.createGain(); bus.gain.value = .5; const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2600; const dl = a.createDelay(); dl.delayTime.value = .32; const fb = a.createGain(); fb.gain.value = .28; bus.connect(lp); lp.connect(a.destination); lp.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(a.destination); }
+    if (!noise) { noise = a.createBuffer(1, a.sampleRate * 2, a.sampleRate); const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
     return a;
   }
-  function note(a, freq, t, d, type, vol, att = .02) { const o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.value = freq; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + att); g.gain.exponentialRampToValueAtTime(.0001, t + d); o.connect(g).connect(bus); o.start(t); o.stop(t + d + .05); }
-  function drum(a, t, low, vol) { const o = a.createOscillator(), g = a.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(low ? 90 : 160, t); o.frequency.exponentialRampToValueAtTime(low ? 40 : 70, t + .2); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + .3); o.connect(g).connect(bus); o.start(t); o.stop(t + .35); }
+  function env(a, t, d, vol, att) { const g = a.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + att); g.gain.exponentialRampToValueAtTime(.0001, t + d); g.connect(bus); return g; }
+  function osc(a, type, freq, t, d, dest, det = 0) { const o = a.createOscillator(); o.type = type; o.frequency.value = freq; o.detune.value = det; o.connect(dest); o.start(t); o.stop(t + d + .05); return o; }
+  function vib(a, o, t, d, rate, depth) { const l = a.createOscillator(), lg = a.createGain(); l.frequency.value = rate; lg.gain.value = depth; l.connect(lg).connect(o.frequency); l.start(t); l.stop(t + d + .05); }
+  function filt(a, freq, dest) { const fl = a.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = freq; fl.connect(dest); return fl; }
+  function inst(a, name, m, t, d, vol) {
+    const fr = f(m);
+    if (name === 'flute') { const g = env(a, t, d, vol, .07); const o = osc(a, 'sine', fr, t, d, g); vib(a, o, t, d, 5.2, fr * .006); osc(a, 'sine', fr * 2, t, d, env(a, t, d * .6, vol * .12, .05)); }
+    else if (name === 'harp') { osc(a, 'triangle', fr, t, d, env(a, t, d, vol * 1.3, .004)); osc(a, 'sine', fr * 2, t, d * .5, env(a, t, d * .5, vol * .3, .004)); }
+    else if (name === 'horn') { const g = env(a, t, d, vol * .9, .09); osc(a, 'sawtooth', fr, t, d, filt(a, 900, g)); }
+    else if (name === 'fiddle') { const g = env(a, t, d, vol * .7, .05); const o = osc(a, 'sawtooth', fr, t, d, filt(a, 1700, g)); vib(a, o, t, d, 6.2, fr * .008); }
+    else if (name === 'choir') { const g = env(a, t, d, vol * .8, Math.min(.5, d * .4)); osc(a, 'sine', fr, t, d, g, -6); osc(a, 'sine', fr, t, d, g, 6); osc(a, 'triangle', fr * 2, t, d, env(a, t, d, vol * .1, .4)); }
+    else if (name === 'strings') { const g = env(a, t, d, vol * .8, Math.min(.35, d * .3)); osc(a, 'sawtooth', fr, t, d, filt(a, 650, g)); osc(a, 'sawtooth', fr, t, d, filt(a, 650, g), 9); }
+    else if (name === 'bells') { osc(a, 'sine', fr, t, d, env(a, t, d, vol * 1.2, .004)); osc(a, 'sine', fr * 2.76, t, d * .5, env(a, t, d * .5, vol * .35, .004)); }
+    else if (name === 'brass') { const g = env(a, t, d, vol * 1.1, .05); osc(a, 'sawtooth', fr, t, d, filt(a, 560, g)); osc(a, 'square', fr / 2, t, d, filt(a, 300, env(a, t, d, vol * .5, .05))); }
+    else osc(a, 'triangle', fr, t, d, env(a, t, d, vol, .3));
+  }
+  function drum(a, t, low, vol, len = .3) { const o = a.createOscillator(), g = a.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(low ? 90 : 160, t); o.frequency.exponentialRampToValueAtTime(low ? 38 : 70, t + len * .7); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + len); o.connect(g).connect(bus); o.start(t); o.stop(t + len + .05); }
+  function perc(a, kind, t, k) {
+    if (!k) return;
+    if (kind === 'tick') { const g = env(a, t, .05, .012 * k, .002); osc(a, 'sine', 2300, t, .05, g); }
+    else if (kind === 'pulse') drum(a, t, 1, .09 * k, .35);
+    else if (kind === 'doom') drum(a, t, 1, .2 * k, .7);
+    else if (kind === 'gallop') drum(a, t, 0, .06 * k, .16);
+    else if (kind === 'anvil') { drum(a, t, 1, .16 * k, .5); if (k < 1) { const g = env(a, t, .25, .01, .002); osc(a, 'square', 1250, t, .25, filt(a, 3000, g)); osc(a, 'square', 1870, t, .2, filt(a, 3000, g)); } }
+    else if (kind === 'light') drum(a, t, 1, .1 * k, .3);
+    else if (kind === 'wind') { const src = a.createBufferSource(); src.buffer = noise; const bp = a.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 500; bp.Q.value = .7; const g = env(a, t, 2.6, .025 * k, 1.1); src.connect(bp).connect(g); src.start(t, Math.random()); src.stop(t + 2.7); }
+  }
   function schedule() {
     const a = out(); if (!a) return;
     if (next < a.currentTime) next = a.currentTime + .05;
     while (next < a.currentTime + .4) {
-      const spb = 60 / BPM[mode] / 2, bar = Math.floor(step / 8) % 4, beat = step % 8, chord = CH[mode][bar], t = next;
-      if (beat === 0) { chord.forEach(m => note(a, f(m + 12), t, spb * 8.5, 'triangle', .016, .5)); note(a, f(chord[0] - 12), t, spb * 7, 'sine', .05, .05); }
-      if (mode === 'explore') { if (beat % 2 === 0) note(a, f(chord[(beat / 2) % 3] + 24), t, spb * 2.2, 'sine', .014); }
-      else { const arp = [0, 1, 2, 1, 0, 2, 1, 2][beat]; note(a, f(chord[arp] + 24), t, spb * 1.2, 'triangle', .013); if (beat % 2 === 0) note(a, f(chord[0] - (mode === 'boss' ? 12 : 0)), t, spb * 1.5, 'sine', .03); }
-      if (mode === 'battle' && (beat === 0 || beat === 4)) drum(a, t, 1, .12);
-      if (mode === 'boss') { if (beat % 2 === 0) drum(a, t, 1, beat === 0 ? .2 : .12); if (beat === 3 || beat === 7) drum(a, t, 0, .07); }
+      if (step % 8 === 0) { if (wantM !== mode) mode = wantM; if (wantT !== th) { th = wantT; step = 0; } }
+      const T = TH[th], bpm = mode === 'boss' ? Math.max(110, T.bpm * 1.4) : mode === 'battle' ? Math.max(96, T.bpm * 1.25) : T.bpm, spb = 60 / bpm / 2, bar = Math.floor(step / 8) % 4, beat = step % 8, chord = T.ch[bar].map(x => x + T.root), t = next;
+      if (beat === 0) { chord.forEach(m => inst(a, T.pad === 'soft' ? 'pad' : T.pad, m + (T.pad === 'strings' ? 0 : 12), t, spb * 8.5, T.pad === 'soft' ? .016 : .014)); inst(a, 'pad', chord[0] - 12, t, spb * 7, .045); }
+      if (beat % 2 === 0) { const q = bar * 4 + beat / 2, mv = T.mel[q]; if (mv !== null && (mode === 'explore' || q % 2 === 0)) { let len = 2; while (len < 6 && T.mel[q + len / 2] === null && q + len / 2 < 16) len += 2; inst(a, T.lead, T.root + mv + (T.lead === 'brass' || T.lead === 'strings' || T.lead === 'horn' ? 12 : 24) - (mode === 'boss' ? 12 : 0), t, spb * len * 1.05, mode === 'explore' ? .02 : .013); } }
+      if (mode !== 'explore') { const arp = [0, 1, 2, 1, 0, 2, 1, 2][beat]; inst(a, 'harp', chord[arp] + (mode === 'boss' ? 12 : 24), t, spb * 1.2, .009); if (beat % 2 === 0) inst(a, 'pad', chord[0] - (mode === 'boss' ? 12 : 0), t, spb * 1.5, .028); perc(a, T.bat, t, PERC[T.bat][beat]); if (beat === 0 || beat === 4) drum(a, t, 1, mode === 'boss' ? .18 : .1); if (mode === 'boss' && (beat === 3 || beat === 7)) drum(a, t, 0, .07); }
+      else if (T.perc) perc(a, T.perc, t, T.perc === 'wind' ? (beat === 0 && bar % 2 === 0 ? 1 : 0) : PERC[T.perc][beat] * .8);
       next += spb; step++;
     }
   }
   return {
-    sync() { const on = G && G.settings.music !== false && started; if (on && !timer) { timer = setInterval(() => { const m = !W ? 'explore' : W.fighting ? (W.enemies.some(e => e.boss && alive(e)) ? 'boss' : 'battle') : 'explore'; if (m !== mode && step % 8 === 0) mode = m; schedule(); }, 100); } if (!on && timer) { clearInterval(timer); timer = 0; } }
+    sync() { const on = G && G.settings.music !== false && started; if (on && !timer) { timer = setInterval(() => { wantM = !W ? 'explore' : W.fighting ? (W.enemies.some(e => e.boss && alive(e)) ? 'boss' : 'battle') : 'explore'; wantT = REG[W && W.bgKey] || wantT; schedule(); }, 100); } if (!on && timer) { clearInterval(timer); timer = 0; } },
+    get theme() { return th; }
   };
 })();
 
@@ -68,6 +108,8 @@ function paintCards(root = document) {
     root.querySelectorAll('canvas[data-card]').forEach(c => {
       const k = c.dataset.card;
       if (c.dataset.enemy) { const E = ENEMIES[k]; RIG.card(c, E.type, Object.assign({ wpn: E.wpn }, E.look), { col: '#ff5a3a', flip: 1, seed: k, bust: E.type === 'hum' && !!c.dataset.bust, zoom: +(c.dataset.zoom || 1) }); return; }
+      if (!HEROES[k]) return;
+      if (c.dataset.mirror) { RIG.card(c, 'hum', mirrorLook(G.heroes[k] ? heroLook(k) : lookAtStage(k, 0)), { col: '#a868ff', flip: 1, bust: !!c.dataset.bust, seed: k, zoom: +(c.dataset.zoom || 1) }); return; }
       const LK = c.dataset.stage !== undefined ? lookAtStage(k, +c.dataset.stage) : G.heroes[k] ? footLook(k) : lookAtStage(k, 0);
       RIG.card(c, 'hum', LK, { col: ROLE_COL[CLASSES[HEROES[k].cls].role], bust: !!c.dataset.bust, seed: k, zoom: +(c.dataset.zoom || 1) });
     });
@@ -111,8 +153,8 @@ function updateHud() {
   }
   const boss = W.enemies.find(e => e.boss && alive(e)), bb = $('#bossbar'), tleft = W.raidEnd && W.fighting ? ` · ${Math.max(0, Math.ceil((W.raidEnd - W.time) / 1000))} s` : '';
   bb.hidden = !(boss || W.gate) || !W.fighting; bb.classList.toggle('gate', !boss && !!W.gate);
-  if (!boss && W.gate) { $('#bossName').textContent = `Tor der Hornburg · Welle ${W.gate.wave}`; $('#bossFill').style.width = W.gate.hp + '%'; $('#bossTrail').style.width = W.gate.hp + '%'; $('#bossPct').textContent = Math.ceil(W.gate.hp) + ' %' + tleft; $('#bossMark').hidden = true; }
-  if (boss) { const bf = boss.hp / boss.maxHp * 100; $('#bossName').textContent = boss.name; $('#bossFill').style.width = bf + '%'; $('#bossTrail').style.width = bf + '%'; $('#bossPct').textContent = Math.ceil(bf) + ' %' + tleft; $('#bossMark').hidden = !!boss.phased || !(PHASE2[boss.key] || boss.transform) || bf <= 50; }
+  if (!boss && W.gate) { $('#bossName').textContent = `Tor der Hornburg · Welle ${W.gate.wave}`; $('#bossFill').style.width = W.gate.hp + '%'; $('#bossTrail').style.width = W.gate.hp + '%'; $('#bossPct').textContent = Math.ceil(W.gate.hp) + ' %' + tleft; $('#bossMark').hidden = true; $('#bossMark3').hidden = true; }
+  if (boss) { const bf = boss.hp / boss.maxHp * 100; $('#bossName').textContent = boss.name; $('#bossFill').style.width = bf + '%'; $('#bossTrail').style.width = bf + '%'; $('#bossPct').textContent = Math.ceil(bf) + ' %' + tleft; $('#bossMark').hidden = !!boss.phased || !(PHASE2[boss.key] || boss.transform) || bf <= 50; $('#bossMark3').hidden = !!boss.phased3 || !PHASE3[boss.key] || W.raid || bf <= 25; }
 }
 let bannerT = 0;
 function comboFx(n) { const c = $('#combo'); c.innerHTML = `<small>Gemeinschafts-Kombo</small>×${n}`; c.className = 'show'; clearTimeout(comboFx.t); comboFx.t = setTimeout(() => c.className = '', 1600); G.stats.maxCombo = Math.max(G.stats.maxCombo, n); if (n === 2) track('combos', 1); sfx('ult'); }
@@ -168,11 +210,52 @@ function dialog(lines) {
 }
 function splash(html, ms = 0, cls = '') {
   return new Promise(res => {
-    const s = $('#splash'); s.className = 'splash ' + cls; s.innerHTML = html; s.hidden = false; document.body.classList.add('splash-open'); paintCards(s); paintComps(s); paintFlags(s);
+    const s = $('#splash'); s.className = 'splash ' + cls; s.innerHTML = html; s.hidden = false; document.body.classList.add('splash-open'); paintCards(s); paintComps(s); paintFlags(s); bindMem(s);
     W.hold = true;
     const close = () => { s.classList.add('out'); setTimeout(() => { s.hidden = true; s.classList.remove('out'); document.body.classList.remove('splash-open'); W.hold = false; res(); }, 300); };
     if (ms) setTimeout(close, ms); else { s.onclick = () => { s.onclick = null; sfx('click'); close(); }; }
   });
+}
+/* ---------- Erinnerungsbild: die Gruppe nach einem großen Sieg als Bild zum Sichern ---------- */
+let memInfo = null;
+function memBtn(info) { memInfo = info; return `<button class="btn small gold mem" data-mem="1">📷 Erinnerungsbild</button>`; }
+function bindMem(root) { const b = root.querySelector('[data-mem]'); if (b) b.onclick = e => { e.stopPropagation(); if (memInfo) memory(memInfo); }; }
+async function memory(info) {
+  sfx('click'); toast('Erinnerungsbild wird gemalt …', 'mini');
+  const W2 = 1600, H2 = 900, cv = document.createElement('canvas'); cv.width = W2; cv.height = H2; const c = cv.getContext('2d'), s = H2 / 144, gt = 1200;
+  try { if (document.fonts && document.fonts.load) await Promise.race([document.fonts.load('700 40px Cinzel'), new Promise(r => setTimeout(r, 800))]); } catch (e) { }
+  c.drawImage(RIG.background(info.bg, W2, H2), 0, 0);
+  c.save(); c.scale(s, s);
+  const lm = RIG.landmark(info.bg, s); if (lm) { const k = lm.k, w = lm.w * k, h = lm.h * k; c.save(); c.translate(256 * .64 - w / 2, 92 - h + lm.base * k); c.scale(k, k); c.drawImage(lm.cv, 0, 0, lm.w, lm.h); c.restore(); }
+  c.save(); c.globalCompositeOperation = 'lighter'; for (let i = 0; i < 7; i++) { const a = 1.95 + i * .13, g = c.createLinearGradient(220, -10, 220 + Math.cos(a) * 200, -10 + Math.sin(a) * 200); g.addColorStop(0, 'rgba(255,236,190,.16)'); g.addColorStop(1, 'rgba(255,236,190,0)'); c.fillStyle = g; c.beginPath(); c.moveTo(220, -10); c.lineTo(220 + Math.cos(a - .03) * 260, -10 + Math.sin(a - .03) * 260); c.lineTo(220 + Math.cos(a + .03) * 260, -10 + Math.sin(a + .03) * 260); c.fill(); } c.restore();
+  if (info.foe && ENEMIES[info.foe]) { const E = ENEMIES[info.foe], big = E.type !== 'hum' || RIG.dims(E.type, E.look).big; c.save(); c.translate(206, 113); c.scale(-1.1 * (big ? .85 : 1.2), 1.1 * (big ? .85 : 1.2)); c.globalAlpha = .92; RIG.draw(c, E.type, Object.assign({ wpn: E.wpn || 'sword' }, E.look), 'dead', 9999, 700); c.restore(); }
+  const BN = G.banner && BANNERS.find(b => b.id === G.banner); if (BN) { c.save(); c.translate(20, 114); c.scale(1.45, 1.45); RIG.flag(c, { em: BN.em, cloth: BN.cloth, emCol: BN.emCol, t: 1700 }); c.restore(); }
+  const party = (info.party || G.party).filter(k => G.heroes[k]).sort((a, b) => (CLASSES[HEROES[a].cls].role === 'tank' ? 0 : 1) - (CLASSES[HEROES[b].cls].role === 'tank' ? 0 : 1));
+  const slots = [[104, 119], [80, 109], [128, 110], [58, 121], [152, 122]], placed = party.map((k, i) => ({ k, x: slots[i % 5][0], y: slots[i % 5][1] })).sort((a, b) => a.y - b.y);
+  for (const p2 of placed) { c.save(); c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(p2.x, p2.y + .5, 9, 2.2, 0, 0, 6.29); c.fill(); c.translate(p2.x, p2.y); c.scale(1.32, 1.32); RIG.draw(c, 'hum', footLook(p2.k), 'victory', 380 + party.indexOf(p2.k) * 170, gt + party.indexOf(p2.k) * 333); c.restore(); }
+  c.save(); c.globalCompositeOperation = 'lighter'; for (let i = 0; i < 60; i++) { const x = (i * 97) % 256, y = 20 + (i * 53) % 100, r = .3 + (i % 5) * .12; const g = c.createRadialGradient(x, y, 0, x, y, r * 3); g.addColorStop(0, 'rgba(255,230,160,.7)'); g.addColorStop(1, 'rgba(255,230,160,0)'); c.fillStyle = g; c.beginPath(); c.arc(x, y, r * 3, 0, 6.29); c.fill(); } c.restore();
+  c.restore();
+  let g = c.createLinearGradient(0, 0, 0, H2); g.addColorStop(0, 'rgba(255,214,150,.10)'); g.addColorStop(1, 'rgba(60,30,10,.18)'); c.save(); c.globalCompositeOperation = 'soft-light'; c.fillStyle = g; c.fillRect(0, 0, W2, H2); c.restore();
+  g = c.createRadialGradient(W2 / 2, H2 * .45, H2 * .35, W2 / 2, H2 * .5, W2 * .7); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.55)'); c.fillStyle = g; c.fillRect(0, 0, W2, H2);
+  g = c.createLinearGradient(0, H2 - 260, 0, H2); g.addColorStop(0, 'rgba(6,5,4,0)'); g.addColorStop(.55, 'rgba(6,5,4,.72)'); g.addColorStop(1, 'rgba(6,5,4,.9)'); c.fillStyle = g; c.fillRect(0, H2 - 260, W2, 260);
+  c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  c.fillStyle = '#e8bd5c'; c.font = '700 24px Cinzel, Georgia, serif'; c.fillText(info.kicker.toUpperCase().split('').join(String.fromCharCode(8202)), W2 / 2, H2 - 152);
+  c.shadowColor = 'rgba(255,190,90,.55)'; c.shadowBlur = 22; c.fillStyle = '#ffe6a8'; c.font = '700 64px Cinzel, Georgia, serif'; c.fillText(info.title, W2 / 2, H2 - 92); c.shadowBlur = 0;
+  c.fillStyle = '#efe4cc'; c.font = '600 24px Georgia, serif'; c.fillText(party.map(k => HEROES[k].n).join('  ·  '), W2 / 2, H2 - 54);
+  c.fillStyle = 'rgba(232,220,192,.6)'; c.font = '500 17px Georgia, serif'; c.fillText(`Ringfahrt  ·  Gruppe Stufe ${G.team.lvl}  ·  ${new Date().toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })}`, W2 / 2, H2 - 26);
+  c.strokeStyle = 'rgba(232,189,92,.85)'; c.lineWidth = 5; c.strokeRect(16, 16, W2 - 32, H2 - 32); c.strokeStyle = 'rgba(232,189,92,.45)'; c.lineWidth = 1.5; c.strokeRect(28, 28, W2 - 56, H2 - 56);
+  c.fillStyle = '#e8bd5c'; for (const [x, y] of [[16, 16], [W2 - 16, 16], [16, H2 - 16], [W2 - 16, H2 - 16]]) { c.save(); c.translate(x, y); c.rotate(Math.PI / 4); c.fillRect(-9, -9, 18, 18); c.restore(); }
+  cv.toBlob(blob => blob && showMemory(blob, info), 'image/png');
+}
+function showMemory(blob, info) {
+  let el = $('#memo'); if (!el) { el = document.createElement('div'); el.id = 'memo'; $('#app').appendChild(el); }
+  const url = URL.createObjectURL(blob), file = typeof File !== 'undefined' ? new File([blob], 'ringfahrt-erinnerung.png', { type: 'image/png' }) : null, share = !!(file && navigator.canShare && navigator.canShare({ files: [file] }));
+  el.innerHTML = `<div class="memo-in"><img src="${url}" alt="Erinnerungsbild"><div class="memo-b">${share ? '<button class="btn gold" id="memS">⇪ Teilen / In Fotos sichern</button>' : `<a class="btn gold" id="memD" href="${url}" download="ringfahrt-erinnerung.png">⇩ Bild sichern</a>`}<button class="btn" id="memX">Schließen</button></div><small>Tipp: Bild gedrückt halten und „Zu Fotos hinzufügen“ wählen.</small></div>`;
+  el.hidden = false; sfx('join');
+  el.onclick = e => e.stopPropagation();
+  const close = () => { el.hidden = true; setTimeout(() => URL.revokeObjectURL(url), 2000); };
+  el.querySelector('#memX').onclick = e => { e.stopPropagation(); close(); };
+  const sb = el.querySelector('#memS'); if (sb) sb.onclick = async e => { e.stopPropagation(); try { await navigator.share({ files: [file], title: info.title }); } catch (err) { } };
 }
 /* Drei verdeckte Truhen: eine wählen, danach werden alle aufgedeckt */
 function pickChest(title, mith) {
@@ -184,8 +267,8 @@ function pickChest(title, mith) {
   const show = o => o.k === 'item' ? `${icHtml(o.it)}<b style="color:${RARITY[o.it.r].c}">${esc(o.it.name)}</b>` : o.k === 'frag' ? `<span class="pk-big">◈ ${o.v}</span><b>Ringfragmente</b>` : `<span class="pk-big">◆ ${fmt(o.v)}</span><b>Gold + ${esc(o.it.name)}</b>`;
   return new Promise(res => {
     const s = $('#splash'); s.className = 'splash doneS'; s.hidden = false; document.body.classList.add('splash-open'); W.hold = true; s.onclick = null;
-    s.innerHTML = `<div class="cdone pick"><div class="kicker">Kapitel abgeschlossen · ◈ ${mith} Ringfragment</div><h1>${esc(title)}</h1><p>Wähle eine der drei Truhen!</p><div class="pk">${opts.map((o, i) => `<button class="pkc" data-i="${i}"><span class="pk-lid">?</span><div class="pk-in">${show(o)}</div></button>`).join('')}</div><div class="dhint" hidden>Tippen zum Fortfahren</div></div>`;
-    paintCards(s);
+    s.innerHTML = `<div class="cdone pick"><div class="kicker">Kapitel abgeschlossen · ◈ ${mith} Ringfragment</div><h1>${esc(title)}</h1><p>Wähle eine der drei Truhen!</p><div class="pk">${opts.map((o, i) => `<button class="pkc" data-i="${i}"><span class="pk-lid">?</span><div class="pk-in">${show(o)}</div></button>`).join('')}</div><div class="dhint" hidden>${memBtn({ kicker: `Kapitel ${G.story.ch + 1} bezwungen`, title, bg: chBg(STORY[G.story.ch]), foe: STORY[G.story.ch].boss.find(k => ENEMIES[k].boss) || STORY[G.story.ch].boss[0] })}<span>Tippen zum Fortfahren</span></div></div>`;
+    paintCards(s); bindMem(s);
     s.querySelectorAll('.pkc').forEach(b => b.onclick = e => {
       e.stopPropagation(); if (s.querySelector('.pkc.open')) return;
       const o = opts[+b.dataset.i]; sfx('join');
@@ -591,7 +674,7 @@ function openGoals(page = openGoals.page || 0) {
     s.querySelectorAll('[data-gr]').forEach(b => b.onclick = () => { const g = view[+b.dataset.gr]; playRep(g.q, g.t, 5); });
   }, { tabs: STORY_TABS, tab: 'ziele', onTab: t => openStory(t), pages: np, page, onPage: p => openGoals(p) });
 }
-const RUNS = { boss: ['Bosskampf', q => bossRematch(q.ch)], side: ['Nebenquest', q => sideRun(q.id)], raid: ['Prüfung der Macht', q => raidRun(q.key)], mode: ['Spezialmodus', q => modeRun(q.id)], trial: ['Kapitel-Prüfung', q => trialRun(q.ch, q.t)], hunt: ['Kopfgeldjagd', q => huntRun(q.id)], saga: ['Sagen-Boss', q => sagaRun(q.id)] };
+const RUNS = { boss: ['Bosskampf', q => bossRematch(q.ch)], side: ['Nebenquest', q => sideRun(q.id)], raid: ['Prüfung der Macht', q => raidRun(q.key)], mode: ['Spezialmodus', q => modeRun(q.id)], trial: ['Kapitel-Prüfung', q => trialRun(q.ch, q.t)], hunt: ['Kopfgeldjagd', q => huntRun(q.id)], saga: ['Sagen-Boss', q => sagaRun(q.id)], mirror: ['Spiegel der Galadriel', () => mirrorRun()] };
 /* Sofort spielen: laufenden Kampf abbrechen (ohne Strafe) und direkt starten */
 function playNow(q, label) {
   if (running) { toast(`Gerade läuft: ${esc(running)}`, 'mini'); return; }
@@ -619,10 +702,10 @@ function renderNext() {
 /* Info-Karte beim Antippen einer Figur */
 function unitInfo(u, cx, cy) {
   const box = $('#uinfo'); if (!u) { box.hidden = true; return; }
-  const E = u.side === 'enemy' ? ENEMIES[u.key] : null, H = u.side === 'hero' ? HEROES[u.key] : null, f = Math.max(0, u.hp / u.maxHp);
+  const E = u.side === 'enemy' ? ENEMIES[u.key] || { n: u.name } : null, H = u.side === 'hero' ? HEROES[u.key] : null, f = Math.max(0, u.hp / u.maxHp);
   const tag = E ? (E.boss ? 'Boss' : u.elite ? 'Elite' : 'Gegner') : ROLES[CLASSES[H.cls].role].n;
   const skills = E ? [...new Set((u.skills || []).map(s => s.n))].slice(0, 4).join(' · ') : [H.act.n, H.act2.n, H.ult.n].join(' · ');
-  const extra = E ? `Bestiarium: ${fmt((G.bestiary || {})[u.key] || 0)}× besiegt` : `Ultimate ${Math.min(100, Math.round(u.energy))} %${ringOf(u.key) ? ' · ◍ ' + esc(ringOf(u.key).R.n) : ''}`;
+  const extra = u.mirror ? `Spiegelbild von ${esc(HEROES[u.mirror].n)}` : E ? `Bestiarium: ${fmt((G.bestiary || {})[u.key] || 0)}× besiegt` : `Ultimate ${Math.min(100, Math.round(u.energy))} %${ringOf(u.key) ? ' · ◍ ' + esc(ringOf(u.key).R.n) : ''}`;
   box.className = 'uinfo ' + (E ? 'foe' : 'hero');
   box.innerHTML = `<div class="ui-h"><b>${esc(u.name)}</b><span>${tag} · St. ${u.lvl || G.team.lvl}</span></div><div class="ui-hp"><i style="width:${f * 100}%"></i></div><small class="ui-n">${fmt(u.hp)} / ${fmt(u.maxHp)} LP${u.statuses.length ? ' · ' + u.statuses.slice(0, 4).map(st => `<span style="color:${STATUS[st.id].c}">●</span>`).join('') : ''}</small><small class="ui-s">${esc(skills)}</small>${u.afx && u.afx.length ? `<small class="ui-a">${u.afx.map(a => `<b style="color:${ELITE_AFX[a].c}">${ELITE_AFX[a].n}</b> ${esc(ELITE_AFX[a].d)}`).join('<br>')}</small>` : ''}<small class="ui-x">${extra}</small>`;
   box.hidden = false;
@@ -643,6 +726,8 @@ function flyCoins(u, n) {
     a.onfinish = () => { c.remove(); const g = $('.res .g'); g.classList.remove('bump'); void g.offsetWidth; g.classList.add('bump'); };
   }
 }
+/* Story-Schlachten mit Heeren im Hintergrund (Fünf Heere, Morannon, Jähes Feuer, Angband) */
+function armyHint() { if (running || !G) return null; return { 4: 'erebor', 13: 'doom', 24: 'doom', 27: 'doom' }[G.story.ch] || null; }
 function chBg(C, w = 99) { let b = C.bg; for (const [w0, k] of Object.entries(C.bgAt || {})) if (w >= +w0) b = k; return b; }
 function waveCard(w, kind) { const el = $('#wave'); el.className = 'wave ' + kind; el.innerHTML = `<small>${esc(STORY[G.story.ch].n)}</small><b>Welle ${w + 1} von ${WAVES}</b>${kind === 'elite' ? '<em>Elite</em>' : w === WAVES - 1 ? '<em>Letzte Welle</em>' : ''}`; el.hidden = false; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); clearTimeout(waveCard.t); waveCard.t = setTimeout(() => { el.hidden = true; }, 1900); }
 function refreshLooks() { for (const u of W.heroes) { const L = heroLook(u.key), sig = JSON.stringify(L.gear || null); if (u._gsig !== undefined && u._gsig !== sig && alive(u)) W.gearUp(u); u._gsig = sig; u.look = L; } }
@@ -689,10 +774,10 @@ function showBoons(src) {
 }
 /* ---------- Freischaltungen: grau, Hinweis, NEU-Markierung, Ankündigung ---------- */
 const TAB_UNL = { modi: 'horde', jagd: 'hunt', chronik: 'chronik', best: 'best', reittiere: 'mounts', begleiter: 'comps', banner: 'banner', buende: 'bonds', feat: 'feats', rel: 'relics', sets: 'sets' };
-const TAB_CLEAR = { story: ['trialH', 'trialL', 'side'], modi: ['horde', 'rush', 'chaos', 'tower', 'raids', 'helm', 'pfad', 'saga'], jagd: ['hunt'], chronik: ['chronik'], best: ['best'], reittiere: ['mounts'], begleiter: ['comps'], banner: ['banner'], buende: ['bonds'], sets: ['sets'], feat: ['feats'], rel: ['relics'], ach: ['ach'] };
-const NAV_NEW = { nHeroes: ['comps', 'bonds', 'banner', 'mounts'], nBag: ['sets'], nStory: ['hunt', 'trialH', 'trialL', 'horde', 'rush', 'chaos', 'tower', 'raids', 'helm', 'pfad', 'saga', 'side', 'best', 'chronik'], nQuest: ['quests'], nForge: ['forge'], nAch: ['ach', 'relics', 'feats'], chest: ['chest'] };
+const TAB_CLEAR = { story: ['trialH', 'trialL', 'side'], modi: ['horde', 'rush', 'chaos', 'tower', 'raids', 'helm', 'pfad', 'saga', 'mirror'], jagd: ['hunt'], chronik: ['chronik'], best: ['best'], reittiere: ['mounts'], begleiter: ['comps'], banner: ['banner'], buende: ['bonds'], sets: ['sets'], feat: ['feats'], rel: ['relics'], ach: ['ach'] };
+const NAV_NEW = { nHeroes: ['comps', 'bonds', 'banner', 'mounts', 'halle'], nBag: ['sets'], nStory: ['hunt', 'trialH', 'trialL', 'horde', 'rush', 'chaos', 'tower', 'raids', 'helm', 'pfad', 'saga', 'mirror', 'side', 'best', 'chronik'], nQuest: ['quests'], nForge: ['forge'], nAch: ['ach', 'relics', 'feats'], chest: ['chest'] };
 const NAV_LOCK = { nQuest: 'quests', nForge: 'forge', nAch: 'ach', chest: 'chest' };
-const UNL_GO = { best: () => openStory('best'), chest: () => openChest(), quests: () => openQuests(), comps: () => openHeroes('begleiter'), relics: () => openRelics(), chronik: () => openStory('chronik'), ach: () => openAch(), bonds: () => openHeroes('buende'), forge: () => openForge(0), hunt: () => openStory('jagd'), trialH: () => openStory('story', undefined, Math.max(0, G.story.ch - 1)), trialL: () => openStory('story', undefined, Math.max(0, G.story.ch - 1)), horde: () => openModes(0), rush: () => openModes(0), chaos: () => openModes(0), tower: () => openModes(0), helm: () => openModes(0), pfad: () => openModes(0), raids: () => openModes(1), saga: () => openModes(2), feats: () => openFeats(), banner: () => openHeroes('banner'), sets: () => openSets(0), side: () => openStory('story'), mounts: () => openHeroes('reittiere') };
+const UNL_GO = { best: () => openStory('best'), chest: () => openChest(), quests: () => openQuests(), comps: () => openHeroes('begleiter'), relics: () => openRelics(), chronik: () => openStory('chronik'), ach: () => openAch(), bonds: () => openHeroes('buende'), forge: () => openForge(0), hunt: () => openStory('jagd'), trialH: () => openStory('story', undefined, Math.max(0, G.story.ch - 1)), trialL: () => openStory('story', undefined, Math.max(0, G.story.ch - 1)), horde: () => openModes(0), rush: () => openModes(0), chaos: () => openModes(0), tower: () => openModes(0), helm: () => openModes(0), pfad: () => openModes(0), raids: () => openModes(1), saga: () => openModes(2), mirror: () => openModes(2), halle: () => openHall(), feats: () => openFeats(), banner: () => openHeroes('banner'), sets: () => openSets(0), side: () => openStory('story'), mounts: () => openHeroes('reittiere') };
 function lockHint(id) { const U = UNLOCKS.find(u => u.id === id); if (!U) return; sfx('click'); toast(`🔒 <b>${esc(U.n)}</b> wird freigeschaltet ab ${unlWhen(id)}.`, 'unlock'); }
 function gate(id) { if (!isUnl(id)) { lockHint(id); return false; } if (G.unlNew && G.unlNew[id]) { delete G.unlNew[id]; save(); setTimeout(updateHud, 0); } return true; }
 function applyLocks() {
@@ -803,7 +888,8 @@ function openHeroes(tab = openHeroes.tab || 'team', page = openHeroes.page) {
     };
     const ap = s.querySelector('#autoP'); if (ap) ap.onclick = () => { G.settings.autoParty = !G.settings.autoParty; if (G.settings.autoParty) { autoParty(); W.pendingParty = 1; buildHud(); } save(); openHeroes(); };
   }, { tabs: heroTabs(), tab, onTab: t => openHeroes(t, 0), pages: np, page, onPage: p => openHeroes(tab, p),
-    extra: tab === 'team' || tab === 'helden' ? `<button class="btn small gold" id="optAll" title="Beste Ausrüstung für alle anlegen">⚡<span class="lbl"> Optimieren</span></button><button class="btn small ${G.settings.autoParty ? 'on' : ''}" id="autoP" title="Gruppe automatisch aufstellen">Auto</button>` : '' });
+    extra: tab === 'team' || tab === 'helden' ? `${tab === 'team' ? `<button class="btn small ${isUnl('halle') ? '' : 'lk'}" id="hallB" title="Heldenhalle">🏛<span class="lbl"> Halle</span></button>` : ''}<button class="btn small gold" id="optAll" title="Beste Ausrüstung für alle anlegen">⚡<span class="lbl"> Optimieren</span></button><button class="btn small ${G.settings.autoParty ? 'on' : ''}" id="autoP" title="Gruppe automatisch aufstellen">Auto</button>` : '' });
+  const hb = $('#sheet').querySelector('#hallB'); if (hb) hb.onclick = () => openHall();
 }
 function mountPrice(m) { return 1200 + m.ch * 260; }
 function buyMount(m, after) { if (G.gold < mountPrice(m)) { toast(`Dafür brauchst du ◆ ${fmt(mountPrice(m))} Gold.`, 'mini'); return; } G.gold -= mountPrice(m); G.mounts = G.mounts || {}; G.mounts[m.id] = 1; save(); sfx('join'); toast(`<b>${esc(m.n)}</b> früher freigeschaltet!`, 'lvl'); W.pendingParty = 1; refreshLooks(); updateHud(); after && after(); }
@@ -1075,14 +1161,87 @@ function openModes(page = openModes.page || 0) {
   const tiles = page === 0 ? [
     ...MODES.map(M => isUnl(M.id) ? tile('mode ' + M.id, `<span class="m-ic">${M.ic}</span>`, esc(M.n), `${esc(M.d.split('.')[0])}.<br><em>Rekord: ${(G.modes || {})[M.id] || 0}</em>`, `data-mode="${M.id}"`, '▶ Spielen', false) : lockTile('mode ' + M.id, `<span class="m-ic">${M.ic}</span>`, M.n, M.id)),
     isUnl('tower') ? tile('tower', '<span class="m-ic">♜</span>', 'Orthanc-Turm', `Etage ${f} · Stufe ${towerLvl(f)} · <em>◆${fmt(tr.gold)}${tr.frags ? ' · ◈ ' + tr.frags : ''}</em>`, 'id="tw"', '▶ Etage ' + f, false) : lockTile('tower', '<span class="m-ic">♜</span>', 'Orthanc-Turm', 'tower')
-  ] : page === 2 ? [...SAGAS.map(S => { if (!isUnl('saga')) return lockTile('raid saga', `<canvas data-card="${S.foe}" data-enemy="1" data-bust="1" class="sil"></canvas>`, S.sn, 'saga'); const rk = (G.sagas || {})[S.id] || 0; return tile('raid saga', `<canvas data-card="${S.foe}" data-enemy="1" data-bust="1"></canvas>`, esc(S.sn), `Sagenstufe ${rk + 1} · ${dangerHtml(sagaLvl(S), 1)}<br><em>${rk ? '✓ besiegt' : 'Mythischer Schatz beim ersten Sieg'}</em>`, `data-saga="${S.id}"`, '▶ Herausfordern', false); }), `<div class="m-tile info"><span class="m-ic">☬</span><b>Sagen-Bosse</b><small>Riesen aus der Ersten Zeit. Bei 66 % und 33 % LP rufen sie Verstärkung.</small></div>`] : RAIDS.map(R => { if (!isUnl('raids')) return lockTile('raid', `<canvas data-card="${R.key}" data-enemy="1" data-bust="1" class="sil"></canvas>`, R.n, 'raids'); const st = G.raid[R.key] || { best: 0, tiers: 0 }; return tile('raid', `<canvas data-card="${R.key}" data-enemy="1" data-bust="1"></canvas>`, esc(R.n), `45 Sek. · Bestwert ${Math.round(st.best * 100)} %<br><em>Stufe ${st.tiers}/${RAID_TIERS.length}</em>`, `data-raid="${R.key}"`, '▶ Spielen', false); });
+  ] : page === 2 ? [...SAGAS.map(S => { if (!isUnl('saga')) return lockTile('raid saga', `<canvas data-card="${S.foe}" data-enemy="1" data-bust="1" class="sil"></canvas>`, S.sn, 'saga'); const rk = (G.sagas || {})[S.id] || 0; return tile('raid saga', `<canvas data-card="${S.foe}" data-enemy="1" data-bust="1"></canvas>`, esc(S.sn), `Sagenstufe ${rk + 1} · ${dangerHtml(sagaLvl(S), 1)}<br><em>${rk ? '✓ besiegt' : 'Mythischer Schatz beim ersten Sieg'}</em>`, `data-saga="${S.id}"`, '▶ Herausfordern', false); }), isUnl('mirror') ? tile('raid mirror', `<canvas data-card="${G.party[0]}" data-mirror="1" data-bust="1"></canvas>`, 'Spiegel der Galadriel', `Spiegelstufe ${(G.mirror || 0) + 1} · ${dangerHtml(mirrorLvl(), 1)}<br><em>Kämpft gegen eure dunklen Abbilder</em>`, 'id="mir"', '▶ In den Spiegel', false) : lockTile('raid mirror', `<canvas data-card="${G.party[0]}" data-mirror="1" data-bust="1" class="sil"></canvas>`, 'Spiegel der Galadriel', 'mirror')] : RAIDS.map(R => { if (!isUnl('raids')) return lockTile('raid', `<canvas data-card="${R.key}" data-enemy="1" data-bust="1" class="sil"></canvas>`, R.n, 'raids'); const st = G.raid[R.key] || { best: 0, tiers: 0 }; return tile('raid', `<canvas data-card="${R.key}" data-enemy="1" data-bust="1"></canvas>`, esc(R.n), `45 Sek. · Bestwert ${Math.round(st.best * 100)} %<br><em>Stufe ${st.tiers}/${RAID_TIERS.length}</em>`, `data-raid="${R.key}"`, '▶ Spielen', false); });
   openSheet('Reise', `<div class="m-tiles ${page === 0 ? 'six' : 'four'}">${tiles.join('')}</div>`, s => {
     s.querySelectorAll('[data-unl]').forEach(b => b.onclick = () => { const U = UNLOCKS.find(u => u.id === b.dataset.unl); buyEarly('u:' + U.id, U.price, U.n, () => { G.unlSeen = G.unlSeen || {}; G.unlSeen[U.id] = 1; save(); openModes(openModes.page); }); });
     s.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => playNow({ type: 'mode', id: b.dataset.mode }, MODES.find(m => m.id === b.dataset.mode).n));
     s.querySelectorAll('[data-raid]').forEach(b => b.onclick = () => playNow({ type: 'raid', key: b.dataset.raid }, 'Prüfung: ' + RAIDS.find(r => r.key === b.dataset.raid).n));
     const tw = s.querySelector('#tw'); if (tw) tw.onclick = () => playNow({ type: 'tower' }, 'Orthanc-Turm Etage ' + f);
     s.querySelectorAll('[data-saga]').forEach(b => b.onclick = () => playNow({ type: 'saga', id: b.dataset.saga }, 'Sage: ' + SAGAS.find(x => x.id === b.dataset.saga).sn));
+    const mi = s.querySelector('#mir'); if (mi) mi.onclick = () => playNow({ type: 'mirror' }, 'Spiegel der Galadriel');
   }, { tabs: STORY_TABS, tab: 'modi', onTab: t => openStory(t), pages: 3, page, onPage: p => openModes(p) });
+}
+/* ---------- Heldenhalle: ein begehbarer Raum voller Erinnerungen ---------- */
+function openHall() {
+  if (!gate('halle')) return;
+  closeSheet(); sfx('join');
+  let el = $('#hall');
+  if (!el) { el = document.createElement('div'); el.id = 'hall'; el.innerHTML = '<canvas></canvas><div class="hall-cap"></div><button class="hall-x" aria-label="Schließen">✕</button><div class="hall-hint">‹ Wischen zum Durchstöbern ›</div>'; $('#app').appendChild(el); }
+  el.hidden = false; document.body.classList.add('sheet-open');
+  const cv = el.querySelector('canvas'), cap = el.querySelector('.hall-cap'), ctx = cv.getContext('2d');
+  const heroes = owned().sort((a, b) => (G.party.includes(b) - G.party.includes(a)) || (G.heroes[b].fame || 0) - (G.heroes[a].fame || 0) || heroStats(b).power - heroStats(a).power);
+  const rings = RINGS.filter(R => (G.rings?.[R.id]?.stars || 0) > 0);
+  const trophies = [...new Set([...STORY.map((C, i) => chapterStatus(i) === 'done' ? (C.boss.find(k => ENEMIES[k].boss) || C.boss[0]) : null), ...HUNTS.filter(H => G.trophies?.[H.id]).map(H => H.foe), ...SAGAS.filter(S2 => (G.sagas || {})[S2.id]).map(S2 => S2.foe)].filter(Boolean))];
+  cap.innerHTML = `<b>Heldenhalle</b><small>${heroes.length} Helden · ${Object.keys(G.banners || {}).length}/${BANNERS.length} Banner · ${rings.length} Ringe · ${trophies.length} Trophäen</small>`;
+  const HS = 30, X0 = 46, heroEnd = X0 + heroes.length * HS, ringX = heroEnd + 34, LEN = Math.max(ringX + Math.max(1, rings.length) * 34 + 50, 22 + Math.ceil(trophies.length / 3) * 70 + 40, 22 + BANNERS.length * 70 + 40);
+  const trophyX = i => 22 + Math.floor(i / 3) * 70 + 17 + (i % 3) * 18, bannerX = i => 22 + i * 70 + 27, TY = 32;
+  const looks = Object.fromEntries(heroes.map(k => [k, heroLook(k)])), busts = {};
+  const bust = k => { if (busts[k]) return busts[k]; const c2 = document.createElement('canvas'); c2.width = c2.height = 48; const E = ENEMIES[k]; RIG.card(c2, E.type, Object.assign({ wpn: E.wpn }, E.look), { col: '#ff5a3a', flip: 1, seed: k, bust: E.type === 'hum', zoom: E.type === 'hum' && !RIG.dims('hum', E.look).big ? 1.1 : .85 }); return (busts[k] = c2); };
+  let scroll = 0, vel = 0, drag = null, raf = 0, lastF = 0, S = 1, VW = 200, oy = 0;
+  const size = () => { const r = el.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1); cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); S = Math.min(cv.height / 144, cv.width / 150); VW = cv.width / S; oy = (cv.height - 144 * S) / 2; };
+  size();
+  const FY = 118, WALL = 96;
+  function draw(t) {
+    const gt = t;
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#0b0907'; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.setTransform(S, 0, 0, S, -scroll * S, oy);
+    const x0 = scroll - 20, x1 = scroll + VW + 20, TOP = -oy / S - 2, BOT = (cv.height - oy) / S + 2;
+    // Rückwand aus Stein mit Fugen
+    let g = ctx.createLinearGradient(0, TOP, 0, WALL); g.addColorStop(0, '#120e0b'); g.addColorStop(.55, '#33281f'); g.addColorStop(1, '#4a3a2c'); ctx.fillStyle = g; ctx.fillRect(x0, TOP, x1 - x0, WALL - TOP);
+    ctx.strokeStyle = 'rgba(0,0,0,.28)'; ctx.lineWidth = .4; for (let y = 4 - Math.ceil((4 - TOP) / 18) * 18, r = 0; y < WALL; y += 9, r++) { ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke(); for (let x = Math.floor(x0 / 18) * 18 + (r % 2) * 9; x < x1; x += 18) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + 9); ctx.stroke(); } }
+    // Lichtfahnen aus hohen Fenstern
+    for (let x = 120; x < LEN; x += 210) { if (x < x0 - 90 || x > x1 + 30) continue;
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; const lg = ctx.createLinearGradient(x, TOP, x + 60, 140); lg.addColorStop(0, 'rgba(255,230,170,.2)'); lg.addColorStop(1, 'rgba(255,230,170,0)'); ctx.fillStyle = lg; ctx.beginPath(); ctx.moveTo(x - 10, TOP); ctx.lineTo(x + 8, TOP); ctx.lineTo(x + 76, 140); ctx.lineTo(x + 38, 140); ctx.fill();
+      for (let i = 0; i < 8; i++) { const k = ((gt / 9000 + i / 8) % 1), px = x + 6 + k * 50 + Math.sin(gt / 1300 + i) * 4, py = 10 + k * 110; ctx.fillStyle = `rgba(255,240,200,${.5 * Math.sin(k * Math.PI)})`; ctx.fillRect(px, py, .7, .7); } ctx.restore(); }
+    // Trophäen: Schilde mit den besiegten Bossen (drei je Säulenfeld)
+    trophies.forEach((k, i) => { const x = trophyX(i), y = TY; if (x < x0 - 20 || x > x1 + 20) return; ctx.fillStyle = '#5a3c22'; ctx.beginPath(); ctx.arc(x, y, 8.2, 0, 6.29); ctx.fill(); ctx.strokeStyle = '#c8a050'; ctx.lineWidth = 1.2; ctx.stroke(); ctx.save(); ctx.beginPath(); ctx.arc(x, y, 6.4, 0, 6.29); ctx.clip(); ctx.drawImage(bust(k), x - 6.4, y - 6.4, 12.8, 12.8); ctx.restore(); ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = .6; ctx.beginPath(); ctx.arc(x, y, 6.4, 0, 6.29); ctx.stroke(); ctx.fillStyle = '#c8a050'; for (let a = 0; a < 6; a++) { ctx.beginPath(); ctx.arc(x + Math.cos(a * 1.047) * 7.4, y + Math.sin(a * 1.047) * 7.4, .55, 0, 6.29); ctx.fill(); } });
+    // Säulen mit Fackeln
+    for (let x = 22; x < LEN; x += 70) { if (x < x0 - 20 || x > x1 + 20) continue; g = ctx.createLinearGradient(x - 5, 0, x + 5, 0); g.addColorStop(0, '#2a2018'); g.addColorStop(.5, '#6a5440'); g.addColorStop(1, '#241a12'); ctx.fillStyle = g; ctx.fillRect(x - 4.5, TOP, 9, WALL - TOP + 2); ctx.fillStyle = '#7a6248'; ctx.fillRect(x - 6.5, 2, 13, 3); ctx.fillRect(x - 6.5, WALL - 2, 13, 3);
+      const fl = 1 + Math.sin(gt / 90 + x) * .12 + Math.sin(gt / 37 + x * 2) * .06; ctx.fillStyle = '#3a2a1a'; ctx.fillRect(x - .7, 38, 1.4, 6); ctx.save(); ctx.globalCompositeOperation = 'lighter'; const tg = ctx.createRadialGradient(x, 35, 0, x, 35, 34 * fl); tg.addColorStop(0, 'rgba(255,190,90,.35)'); tg.addColorStop(1, 'rgba(255,140,40,0)'); ctx.fillStyle = tg; ctx.fillRect(x - 36, 0, 72, 80); const fg = ctx.createRadialGradient(x, 35, 0, x, 35, 3.4 * fl); fg.addColorStop(0, '#fff4c0'); fg.addColorStop(.5, '#ffa030'); fg.addColorStop(1, 'rgba(255,80,10,0)'); ctx.fillStyle = fg; ctx.beginPath(); ctx.ellipse(x, 34.5, 2.2 * fl, 3.6 * fl, 0, 0, 6.29); ctx.fill(); ctx.restore(); }
+    // Banner zwischen den Säulen
+    BANNERS.forEach((B, i) => { const x = bannerX(i), own = G.banners?.[B.id]; if (x < x0 - 20 || x > x1 + 30) return; ctx.save(); ctx.translate(x, WALL + 1); ctx.scale(1.25, 1.25); if (own) RIG.flag(ctx, { em: B.em, cloth: B.cloth, emCol: B.emCol, t: gt * .5 + i * 400, pole: 40 }); else { ctx.globalAlpha = .35; RIG.flag(ctx, { em: B.em, cloth: '#2a2622', emCol: '#4a443c', t: 0, pole: 40 }); } ctx.restore(); });
+    // Boden mit Teppich
+    g = ctx.createLinearGradient(0, WALL, 0, Math.max(144, BOT)); g.addColorStop(0, '#2e241c'); g.addColorStop(1, '#0e0b08'); ctx.fillStyle = g; ctx.fillRect(x0, WALL, x1 - x0, Math.max(144, BOT) - WALL);
+    ctx.fillStyle = '#5a1a16'; ctx.fillRect(x0, 112, x1 - x0, 14); ctx.fillStyle = '#c8a050'; ctx.fillRect(x0, 112, x1 - x0, .8); ctx.fillRect(x0, 125.2, x1 - x0, .8);
+    ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = .3; for (let x = Math.floor(x0 / 24) * 24; x < x1; x += 24) { ctx.beginPath(); ctx.moveTo(x, WALL); ctx.lineTo(x - 14, 144); ctx.stroke(); }
+    // Ringe auf Sockeln
+    rings.forEach((R, i) => { const x = ringX + i * 34, st = G.rings[R.id].stars; if (x < x0 - 20 || x > x1 + 20) return; g = ctx.createLinearGradient(x - 7, 0, x + 7, 0); g.addColorStop(0, '#3a3430'); g.addColorStop(.5, '#8a8078'); g.addColorStop(1, '#2e2a26'); ctx.fillStyle = g; ctx.fillRect(x - 5, 96, 10, FY - 96); ctx.fillRect(x - 7, 94, 14, 3); ctx.fillRect(x - 7, FY - 2, 14, 3);
+      const fy = 86 + Math.sin(gt / 800 + i) * 1.5; ctx.save(); ctx.globalCompositeOperation = 'lighter'; const rg = ctx.createRadialGradient(x, fy, 0, x, fy, 16); rg.addColorStop(0, RIG.rgba(R.c, .55)); rg.addColorStop(1, RIG.rgba(R.c, 0)); ctx.fillStyle = rg; ctx.fillRect(x - 16, fy - 16, 32, 32); ctx.restore();
+      ctx.strokeStyle = '#e8c060'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.ellipse(x, fy, 4.6, 2, Math.sin(gt / 1200 + i) * .3, 0, 6.29); ctx.stroke(); ctx.fillStyle = R.c; ctx.beginPath(); ctx.arc(x, fy - 2, 1.3, 0, 6.29); ctx.fill();
+      ctx.fillStyle = '#ffd770'; ctx.font = '700 3.2px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('★'.repeat(st), x, 101.5); });
+    // Helden
+    ctx.textAlign = 'center';
+    heroes.forEach((k, i) => { const x = X0 + i * HS; if (x < x0 - 20 || x > x1 + 20) return; const inP = G.party.includes(k);
+      ctx.save(); ctx.globalAlpha = .5; ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.beginPath(); ctx.ellipse(x, FY + .5, 7, 1.8, 0, 0, 6.29); ctx.fill(); ctx.restore();
+      if (inP) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; const pg = ctx.createRadialGradient(x, FY, 0, x, FY, 11); pg.addColorStop(0, 'rgba(255,214,120,.45)'); pg.addColorStop(1, 'rgba(255,214,120,0)'); ctx.fillStyle = pg; ctx.beginPath(); ctx.ellipse(x, FY, 11, 3.2, 0, 0, 6.29); ctx.fill(); ctx.restore(); }
+      ctx.save(); ctx.translate(x, FY); RIG.draw(ctx, 'hum', looks[k], 'idle', (gt + i * 377) % 1700, gt + i * 911); ctx.restore();
+      ctx.font = '700 3.6px Cinzel, Georgia, serif'; ctx.fillStyle = inP ? '#ffd770' : '#e8dcc0'; ctx.fillText(HEROES[k].n, x, FY + 6.5); ctx.font = '600 2.6px sans-serif'; ctx.fillStyle = 'rgba(232,220,192,.7)'; const fr = fameRank(k); ctx.fillText(fr ? FAME[fr][1] : 'Stufe ' + G.heroes[k].lvl, x, FY + 10); });
+    // Vignette
+    ctx.setTransform(1, 0, 0, 1, 0, 0); const vg = ctx.createRadialGradient(cv.width / 2, cv.height / 2, cv.height * .3, cv.width / 2, cv.height / 2, cv.width * .75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.55)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, cv.width, cv.height);
+  }
+  function loop(t) { raf = requestAnimationFrame(loop); if (t - lastF < 30) return; lastF = t; if (!drag) { scroll += vel; vel *= .92; if (Math.abs(vel) < .02) vel = 0; } scroll = Math.max(0, Math.min(Math.max(0, LEN - VW), scroll)); draw(t); }
+  raf = requestAnimationFrame(loop);
+  const close = () => { cancelAnimationFrame(raf); el.hidden = true; document.body.classList.remove('sheet-open'); window.removeEventListener('resize', size); };
+  window.addEventListener('resize', size);
+  el.querySelector('.hall-x').onclick = () => { sfx('click'); close(); };
+  cv.onpointerdown = e => { cv.setPointerCapture(e.pointerId); drag = { x: e.clientX, s: scroll, moved: 0, t: performance.now() }; vel = 0; };
+  cv.onpointermove = e => { if (!drag) return; const [dx] = appDelta(e.clientX - drag.x, 0), dpr = cv.width / cv.getBoundingClientRect().width; const ns = drag.s - dx * dpr / S; vel = (scroll - ns) * -.5; scroll = ns; drag.moved = Math.max(drag.moved, Math.abs(dx)); };
+  cv.onpointerup = e => { const d = drag; drag = null; if (!d || d.moved > 6) return; const r = cv.getBoundingClientRect(), dpr = cv.width / r.width, wx = (e.clientX - r.left) * dpr / S + scroll, wy = ((e.clientY - r.top) * dpr - oy) / S;
+    const hi = heroes.findIndex((k, i) => Math.abs(X0 + i * HS - wx) < 11 && wy > FY - 40 && wy < FY + 11); if (hi >= 0) { close(); openHero(heroes[hi]); return; }
+    const ri = rings.findIndex((R, i) => Math.abs(ringX + i * 34 - wx) < 9 && wy > 76 && wy < FY + 2); if (ri >= 0) { sfx('buff'); toast(`◍ <b>${esc(rings[ri].n)}</b> · ${'★'.repeat(G.rings[rings[ri].id].stars)}`, 'mini'); return; }
+    const ti = trophies.findIndex((k, i) => Math.hypot(trophyX(i) - wx, TY - wy) < 10); if (ti >= 0) { sfx('click'); toast(`⚔ <b>${esc(ENEMIES[trophies[ti]].n)}</b> besiegt`, 'mini'); return; }
+    const bi = BANNERS.findIndex((B, i) => Math.abs(bannerX(i) + 8 - wx) < 12 && wy > 44 && wy < WALL + 2); if (bi >= 0) { const B = BANNERS[bi]; toast(G.banners?.[B.id] ? `⚐ <b>${esc(B.n)}</b> · ${esc(B.d)}` : `⚐ Noch nicht errungen · Kapitel ${B.ch + 1}`, 'mini'); } };
+  cv.onpointercancel = () => { drag = null; };
 }
 /* ---------- Kopfgeldjagd ---------- */
 function openHunts(page = openHunts.page || 0) {
@@ -1106,8 +1265,26 @@ async function sagaRun(id) {
   if (r.win) { G.sagas[id] = rk + 1; G.stats.bosses++; track('bosses', 1);
     const items = [genItem(lvl + 2, first ? 5 : topRarity(.2, .8))], gold = Math.round((600 + lvl * 30) * (1 + G.story.loop * .25)), frags = first ? 6 : 3;
     G.gold += gold; grantFragments(frags); items.forEach(addItem); if (G.settings.autoEquip) autoEquip(); save(); applyParty(); updateHud(); trackFeats();
-    await splash(`<div class="cdone"><div class="kicker">Sage bezwungen · Stufe ${rk + 1}</div><canvas class="mcv" data-card="${S.foe}" data-enemy="1" data-bust="1"></canvas><h1>${esc(S.sn)} ist gefallen</h1><p>◆ ${fmt(gold)} · ◈ ${frags}</p><div class="loot1">${items.map(it => `${icHtml(it)}<b style="color:${RARITY[it.r].c}">${esc(it.name)}</b>`).join('')}</div><div class="dhint">Tippen zum Fortfahren</div></div>`, 0, 'doneS');
+    await splash(`<div class="cdone"><div class="kicker">Sage bezwungen · Stufe ${rk + 1}</div><canvas class="mcv" data-card="${S.foe}" data-enemy="1" data-bust="1"></canvas><h1>${esc(S.sn)} ist gefallen</h1><p>◆ ${fmt(gold)} · ◈ ${frags}</p><div class="loot1">${items.map(it => `${icHtml(it)}<b style="color:${RARITY[it.r].c}">${esc(it.name)}</b>`).join('')}</div><div class="dhint">${memBtn({ kicker: 'Sage bezwungen', title: S.sn, bg: S.bg, foe: S.foe })}<span>Tippen zum Fortfahren</span></div></div>`, 0, 'doneS');
   } else toast(`${esc(S.sn)} ist zu mächtig. Werdet stärker und fordert die Sage erneut heraus.`, 'unlock');
+  W.setBg(prevBg); updateHud();
+}
+/* ---------- Spiegel der Galadriel ---------- */
+function mirrorLvl() { return Math.max(chapterLvl() - 2, (G.team?.lvl || 1) - 6) + (G.mirror || 0) * 2; }
+async function mirrorRun() {
+  const prevBg = W.bgKey, rk = G.mirror || 0, lvl = mirrorLvl(); G.queue = null; save();
+  W.setBg('lorien'); await panoSplash(`Spiegel der Galadriel · Stufe ${rk + 1}`, 'Der Spiegel', 'Das Wasser zeigt, was war, was ist und was sein mag. Heute zeigt es euch selbst.', 'lorien', 2500);
+  applyParty(); W.restoreHeroes(); await W.walk(800);
+  W.flash('#c8b0ff', 600); sfx('cast');
+  const party = W.heroes.map(h => h.key), r = await W.fight(party, lvl, 'elite', { mirror: party });
+  if (r.aborted) { W.setBg(prevBg); return; }
+  onResult(r, 'elite');
+  if (r.win) {
+    G.mirror = rk + 1; track('bosses', 1);
+    const big = (rk + 1) % 5 === 0, items = [genItem(lvl + 1, big ? topRarity(.25, .75) : rollRarity('boss'))], gold = Math.round((300 + lvl * 18) * (1 + G.story.loop * .25)), frags = 2 + (big ? 3 : 0);
+    G.gold += gold; grantFragments(frags); items.forEach(addItem); if (G.settings.autoEquip) autoEquip(); save(); applyParty(); updateHud(); trackFeats();
+    await splash(`<div class="cdone mirror"><div class="kicker">Spiegelstufe ${rk + 1} bezwungen</div><canvas class="mcv" data-card="${party[0]}" data-mirror="1" data-bust="1"></canvas><h1>Ihr habt euch selbst besiegt</h1><p>◆ ${fmt(gold)} · ◈ ${frags} · Nächste Stufe: ${rk + 2}</p><div class="loot1">${items.map(it => `${icHtml(it)}<b style="color:${RARITY[it.r].c}">${esc(it.name)}</b>`).join('')}</div><div class="dhint">${memBtn({ kicker: `Spiegelstufe ${rk + 1} bezwungen`, title: 'Der Spiegel der Galadriel', bg: 'lorien' })}<span>Tippen zum Fortfahren</span></div></div>`, 0, 'doneS');
+  } else toast('Die Spiegelbilder waren stärker. Werdet stärker und blickt erneut hinein.', 'unlock');
   W.setBg(prevBg); updateHud();
 }
 async function huntRun(id) {
@@ -1327,19 +1504,20 @@ function openChest() {
     s.querySelector('#claimIdle').onclick = () => { const r = claimChest(); if (!r) return; sfx('join'); lootPop(r.rw.items.slice(0, 6), r.rw.gold); toast(`+${fmt(r.rw.xp)} EP für die Gruppe`, 'lvl'); W.pendingParty = 1; updateHud(); closeSheet(); };
   });
 }
+function ecoMode() { document.body.classList.toggle('eco', G.settings.gfx === 'akku'); }
 function openSettings() {
   const S = G.settings;
   const tg = (id, on, label) => `<div class="opt"><span>${label}</span><button class="btn small ${on ? 'on' : ''}" id="${id}">${on ? 'An' : 'Aus'}</button></div>`;
   openSheet('Optionen', `<div class="m-opts"><div>
     ${tg('o-mus', S.music !== false, 'Musik')}${tg('o-snd', S.sound, 'Soundeffekte')}${tg('o-eq', S.autoEquip, 'Beste Ausrüstung automatisch')}${tg('o-clean', S.autoClean !== false, 'Beutel automatisch aufräumen')}${tg('o-party', S.autoParty, 'Gruppe automatisch')}${tg('o-ult', S.autoUlt !== false, 'Ultimates automatisch')}<div class="opt"><span>Story-Dialoge</span><span class="seg">${[['aus', 'Aus'], ['an', 'An'], ['auto', 'Auto']].map(([v, l]) => `<button class="btn small ${(!S.dialogs ? 'aus' : S.autoText !== false ? 'auto' : 'an') === v ? 'on' : ''}" data-dlg="${v}">${l}</button>`).join('')}</span></div><div class="opt"><span>Effekte</span><span class="seg">${[['voll', 'Voll'], ['sanft', 'Sanft']].map(([v, l]) => `<button class="btn small ${(S.fx || 'voll') === v ? 'on' : ''}" data-fx="${v}">${l}</button>`).join('')}</span></div>
-    <div class="opt"><span>Grafik</span><span class="seg">${[['auto', 'Auto'], ['hoch', 'Hoch'], ['normal', 'Normal']].map(([v, l]) => `<button class="btn small ${(S.gfx || 'auto') === v ? 'on' : ''}" data-gfx="${v}">${l}</button>`).join('')}</span></div></div>
+    <div class="opt"><span>Grafik</span><span class="seg">${[['auto', 'Auto'], ['hoch', 'Hoch'], ['normal', 'Normal'], ['akku', 'Akku']].map(([v, l]) => `<button class="btn small ${(S.gfx || 'auto') === v ? 'on' : ''}" data-gfx="${v}">${l}</button>`).join('')}</span></div></div>
     <div><h3 class="sect">Spielstand</h3><p class="muted small">Mit dem Code stellst du deinen Fortschritt wieder her, auch auf einem anderen Gerät.</p>
     ${backups().length ? `<div class="opt"><span>Sicherungen</span><span class="seg">${backups().map((B, i) => `<button class="btn small" data-bak="${i}">Kap. ${B.ch + 1}</button>`).join('')}</span></div>` : ''}
     <div class="opt"><button class="btn small" id="o-exp">Code kopieren</button><button class="btn small" id="o-imp">Code einfügen</button><button class="btn small danger" id="o-del">Neu beginnen</button></div>
     <textarea id="o-code" hidden rows="2" spellcheck="false"></textarea><div id="o-impbox" hidden class="opt"><button class="btn small gold" id="o-imp2">Spielstand laden</button><span id="o-msg" class="muted small"></span></div>
     <div id="o-conf" hidden class="opt warn"><span>Alles wird gelöscht.</span><button class="btn small danger" id="o-del2">Ja, löschen</button></div>
     <p class="muted small">Inoffizielles Fan-Spiel nach J.R.R. Tolkien und „Die Ringe der Macht“. Grafiken, Texte und Mechaniken sind eigene Umsetzungen.</p></div></div>`, s => {
-    s.querySelectorAll('[data-gfx]').forEach(b => b.onclick = () => { S.gfx = b.dataset.gfx; W.lowFps = false; W._pf = null; save(); openSettings(); });
+    s.querySelectorAll('[data-gfx]').forEach(b => b.onclick = () => { S.gfx = b.dataset.gfx; W.lowFps = false; W.qStep = 0; W._pf = null; save(); ecoMode(); W.resize(); openSettings(); });
     s.querySelector('#o-ult').onclick = () => { S.autoUlt = S.autoUlt === false; save(); openSettings(); };
     s.querySelectorAll('[data-fx]').forEach(b => b.onclick = () => { S.fx = b.dataset.fx; document.body.classList.toggle('fx-soft', S.fx === 'sanft'); save(); openSettings(); });
     s.querySelectorAll('[data-dlg]').forEach(b => b.onclick = () => { const v = b.dataset.dlg; S.dialogs = v !== 'aus'; S.autoText = v === 'auto'; save(); openSettings(); }); if (s.querySelector('#o-txt')) s.querySelector('#o-txt').onclick = () => { S.autoText = S.autoText === false; save(); openSettings(); };
@@ -1371,7 +1549,8 @@ function appDelta(dx, dy) { return document.body.classList.contains('rot') ? [dy
 function boot() {
   const has = load();
   if (!has) { newProfile(); for (const k of STORY[0].join) joinHero(k); save(); }
-  W = new World($('#world'), { banner, combo: comboFx, ultUsed: () => track('ults', 1), crit: () => track('crits', 1), kill: u => { if (u.gold) flyCoins(u, u.boss ? 9 : u.elite ? 5 : 3); G.bestiary = G.bestiary || {}; G.bestiary[u.key] = (G.bestiary[u.key] || 0) + 1; if (u.tags?.includes('ork')) track('orcs', 1); if (u.tags?.includes('tier')) track('beasts', 1); } });
+  ecoMode();
+  W = new World($('#world'), { banner, combo: comboFx, ultUsed: () => track('ults', 1), crit: () => track('crits', 1), kill: u => { if (u.gold) flyCoins(u, u.boss ? 9 : u.elite ? 5 : 3); G.bestiary = G.bestiary || {}; if (!u.mirror) G.bestiary[u.key] = (G.bestiary[u.key] || 0) + 1; if (u.tags?.includes('ork')) track('orcs', 1); if (u.tags?.includes('tier')) track('beasts', 1); } });
   layoutMode();
   W.speed = G.settings.speed || 1;
   W.bgKey = STORY[G.story.ch].bg;

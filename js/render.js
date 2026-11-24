@@ -105,6 +105,8 @@ const RIG = (() => {
     if (type === 'quad') return look.huge ? { h: 34, big: 1, w: 22 } : { h: look.size ? 18 : 15, big: 0, w: look.size ? 12 : 10 };
     if (type === 'spider') return look.size === 2 ? { h: 44, big: 1, w: 32 } : look.size ? { h: 30, big: 1, w: 22 } : { h: 14, big: 0, w: 10 };
     if (type === 'worm') return { h: 70, big: 1, w: 18 };
+    if (type === 'watcher') return { h: 40, big: 1, w: 26 };
+    if (type === 'engine') return { h: 34, big: 1, w: 26 };
     if (type === 'dragon') return look.huge ? { h: 76, big: 1, w: 46 } : { h: 50, big: 1, w: 30 };
     return { h: 58, big: 1, w: 26 };
   }
@@ -715,6 +717,68 @@ const RIG = (() => {
     c.strokeStyle = 'rgba(200,230,255,.7)'; c.lineWidth = .4; c.beginPath(); for (let x = -34; x <= 30; x += 2) c[x === -34 ? 'moveTo' : 'lineTo'](x, -5 + Math.sin(x * .35 + gt / 260) * 1.2); c.stroke();
   }
 
+  /* ---------- Wächter im Wasser: Kopf im dunklen Teich, viele Fangarme ---------- */
+  function drawWatcher(c, L, anim, el, gt) {
+    const g = P(c), sk = L.skin || '#2e3a34', lt = sh(sk, .28), dk = sh(sk, -.42), eye = L.eye || '#c8ffb0';
+    const act = ['attack', 'cast', 'shoot', 'throw'].includes(anim), q = act ? clamp01(el / animTime(anim)) : 0, lunge = act ? Math.sin(q * Math.PI) : 0;
+    const flinch = anim === 'hurt' ? 1 - clamp01(el / 300) : 0, sink = anim === 'dead' ? ease(clamp01(el / 1100)) * 46 : 0;
+    const arm = (bx, len, ph, w0, front, reach) => {
+      const n = 11, pts = []; let x = bx, y = 1 + sink * .6, a = -Math.PI / 2 + Math.sin(gt / 700 + ph) * .25;
+      for (let i = 0; i < n; i++) { pts.push([x, y]); const t = i / (n - 1), curl = Math.sin(gt / 520 + ph + t * 3) * (.18 + t * .32) * (1 - reach * .8) - flinch * .2; a += curl + reach * (front ? .13 : 0); x += Math.cos(a) * len / n * (1 - flinch * .3); y += Math.sin(a) * len / n * (1 - flinch * .3); }
+      c.lineCap = 'round'; c.lineJoin = 'round';
+      for (let pass = 0; pass < 2; pass++) for (let i = 0; i < n - 1; i++) { const t = i / (n - 1), w = w0 * (1 - t * .85); c.strokeStyle = pass ? (i % 2 ? sk : sh(sk, .06)) : 'rgba(10,14,12,.6)'; c.lineWidth = pass ? w : w + .9; c.beginPath(); c.moveTo(pts[i][0], pts[i][1]); c.lineTo(pts[i + 1][0], pts[i + 1][1]); c.stroke(); }
+      c.strokeStyle = rgba(lt, .55); c.lineWidth = .5; c.beginPath(); pts.forEach((p2, i) => i ? c.lineTo(p2[0] - .6, p2[1]) : c.moveTo(p2[0] - .6, p2[1])); c.stroke();
+      c.fillStyle = 'rgba(230,220,200,.55)'; for (let i = 2; i < n - 1; i += 2) { const t = i / (n - 1); c.beginPath(); c.arc(pts[i][0] + .8, pts[i][1], w0 * (1 - t * .85) * .22, 0, TAU); c.fill(); }
+    };
+    c.save(); c.beginPath(); c.rect(-70, -130, 140, 128.5); c.clip();
+    // hintere Fangarme
+    arm(-24, 30, 0, 3.4, 0, 0); arm(-14, 36, 1.7, 3.8, 0, 0); arm(20, 32, 4.2, 3.4, 0, 0);
+    // Kopf
+    const hx = -3, hy = -9 + sink - lunge * 2;
+    g.ell(hx, hy, 13, 10, g.rad(hx - 3, hy - 4, 16, [lt, sk, dk]), .7);
+    for (let i = 0; i < 6; i++) g.ell(hx - 8 + i * 3.2, hy - 6 + Math.abs(i - 2.5) * 1.1, 1.5, 1.1, rgba(lt, .5), 0);
+    for (const [ex, ey, r] of [[hx + 5, hy - 2, 2.4], [hx + 9.5, hy - .5, 1.9]]) { g.glow(ex, ey, r * 2.8, eye, .7); g.ell(ex, ey, r, r * .8, '#f4ffe8', .3); g.ell(ex + .4, ey, r * .35, r * .7, '#101810', 0); }
+    // vordere Fangarme, einer schnellt beim Angriff nach vorn
+    arm(-6, 30, 2.6, 3.6, 0, 0); arm(8, 34 + lunge * 26, 5.4, 4.2, 1, lunge); arm(15, 26, 3.3, 3, 0, lunge * .4);
+    c.restore();
+    // dunkler Teich: ovale Wasserfläche mit weichem Rand, Wellenringe um die Fangarme
+    c.save(); c.translate(-2, .5); c.scale(1, .2); const pg = c.createRadialGradient(0, 0, 0, 0, 0, 40); pg.addColorStop(0, 'rgba(8,18,20,.97)'); pg.addColorStop(.75, 'rgba(14,30,32,.9)'); pg.addColorStop(1, 'rgba(20,40,40,0)'); c.fillStyle = pg; c.beginPath(); c.arc(0, 0, 40, 0, TAU); c.fill(); c.restore();
+    c.save(); c.beginPath(); c.ellipse(-2, .5, 34, 6.4, 0, 0, TAU); c.clip();
+    c.fillStyle = 'rgba(6,14,16,.9)'; c.beginPath(); c.moveTo(-40, 8); for (let x = -40; x <= 38; x += 2) c.lineTo(x, -1.6 + Math.sin(x * .32 + gt / 300) * .8 + Math.sin(x * .11 - gt / 900) * .6); c.lineTo(38, 8); c.closePath(); c.fill();
+    c.strokeStyle = 'rgba(170,220,210,.45)'; c.lineWidth = .4; c.beginPath(); for (let x = -40; x <= 38; x += 2) c[x === -40 ? 'moveTo' : 'lineTo'](x, -1.6 + Math.sin(x * .32 + gt / 300) * .8 + Math.sin(x * .11 - gt / 900) * .6); c.stroke(); c.restore();
+    for (let i = 0; i < 3; i++) { const k = (gt / 1400 + i / 3) % 1; c.strokeStyle = `rgba(170,220,210,${.35 * (1 - k)})`; c.lineWidth = .4; c.beginPath(); c.ellipse(-3 + (i - 1) * 14, -1, 4 + k * 10, (4 + k * 10) * .2, 0, 0, TAU); c.stroke(); }
+  }
+
+  /* ---------- Ork-Katapult mit Bedienmannschaft ---------- */
+  function drawEngine(c, L, anim, el, gt) {
+    const g = P(c), wood = L.wood || '#6a4a2a', wl = sh(wood, .22), wd = sh(wood, -.38), iron = L.iron || '#4a4a4e', fire = L.fire || '#ff7a20';
+    const act = ['attack', 'cast', 'shoot', 'throw'].includes(anim), q = act ? clamp01(el / animTime(anim)) : 0, dead = anim === 'dead' ? ease(clamp01(el / 800)) : 0;
+    const COCK = Math.PI - .28, FIRED = Math.PI * 1.5 - .12;
+    let a = dead ? COCK - dead * .6 : COCK; if (act) a = q < .22 ? COCK - Math.sin(q / .22 * Math.PI) * .04 : q < .4 ? lerp(COCK, FIRED, ease((q - .22) / .18)) : q < .7 ? FIRED : lerp(FIRED, COCK, ease((q - .7) / .3));
+    const loaded = !act || q < .38 || q > .92, roll = anim === 'walk' ? gt / 140 : 0, rock = anim === 'hurt' ? Math.sin(clamp01(el / 300) * Math.PI * 3) * .05 * (1 - clamp01(el / 300)) : 0;
+    // Bedienmannschaft (Ork hinter dem Katapult)
+    if (L.crew && !dead) { c.save(); c.translate(-21, 0); drawHum(c, { body: 'goblin', skin: L.skin || '#6f7f3a', hair: '#1a1a1a', hs: 'wild', tunic: '#4a3a2a', pants: '#3a2e22', wc: '#8a8a80', wpn: 'dagger' }, poseAt(act ? 'attack' : anim === 'walk' ? 'walk' : 'idle', el, 'dagger', gt), gt); c.restore(); }
+    c.save(); c.translate(0, -4.5); c.rotate(rock - dead * .07); c.translate(0, 4.5 + dead * 1.2);
+    // Räder hinten
+    const wheel = (x, r) => { g.ell(x, -r, r, r, g.rad(x - 1, -r - 1, r * 1.3, [wl, wood, wd]), .6); c.save(); c.translate(x, -r); c.rotate(roll); c.strokeStyle = wd; c.lineWidth = .7; for (let i = 0; i < 6; i++) { c.rotate(Math.PI / 3); c.beginPath(); c.moveTo(0, 0); c.lineTo(r * .86, 0); c.stroke(); } c.restore(); g.ell(x, -r, r * .3, r * .3, iron, .3); c.strokeStyle = iron; c.lineWidth = .8; c.beginPath(); c.arc(x, -r, r - .3, 0, TAU); c.stroke(); };
+    wheel(-9, 4.6);
+    // Gestell
+    g.rr(-15, -9.5, 30, 3.6, .8, g.lin(0, -9.5, 0, -6, [wl, wood, wd]));
+    g.limb([[-5, -8], [-1.5, -21]], 2, wood); g.limb([[5, -8], [1.5, -21]], 2, wd); g.limb([[-3.6, -14], [3.6, -14]], 1.2, wd);
+    g.limb([[5.5, -21.5], [9, -8]], 1.4, wd);
+    g.rr(3.5, -23, 5, 2, .5, g.lin(0, -23, 0, -21, [wl, wd])); // Prellbalken
+    // Wurfarm
+    const px = 0, py = -15, la = 22, ex = px + Math.cos(a) * la, ey = py + Math.sin(a) * la, cx2 = px - Math.cos(a) * 6, cy2 = py - Math.sin(a) * 6;
+    g.limb([[cx2, cy2], [ex, ey]], 1.8, wl);
+    g.rr(cx2 - 2.6, cy2, 5.2, 5, .8, g.lin(0, cy2, 0, cy2 + 5, [sh(iron, .2), iron, sh(iron, -.3)])); // Gegengewicht
+    c.save(); c.translate(ex, ey); c.rotate(a + Math.PI / 2); g.fill(() => { c.moveTo(-3, 0); c.quadraticCurveTo(0, 3.6, 3, 0); c.closePath(); }, wd, .5); c.restore();
+    if (loaded && !dead) { const lx = ex + Math.cos(a + Math.PI / 2) * -1.4, ly = ey + Math.sin(a + Math.PI / 2) * -1.4; g.ell(lx, ly - 1, 2.4, 2.2, '#2a2420', .4); g.glow(lx, ly - 2.4, 5 + Math.sin(gt / 90) * .8, fire, .75); g.ell(lx, ly - 2.4, 1.2, 1.6, '#ffe0a0', 0); }
+    g.ell(px, py, 1.3, 1.3, iron, .4);
+    if (dead) { c.save(); c.translate(9, -1.4); c.rotate(dead * 1.3); g.ell(0, 0, 4.6, 1.4, wood, .5); c.restore(); } else wheel(9, 4.6);
+    c.restore();
+    if (dead) { for (let i = 0; i < 4; i++) { const fx2 = -10 + i * 6, fl = 4 + Math.sin(gt / 110 + i * 1.7) * 1.6; g.glow(fx2, -8 - fl * .6, fl * 1.3, fire, .5 * dead); } c.fillStyle = `rgba(40,36,34,${.3 * dead})`; for (let i = 0; i < 4; i++) { const k = (gt / 1800 + i / 4) % 1; c.beginPath(); c.arc(-4 + i * 3 + k * 6, -14 - k * 26, 2 + k * 5, 0, TAU); c.fill(); } }
+  }
+
   /* ---------- Olifant ---------- */
   function drawOlifant(c, L, anim, el, gt) {
     const g = P(c), sk = L.skin, dk = sh(sk, -.35), red = '#8a1e1a', gold = '#e0b84a';
@@ -918,6 +982,8 @@ const RIG = (() => {
     if (type === 'spider') return drawSpider(c, look, anim, el, gt);
     if (type === 'worm') return drawWorm(c, look, anim, el, gt);
     if (type === 'olifant') return drawOlifant(c, look, anim, el, gt);
+    if (type === 'watcher') return drawWatcher(c, look, anim, el, gt);
+    if (type === 'engine') { c.save(); c.scale(1.22, 1.22); drawEngine(c, look, anim, el, gt); c.restore(); return; }
     if (type === 'dragon') { if (look.huge) { c.save(); c.scale(1.5, 1.5); drawDragon(c, look, anim, el, gt); c.restore(); return; } return drawDragon(c, look, anim, el, gt); }
     if (look.mount && anim !== 'dead') return drawMounted(c, look, anim, el, gt);
     const p = poseAt(anim, el, look.wpn || 'sword', gt);

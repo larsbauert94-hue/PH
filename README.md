@@ -12,6 +12,18 @@ Ein Auto-Kampf-RPG im Browser, gebaut für das iPhone im Querformat, mit Helden 
 
 Optimiert für iPhone 11 (896 × 414 pt, Notch links/rechts, Home-Leiste unten). Unter **Optionen → Grafik** lässt sich zwischen *Auto*, *Hoch* (Figuren mit Szenenlicht, Kantenlicht und Bodenverdeckung) und *Normal* wählen; *Auto* schaltet bei zu niedriger Bildrate selbst herunter.
 
+## Neu in Version 17
+- **Spiegel der Galadriel** (ab Kapitel 18): Kampf gegen dunkle Spiegelbilder der eigenen Gruppe mit ihren Fähigkeiten und Ultimates; jede Spiegelstufe stärker, alle fünf Stufen ein großer Fund; zerspringt ein Spiegelbild, schöpft der echte Held daraus Kraft
+- **Neue Gegner mit eigenen Tricks:** der Wächter im Wasser (Fangarme, Umschlingen), Grabunholde mit lähmendem Grabesbann, Huorns mit Wurzelgriff und Borkenhaut, Hügeltrolle mit Felsbrocken und Flächenschaden, Ork-Katapulte mit Brandgeschossen aus der hinteren Reihe
+- **Bosse in Phasen:** bei 50 % sichtbarer Gestaltwandel (der Hexenkönig besteigt sein Flugross, der Balrog entfacht Flammen, Saruman schillert in vielen Farben), bei 25 % das letzte Aufbäumen
+- **Große Auftritte:** der Balrog steigt aus dem Feuerspalt, Smaug überfliegt das Feld, Nazgûl stoßen herab, Kankra seilt sich ab, Sauron und Morgoth wachsen aus dem Schatten, Saruman kommt mit dem Blitz
+- **Finaler Schlag:** Treffer-Stillstand, lange Zeitlupe, Kamerafahrt und Schockwellen beim Todesstoß gegen einen Boss
+- **Schlachtfelder mit Heeren:** auf dem Pelennor, in Helms Klamm (Fackeln in der Nacht), bei den Fünf Heeren, am Morannon und in der Ersten Zeit kämpfen Heere am Horizont – mit Pfeilsalven, Katapultfeuer und heranstürmenden Rohirrim
+- **Musik je Region:** eigene Motive und Klangfarben für Auenland, Elben, Lórien, Düsterwald, Zwergenhallen, Rohan, Mordor, Schnee und Meer
+- **Heldenhalle** (ab Kapitel 15): ein begehbarer Raum mit allen Helden, Bannern, Ringen auf Sockeln und den Trophäen besiegter Bosse
+- **Erinnerungsbild:** nach Kapiteln, Sagen und Spiegelstufen ein gestaltetes Bild der Gruppe mit Kapitelname – teilen oder in Fotos sichern
+- **Schneller auf dem iPhone:** Figuren werden in passgenauen Rahmen gezeichnet, der Leuchteffekt in einem Schritt; rund 40 % mehr Bilder pro Sekunde, hinter offenen Menüs läuft das Spielfeld sparsamer; neue Grafikstufe **Akku** (30 Bilder pro Sekunde, weniger Weichzeichner)
+
 ## Neu in Version 16
 - **Siegesposen je Waffe:** Zauberer reißen den leuchtenden Stab empor, Schwertkämpfer recken die Klinge, Zwerge jubeln mit Axt und Hammer, Bogenschützen präsentieren den Bogen
 - **Lichtsäule für große Beute:** fällt Legendäres oder Mythisches, steigt an der Stelle des Gegners eine Lichtsäule in der Farbe der Seltenheit auf
