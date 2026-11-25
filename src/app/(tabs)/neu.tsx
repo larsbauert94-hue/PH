@@ -270,7 +270,7 @@ export default function NewPost() {
         {isReel ? (
           video ? (
             <View style={st.videoBox}>
-              <VideoView player={player} playsInline style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
+              <VideoView player={player} playsInline style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} contentFit="cover" nativeControls={false} />
               <Pressable onPress={() => setVideo(null)} style={st.remove} accessibilityLabel="Video entfernen"><Icon name="close" size={18} color="#fff" /></Pressable>
             </View>
           ) : (

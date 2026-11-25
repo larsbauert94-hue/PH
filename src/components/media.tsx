@@ -112,7 +112,7 @@ export function ReelPlayer({ post }: { post: FeedPost }) {
   const player = useVideoPlayer(post.video_url, p => { p.loop = true; p.play() })
   return (
     <View style={{ width: '100%', aspectRatio: 9 / 16, maxHeight: 640, backgroundColor: '#000' }}>
-      <VideoView player={player} playsInline style={StyleSheet.absoluteFill} contentFit="contain" nativeControls />
+      <VideoView player={player} playsInline style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} contentFit="contain" nativeControls />
     </View>
   )
 }
