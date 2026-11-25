@@ -99,7 +99,6 @@ function Navigation() {
         <Stack.Screen name="story/[id]" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'fade', contentStyle: { backgroundColor: '#000' } }} />
         <Stack.Screen name="story/neu" options={{ headerShown: false, presentation: 'fullScreenModal', contentStyle: { backgroundColor: '#000' } }} />
         <Stack.Screen name="chat/[id]" options={{ title: '' }} />
-        <Stack.Screen name="reel/[id]" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'fade', contentStyle: { backgroundColor: '#000' } }} />
       </Stack.Protected>
       <Stack.Screen name="rechtliches" options={{ title: 'Nutzungsbedingungen & Datenschutz', presentation: 'modal' }} />
     </Stack>

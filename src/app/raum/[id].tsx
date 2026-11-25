@@ -21,7 +21,7 @@ export default function GroupScreen() {
   if (!g) return <Empty icon="people-outline" text="Diesen Raum gibt es nicht mehr." />
 
   const header = (
-    <View style={{ gap: 14, marginBottom: 4 }}>
+    <View style={{ gap: 14, padding: 16, paddingBottom: 8 }}>
       <LinearGradient colors={['#23306a', colors.surface]} style={st.hero}>
         <Text style={st.emoji}>{g.emoji}</Text>
         <Text style={st.name}>{g.name}</Text>
@@ -54,7 +54,7 @@ export default function GroupScreen() {
         renderItem={({ item }) => <PostCard post={item} />}
         ListHeaderComponent={header}
         ListEmptyComponent={posts.isPending ? <Loading /> : <Empty icon="chatbubbles-outline" text="Noch keine Beiträge in diesem Raum." />}
-        contentContainerStyle={{ padding: 16, gap: 14, maxWidth: 680, width: '100%', alignSelf: 'center' }}
+        contentContainerStyle={{ paddingBottom: 24, maxWidth: 680, width: '100%', alignSelf: 'center' }}
         onEndReached={posts.loadMore}
       />
     </>

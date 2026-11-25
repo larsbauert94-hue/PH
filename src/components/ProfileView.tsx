@@ -187,7 +187,7 @@ export default function ProfileView({ id, onEdit }: { id: string; onEdit?: () =>
             text={tab === 'saved' ? 'Tippe bei Beiträgen auf das Lesezeichen, um sie hier zu sammeln.' : tab === 'reels' ? 'Noch keine Reels.' : tab === 'checkins' ? 'Noch keine Check-ins im Trinktagebuch.' : isMe ? 'Teile deinen ersten Beitrag über „Posten“.' : 'Noch keine Beiträge.'}
           />
         ) : tab === 'list' || tab === 'checkins' ? (
-          <View style={{ padding: 12, gap: 14 }}>{posts.posts.map(x => <PostCard key={x.id} post={x} />)}</View>
+          <View>{posts.posts.map(x => <PostCard key={x.id} post={x} />)}</View>
         ) : <PostGrid posts={posts.posts} />}
     </ScrollView>
   )

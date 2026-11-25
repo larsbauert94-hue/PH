@@ -56,7 +56,7 @@ export default function Feed() {
   }))
 
   const header = (
-    <View style={{ gap: 14, marginBottom: 2 }}>
+    <View style={{ gap: 14, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 6 }}>
       <Text style={st.greeting}>{mood.greeting}, {profile.name.split(' ')[0]}<Text style={{ color: c2.accentLight }}> {mood.emoji}</Text></Text>
       <StoryBar />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
@@ -75,7 +75,7 @@ export default function Feed() {
         keyExtractor={p => p.id}
         renderItem={({ item }) => <PostCard post={item} />}
         ListHeaderComponent={header}
-        contentContainerStyle={{ padding: 16, paddingTop: 8, gap: 14, maxWidth: 680, width: '100%', alignSelf: 'center' }}
+        contentContainerStyle={{ paddingBottom: 24, maxWidth: 680, width: '100%', alignSelf: 'center' }}
         ListEmptyComponent={feed.isPending ? <Loading /> : feed.isError ? <ErrorView error={feed.error} onRetry={feed.refetch} /> : <Empty icon="newspaper-outline" text={EMPTY[tab]} />}
         ListFooterComponent={feed.isFetchingNextPage ? <ActivityIndicator color={colors.accent} style={{ padding: 16 }} /> : undefined}
         onEndReached={feed.loadMore}

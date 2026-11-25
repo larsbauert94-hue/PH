@@ -29,7 +29,7 @@ export default function CollectionScreen() {
   }
 
   const header = (
-    <View style={{ gap: 12, marginBottom: 4 }}>
+    <View style={{ gap: 12, padding: 16, paddingBottom: 8 }}>
       <Text style={st.name}>{col.name}</Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <View style={{ flexDirection: 'row' }}>
@@ -62,7 +62,7 @@ export default function CollectionScreen() {
         keyExtractor={i => i.id}
         ListHeaderComponent={header}
         ListEmptyComponent={items.isPending ? <Loading /> : <Empty icon="bookmark-outline" text="Noch leer. Füge Beiträge über „•••“ oder Orte über „Merken“ hinzu." />}
-        contentContainerStyle={{ padding: 16, gap: 14, maxWidth: 680, width: '100%', alignSelf: 'center' }}
+        contentContainerStyle={{ paddingBottom: 24, maxWidth: 680, width: '100%', alignSelf: 'center' }}
         renderItem={({ item }) => item.post ? <PostCard post={item.post} /> : (
           <Pressable style={st.venue} onPress={() => router.push(`/ort/${item.venue!.id}`)} onLongPress={() => actions.removeItem(item.id)}>
             <View style={[st.dot, { backgroundColor: VENUE_TYPES[item.venue!.type].color }]} />
@@ -83,7 +83,7 @@ const st = StyleSheet.create({
   meta: { color: colors.muted, fontSize: 13 },
   invite: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, height: 34, borderRadius: radius.pill, backgroundColor: colors.accent },
   inviteText: { color: colors.onAccent, fontWeight: '700' },
-  venue: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: radius.lg, backgroundColor: colors.surface },
+  venue: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, marginHorizontal: 16, marginBottom: 10, borderRadius: radius.lg, backgroundColor: colors.surface },
   dot: { width: 10, height: 10, borderRadius: 5 },
   venueName: { color: colors.text, fontWeight: '700', fontSize: 15 },
 })

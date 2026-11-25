@@ -88,7 +88,7 @@ export function MediaCarousel({ media, onDoubleTap, aspect = 4 / 5 }: { media: s
 
 /** Reel im Feed: Vorschaubild mit Play-Symbol, öffnet die Reels-Ansicht */
 export function ReelPreview({ post, onDoubleTap }: { post: FeedPost; onDoubleTap: () => void }) {
-  const open = () => router.push(`/reel/${post.id}`)
+  const open = () => router.navigate({ pathname: '/reels', params: { start: post.id, t: String(Date.now()) } })
   return (
     <View style={{ width: '100%', aspectRatio: 4 / 5, backgroundColor: '#000' }}>
       <DoubleTap onDoubleTap={onDoubleTap} onTap={open} style={StyleSheet.absoluteFill}>
@@ -142,7 +142,7 @@ export function PostGrid({ posts }: { posts: FeedPost[] }) {
         <Pressable
           key={p.id}
           style={[st.cell, { width: size, height: size * 1.25 }]}
-          onPress={() => p.video_url ? router.push(`/reel/${p.id}`) : router.push(`/post/${p.id}`)}
+          onPress={() => p.video_url ? router.navigate({ pathname: '/reels', params: { start: p.id, t: String(Date.now()) } }) : router.push(`/post/${p.id}`)}
           accessibilityLabel={p.title ?? p.body.slice(0, 60)}
         >
           {p.media[0] ? (

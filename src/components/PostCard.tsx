@@ -203,7 +203,8 @@ function PostCard({ post, detail = false }: { post: FeedPost; detail?: boolean }
 export default memo(PostCard)
 
 const st = StyleSheet.create({
-  card: { backgroundColor: colors.surface, borderRadius: radius.lg, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
+  // Randlos wie bei Instagram; nur ein feiner Roségold-Strich trennt die Beiträge
+  card: { backgroundColor: 'transparent', paddingBottom: 4, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(227,165,133,0.5)' },
   header: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10 },
   author: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },

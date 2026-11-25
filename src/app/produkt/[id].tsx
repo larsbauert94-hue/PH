@@ -34,7 +34,7 @@ export default function ProductScreen() {
   if (!p) return <Empty icon="wine-outline" text="Dieses Produkt gibt es nicht mehr." />
 
   const header = (
-    <View style={{ gap: 16, marginBottom: 6 }}>
+    <View style={{ gap: 16, padding: 16, paddingBottom: 8 }}>
       <LinearGradient colors={['#1f2a5c', colors.surface]} style={st.hero}>
         <View style={st.bottle}><Icon name="wine-outline" size={40} color={colors.accent} /></View>
         <Text style={st.kicker}>{CATEGORIES[p.category].toUpperCase()}</Text>
@@ -80,7 +80,7 @@ export default function ProductScreen() {
         renderItem={({ item }) => <PostCard post={item} />}
         ListHeaderComponent={header}
         ListEmptyComponent={checkins.isPending ? <Loading /> : <Empty icon="cheers-outline" text="Noch keine Check-ins. Sei die erste Person!" />}
-        contentContainerStyle={{ padding: 16, gap: 14, maxWidth: 680, width: '100%', alignSelf: 'center' }}
+        contentContainerStyle={{ paddingBottom: 24, maxWidth: 680, width: '100%', alignSelf: 'center' }}
         onEndReached={checkins.loadMore}
       />
     </>

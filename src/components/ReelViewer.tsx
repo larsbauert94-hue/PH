@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState } from 'react'
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
+import { FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
 import { router } from 'expo-router'
 import { Image } from 'expo-image'
 import { useVideoPlayer, VideoView } from 'expo-video'
@@ -15,21 +15,21 @@ import { MusicLine } from '../components/music'
 type ViewToken = { index?: number | null; isViewable?: boolean }
 
 /**
- * Reels zum Hoch- und Runterwischen. Im Reels-Tab mit Leiste unten (Tipp öffnet Vollbild),
- * im Vollbild ohne Leiste (Tipp schaltet den Ton).
+ * Reels zum Hoch- und Runterwischen wie bei TikTok: rechts Anstoßen, Kommentare, Senden, Merken,
+ * oben rechts der Ton. Tippen pausiert, doppelt tippen stößt an.
  */
-export default function ReelViewer({ posts, startId, onEndReached, onClose, onOpen, paused = false, title }: {
+export default function ReelViewer({ posts, startId, onEndReached, paused = false, title }: {
   posts: FeedPost[]; startId?: string; onEndReached?: () => void
-  /** Schließen-Knopf (nur im Vollbild) */ onClose?: () => void
-  /** Einfacher Tipp aufs Video, z. B. Vollbild öffnen */ onOpen?: (post: FeedPost) => void
   paused?: boolean; title?: string
 }) {
   const insets = useSafeAreaInsets()
   const [height, setHeight] = useState(0)
   const startIndex = Math.max(0, startId ? posts.findIndex(p => p.id === startId) : 0)
   const [active, setActive] = useState(startIndex)
-  const [muted, setMuted] = useState(false)
+  // Im Browser (iPhone-Safari) starten Videos nur stumm von selbst, wie bei TikTok im Web
+  const [muted, setMuted] = useState(Platform.OS === 'web')
   const list = useRef<FlatList<FeedPost>>(null)
+  const [muteAll] = useState(() => () => setMuted(true))
   // Zeitpunkt der letzten Scroll-Bewegung: Tipps kurz danach sind keine Tipps, sondern Wischen
   const lastScroll = useRef(0)
 
@@ -62,7 +62,7 @@ export default function ReelViewer({ posts, startId, onEndReached, onClose, onOp
           scrollEventThrottle={32}
           windowSize={3}
           renderItem={({ item, index }) => (
-            <Reel post={item} height={height} playing={!paused && index === active} muted={muted} onToggleMute={() => setMuted(m => !m)} onTap={onOpen ? () => { if (Date.now() - lastScroll.current > 600) onOpen(item) } : undefined} />
+            <Reel post={item} height={height} playing={!paused && index === active} muted={muted} canTap={() => Date.now() - lastScroll.current > 600} onBlocked={muteAll} />
           )}
         />
       )}
@@ -71,51 +71,51 @@ export default function ReelViewer({ posts, startId, onEndReached, onClose, onOp
           <Text style={st.screenTitle}>{title}</Text>
         </View>
       )}
-      {onOpen && (
+      {
         <Pressable onPress={() => setMuted(m => !m)} style={[st.mute, { top: insets.top + 8 }]} hitSlop={10} accessibilityRole="button" accessibilityLabel={muted ? 'Ton an' : 'Ton aus'}>
           <Icon name={muted ? 'volume-mute' : 'volume-high'} size={20} color="#fff" />
         </Pressable>
-      )}
-      {onClose && (
-        <Pressable onPress={onClose} style={[st.close, { top: insets.top + 8 }]} hitSlop={10} accessibilityRole="button" accessibilityLabel="Vollbild schließen">
-          <Icon name="chevron-down" size={26} color="#fff" />
-        </Pressable>
-      )}
+      }
     </View>
   )
 }
 
-const Reel = memo(function Reel({ post, height, playing, muted, onToggleMute, onTap }: { post: FeedPost; height: number; playing: boolean; muted: boolean; onToggleMute: () => void; onTap?: () => void }) {
+const Reel = memo(function Reel({ post, height, playing, muted, canTap, onBlocked }: { post: FeedPost; height: number; playing: boolean; muted: boolean; canTap: () => boolean; onBlocked: () => void }) {
   const like = useToggleLike()
   const save = useToggleSave()
   const player = useVideoPlayer(post.video_url, p => { p.loop = true })
-  const [showMute, setShowMute] = useState(false)
+  // Tippen pausiert wie bei TikTok; beim Weiterwischen wird die Pause zurückgesetzt
+  const [paused, setPaused] = useState(false)
+  const [wasPlaying, setWasPlaying] = useState(playing)
+  if (playing !== wasPlaying) { setWasPlaying(playing); if (!playing) setPaused(false) }
 
   // expo-video wird über Eigenschaften am Player gesteuert
   // eslint-disable-next-line react-hooks/immutability
   useEffect(() => { player.muted = muted }, [player, muted])
   useEffect(() => {
-    if (playing) player.play()
+    if (playing && !paused) {
+      player.play()
+      // Blockiert der Browser das Abspielen mit Ton, stumm weiterspielen
+      if (Platform.OS === 'web' && !muted) {
+        const id = setTimeout(() => { if (!player.playing) onBlocked() }, 700)
+        return () => clearTimeout(id)
+      }
+    } else if (playing) player.pause()
     // eslint-disable-next-line react-hooks/immutability
     else { player.pause(); player.currentTime = 0 }
-  }, [player, playing])
+  }, [player, playing, paused, muted, onBlocked])
 
-  const toggleMute = () => {
-    onToggleMute()
-    setShowMute(true)
-    setTimeout(() => setShowMute(false), 700)
-  }
 
   return (
     <View style={{ height, backgroundColor: '#000' }}>
       {post.media[0] && <Image source={{ uri: post.media[0] }} style={StyleSheet.absoluteFill} contentFit="cover" />}
       <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
-      <DoubleTap onDoubleTap={() => { if (!post.liked_by_me) like.mutate(post) }} onTap={onTap ?? toggleMute}>
+      <DoubleTap onDoubleTap={() => { if (!post.liked_by_me) like.mutate(post) }} onTap={() => { if (canTap()) setPaused(x => !x) }}>
         <View style={{ height }} />
       </DoubleTap>
-      {showMute && (
+      {paused && (
         <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]} pointerEvents="none">
-          <View style={st.muteBubble}><Icon name={muted ? 'volume-mute' : 'volume-high'} size={30} color="#fff" /></View>
+          <View style={st.muteBubble}><Icon name="play" size={32} color="#fff" /></View>
         </View>
       )}
 
@@ -155,7 +155,6 @@ const st = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#000' },
   titleBox: { position: 'absolute', left: 16 },
   screenTitle: { color: '#fff', fontFamily: fonts.serif, fontSize: 24, fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 8 },
-  close: { position: 'absolute', left: 12, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'center' },
   mute: { position: 'absolute', right: 12, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'center' },
   shadow,
   muteBubble: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
