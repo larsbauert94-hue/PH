@@ -109,7 +109,7 @@ const Reel = memo(function Reel({ post, height, playing, muted, canTap, onBlocke
   return (
     <View style={{ height, backgroundColor: '#000' }}>
       {post.media[0] && <Image source={{ uri: post.media[0] }} style={StyleSheet.absoluteFill} contentFit="cover" />}
-      <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
+      <VideoView player={player} playsInline style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
       <DoubleTap onDoubleTap={() => { if (!post.liked_by_me) like.mutate(post) }} onTap={() => { if (canTap()) setPaused(x => !x) }}>
         <View style={{ height }} />
       </DoubleTap>

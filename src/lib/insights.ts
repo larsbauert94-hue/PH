@@ -76,5 +76,6 @@ export async function activity(
     }
   }
   for (const st of stories) get(st.venue_id).stories++
-  return [...map.values()]
+  // nur Orte, an denen heute wirklich etwas los ist
+  return [...map.values()].filter(a => a.events || a.stories || a.checkins || a.friends.length)
 }

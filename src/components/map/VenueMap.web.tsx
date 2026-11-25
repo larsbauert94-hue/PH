@@ -1,11 +1,11 @@
 import { forwardRef, useImperativeHandle, useState } from 'react'
 import { PanResponder, Pressable, StyleSheet, Text, View } from 'react-native'
-import { Image } from 'expo-image'
 import { VENUE_TYPES } from '../../lib/labels'
 import { colors } from '../../lib/theme'
 import { GERMANY, type Coords } from '../../lib/geo'
 import type { Venue } from '../../lib/types'
 import type { VenueMapHandle } from './VenueMap'
+import { DropPin, TileLayer, toLatLng, toWorld } from './tiles'
 
 interface Props {
   venues: Venue[]
@@ -22,23 +22,12 @@ const MIN_Z = 4
 const MAX_Z = 18
 const clampZ = (z: number) => Math.max(MIN_Z, Math.min(MAX_Z, z))
 
-/** Web-Mercator: Breite/Länge → Weltpixel bei Zoom z */
-function toWorld(lat: number, lng: number, z: number) {
-  const s = TILE * 2 ** z
-  const sin = Math.sin((lat * Math.PI) / 180)
-  return { x: ((lng + 180) / 360) * s, y: (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * s }
-}
-function toLatLng(x: number, y: number, z: number) {
-  const s = TILE * 2 ** z
-  const n = Math.PI - (2 * Math.PI * y) / s
-  return { latitude: (180 / Math.PI) * Math.atan(Math.sinh(n)), longitude: (x / s) * 360 - 180 }
-}
 /** Zoomstufe, bei der `spanDeg` Längengrade in `width` Pixel passen */
 const zoomForSpan = (spanDeg: number, width: number) => clampZ(Math.log2((360 * Math.max(width, 200)) / (TILE * spanDeg)))
 
 /**
- * Web-Karte: dunkle Kartenkacheln (CARTO/OpenStreetMap) zum Verschieben und Zoomen
- * (Ziehen, zwei Finger, Plus/Minus). Ohne Kachelzugriff bleibt ein Raster sichtbar.
+ * Web-Karte: dunkle Kartenkacheln zum Verschieben und Zoomen (Ziehen, zwei Finger, Plus/Minus),
+ * Tropfen-Pins je Ortsart. Ohne Kachelzugriff bleibt ein Raster sichtbar.
  */
 const VenueMap = forwardRef<VenueMapHandle, Props>(function VenueMap({ venues, selectedId, onSelect, userLocation, radiusKm = 20 }, ref) {
   const [size, setSize] = useState({ w: 0, h: 0 })
@@ -92,30 +81,6 @@ const VenueMap = forwardRef<VenueMapHandle, Props>(function VenueMap({ venues, s
     })
   })
 
-  // Sichtbare Kacheln
-  const tz = Math.floor(view.z)
-  const scale = 2 ** (view.z - tz)
-  const ts = TILE * scale
-  const tc = toWorld(view.lat, view.lng, tz)
-  const x0 = Math.floor((tc.x - size.w / 2 / scale) / TILE)
-  const x1 = Math.floor((tc.x + size.w / 2 / scale) / TILE)
-  const y0 = Math.floor((tc.y - size.h / 2 / scale) / TILE)
-  const y1 = Math.floor((tc.y + size.h / 2 / scale) / TILE)
-  const n = 2 ** tz
-  const tiles: { key: string; url: string; left: number; top: number }[] = []
-  if (size.w) {
-    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) {
-      if (y < 0 || y >= n) continue
-      const wx = ((x % n) + n) % n
-      tiles.push({
-        key: `${tz}/${x}/${y}`,
-        url: `https://${'abcd'[(x + y) & 3]}.basemaps.cartocdn.com/dark_all/${tz}/${wx}/${y}@2x.png`,
-        left: (x * TILE - tc.x) * scale + size.w / 2,
-        top: (y * TILE - tc.y) * scale + size.h / 2,
-      })
-    }
-  }
-
   const mPerPx = (156543.03 * Math.cos((view.lat * Math.PI) / 180)) / 2 ** view.z
   const me = userLocation ? project(userLocation.latitude, userLocation.longitude) : null
   const ring = (radiusKm * 1000) / mPerPx
@@ -125,9 +90,7 @@ const VenueMap = forwardRef<VenueMapHandle, Props>(function VenueMap({ venues, s
     <View style={[StyleSheet.absoluteFill, st.ground]} onLayout={e => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })} {...pan.panHandlers}>
       {Array.from({ length: 9 }, (_, i) => <View key={`h${i}`} style={[st.gridH, { top: `${(i + 1) * 10}%` }]} />)}
       {Array.from({ length: 6 }, (_, i) => <View key={`v${i}`} style={[st.gridV, { left: `${(i + 1) * 14}%` }]} />)}
-      {tiles.map(t => (
-        <Image key={t.key} source={{ uri: t.url }} style={{ position: 'absolute', left: t.left, top: t.top, width: ts + 0.5, height: ts + 0.5 }} transition={0} cachePolicy="memory-disk" pointerEvents="none" />
-      ))}
+      <TileLayer lat={view.lat} lng={view.lng} z={view.z} width={size.w} height={size.h} />
       <Pressable style={StyleSheet.absoluteFill} onPress={() => onSelect(null)} accessibilityLabel="Auswahl aufheben" />
 
       {me && (
@@ -139,22 +102,22 @@ const VenueMap = forwardRef<VenueMapHandle, Props>(function VenueMap({ venues, s
 
       {size.w > 0 && venues.map(v => {
         const p = project(v.latitude, v.longitude)
-        if (p.x < -40 || p.y < -40 || p.x > size.w + 40 || p.y > size.h + 40) return null
+        if (p.x < -60 || p.y < -60 || p.x > size.w + 60 || p.y > size.h + 60) return null
         const sel = v.id === selectedId
-        const s = sel ? 24 : close ? 18 : 13
+        const w = sel ? 38 : close ? 30 : 22
         return (
-          <View key={v.id} style={{ position: 'absolute', left: p.x - s / 2, top: p.y - s / 2 }}>
-            <Pressable
-              onPress={() => onSelect(v.id)}
-              hitSlop={10}
-              accessibilityLabel={`${v.name}, ${v.city}`}
-              style={[st.pin, { width: s, height: s, borderRadius: s / 2, backgroundColor: VENUE_TYPES[v.type].color }, sel && st.pinSel]}
-            />
-            {(close || sel) && <Text style={st.label} numberOfLines={1} pointerEvents="none">{v.name}</Text>}
+          <View key={v.id} style={{ position: 'absolute', left: p.x - w / 2, top: p.y - w * 1.25, alignItems: 'center', zIndex: sel ? 2 : 1 }}>
+            <Pressable onPress={() => onSelect(v.id)} hitSlop={10} accessibilityLabel={`${v.name}, ${v.city}`}>
+              <DropPin color={VENUE_TYPES[v.type].color} size={w} selected={sel} />
+            </Pressable>
+            {(close || sel) && (
+              <View style={[st.label, sel && st.labelSel]} pointerEvents="none">
+                <Text style={[st.labelText, sel && { color: colors.onAccent }]} numberOfLines={1}>{v.name}</Text>
+              </View>
+            )}
           </View>
         )
       })}
-      <Text style={st.attr} pointerEvents="none">© OpenStreetMap · © CARTO</Text>
     </View>
   )
 })
@@ -167,8 +130,7 @@ const st = StyleSheet.create({
   gridV: { position: 'absolute', top: 0, bottom: 0, width: StyleSheet.hairlineWidth, backgroundColor: 'rgba(143,153,230,0.14)' },
   ring: { position: 'absolute', borderWidth: 1.5, borderColor: 'rgba(227,165,133,0.55)', backgroundColor: 'rgba(227,165,133,0.06)' },
   me: { position: 'absolute', width: 16, height: 16, borderRadius: 8, backgroundColor: '#4f8cff', borderWidth: 3, borderColor: '#fff' },
-  label: { position: 'absolute', left: 22, top: -2, color: colors.text, fontSize: 11, fontWeight: '600', maxWidth: 150, textShadowColor: '#000', textShadowRadius: 4 },
-  pin: { borderWidth: 2, borderColor: colors.bg },
-  pinSel: { borderColor: colors.text, borderWidth: 3 },
-  attr: { position: 'absolute', left: 8, bottom: 4, color: 'rgba(255,255,255,0.45)', fontSize: 9 },
+  label: { marginTop: 2, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: 'rgba(11,16,41,0.85)', borderWidth: 1, borderColor: 'rgba(227,165,133,0.35)', maxWidth: 160 },
+  labelSel: { backgroundColor: colors.accent, borderColor: colors.accent },
+  labelText: { color: colors.text, fontSize: 11, fontWeight: '700' },
 })

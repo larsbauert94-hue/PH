@@ -129,7 +129,7 @@ export default function StoryPlayer({ groups, startAuthor, highlightTitle }: { g
   return (
     <KeyboardAvoidingView style={st.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined} {...pan.panHandlers} onLayout={e => setScreen({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
       {story.media_type === 'video'
-        ? <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
+        ? <VideoView player={player} playsInline style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
         : <Image source={{ uri: story.media_url }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />}
 
       {/* Tippzonen: links zurück, rechts weiter, gedrückt halten pausiert */}

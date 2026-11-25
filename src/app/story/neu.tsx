@@ -139,7 +139,7 @@ export default function NewStory() {
     <KeyboardAvoidingView style={st.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={StyleSheet.absoluteFill} onLayout={e => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
         {file.type === 'video'
-          ? <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
+          ? <VideoView player={player} playsInline style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
           : <Image source={{ uri: file.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />}
         {size.w > 0 && overlays.map((o, i) => (
           <DraggableOverlay
