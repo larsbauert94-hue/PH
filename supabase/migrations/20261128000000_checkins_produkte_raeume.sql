@@ -192,7 +192,7 @@ $$;
 alter table public.collections enable row level security;
 alter table public.collection_members enable row level security;
 alter table public.collection_items enable row level security;
-create policy "Sammlungen lesen" on public.collections for select to authenticated using (public.in_collection(id));
+create policy "Sammlungen lesen" on public.collections for select to authenticated using (owner_id = auth.uid() or public.in_collection(id));
 create policy "Sammlung anlegen" on public.collections for insert to authenticated with check (owner_id = auth.uid());
 create policy "Eigene Sammlung ändern" on public.collections for update to authenticated using (owner_id = auth.uid());
 create policy "Eigene Sammlung löschen" on public.collections for delete to authenticated using (owner_id = auth.uid());
@@ -242,6 +242,11 @@ create table public.profile_views (
 alter table public.profile_views enable row level security;
 create policy "Aufruf zählen" on public.profile_views for insert to authenticated with check (viewer_id = auth.uid() and viewer_id <> profile_id);
 create policy "Eigene Aufrufe sehen" on public.profile_views for select to authenticated using (profile_id = auth.uid());
+
+-- Wie oft die eigenen Beiträge gemerkt wurden (Einzel-Merkungen bleiben privat)
+create or replace function public.business_save_count(p uuid) returns int language sql stable security definer set search_path = public as $$
+  select case when p = auth.uid() then (select count(*)::int from saves s join posts po on po.id = s.post_id where po.author_id = p) else 0 end
+$$;
 
 -- ---------------------------------------------------------------------------
 -- Nützliche Mitteilungen: Neues von gemerkten Orten, passende Jobs

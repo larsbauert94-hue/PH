@@ -1,5 +1,5 @@
 import { router, type Href } from 'expo-router'
-import type { Profile, Track, Venue } from './types'
+import type { Product, Profile, Track, Venue } from './types'
 
 /**
  * Auswahl-Bildschirm, der ein Ergebnis zurückgibt (z. B. Song, Ort, Person):
@@ -22,3 +22,4 @@ function createPicker<T>(route: Href) {
 export const musicPicker = createPicker<Track>('/auswahl/musik')
 export const venuePicker = createPicker<Venue>('/auswahl/ort')
 export const personPicker = createPicker<Profile>('/auswahl/person')
+export const productPicker = createPicker<Product>('/auswahl/produkt')

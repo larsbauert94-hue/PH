@@ -1,20 +1,23 @@
 import { useRef, useState } from 'react'
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View, type ScrollViewInstance } from 'react-native'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import { Image } from 'expo-image'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import * as VideoThumbnails from 'expo-video-thumbnails'
 import { Icon } from '../../components/Icon'
 import { useMe } from '../../lib/auth'
-import { useCreatePost, useVenues } from '../../lib/queries'
+import { api } from '../../lib/api'
+import { newlyEarned } from '../../lib/badges'
+import { useCreatePost, useGroup, usePost, useVenues } from '../../lib/queries'
 import { pickMedia, type PickedMedia } from '../../lib/pickImage'
 import { editPhotos } from '../../lib/editor'
-import { musicPicker, venuePicker } from '../../lib/picker'
+import { musicPicker, personPicker, productPicker, venuePicker } from '../../lib/picker'
 import { MusicCover } from '../../components/music'
 import MentionSuggest from '../../components/MentionSuggest'
-import { ACCOUNT_TYPES, CATEGORIES, POST_KINDS } from '../../lib/labels'
+import { ACCOUNT_TYPES, AROMAS, CATEGORIES, POST_KINDS } from '../../lib/labels'
 import { colors, fonts, radius } from '../../lib/theme'
-import type { Category, LocalFile, PostKind, Track } from '../../lib/types'
+import type { Category, LocalFile, PostKind, Product, Profile, Template, Track } from '../../lib/types'
+import { AromaChips, DropRating, TemplateCard } from '../../components/checkin'
 import { Button, Chip, Field, IconName } from '../../components/ui'
 import { FadeIn, PressScale, tap } from '../../components/motion'
 import { notify } from '../../components/report'
@@ -27,6 +30,8 @@ const KIND_INFO: Record<PostKind, { title: string; hint: string; color: string }
   angebot: { title: 'Angebot', hint: 'Aktion für Kunden', color: '#7cc4a0' },
   event: { title: 'Event', hint: 'Tasting, Party, Messe', color: colors.lavender },
   job: { title: 'Job', hint: 'Stelle ausschreiben', color: colors.heart },
+  checkin: { title: 'Check-in', hint: 'Drink bewerten', color: colors.accentLight },
+  rezept: { title: 'Rezept', hint: 'Zum Nachmixen', color: '#e8c36a' },
 }
 
 const TITLE_HINT: Record<PostKind, string> = {
@@ -35,10 +40,14 @@ const TITLE_HINT: Record<PostKind, string> = {
   angebot: 'z. B. „Winteraktion für Gastro-Kunden“',
   event: 'Name und Datum, z. B. „Tasting am 14. Dezember“',
   job: 'Position, z. B. „Bartender:in (Vollzeit)“',
+  checkin: 'Titel (optional)',
+  rezept: 'Name des Drinks, z. B. „Smoked Negroni“',
 }
 
+const TEMPLATES: { key: Template; label: string }[] = [{ key: 'karte', label: 'Menükarte' }, { key: 'plakat', label: 'Event-Plakat' }, { key: 'neuheit', label: 'Neuheit' }]
+
 export default function NewPost() {
-  const { profile } = useMe()
+  const { me, profile } = useMe()
   const create = useCreatePost()
   const venues = useVenues()
   const business = ACCOUNT_TYPES[profile.account_type].business
@@ -55,12 +64,42 @@ export default function NewPost() {
   const [images, setImages] = useState<PickedMedia[]>([])
   const [video, setVideo] = useState<PickedMedia | null>(null)
   const [music, setMusic] = useState<Track | null>(null)
+  const [rating, setRating] = useState(0)
+  const [aromas, setAromas] = useState<string[]>([])
+  const [product, setProduct] = useState<Product | null>(null)
+  const [ingredients, setIngredients] = useState([{ name: '', amount: '' }])
+  const [steps, setSteps] = useState([''])
+  const [template, setTemplate] = useState<Template | null>(null)
+  const [collab, setCollab] = useState<Profile | null>(null)
+  const [urgent, setUrgent] = useState(false)
+  const [groupId, setGroupId] = useState<string | null>(null)
+  const [remixOf, setRemixOf] = useState<string | null>(null)
   const scroll = useRef<ScrollViewInstance>(null)
+
+  // Aufruf mit Vorgaben: Nachmixen, Beitrag in einem Raum, Teilnahme an der Challenge
+  const params = useLocalSearchParams<{ remix?: string; group?: string; tag?: string; checkin?: string }>()
+  const paramKey = JSON.stringify(params)
+  const [seenParams, setSeenParams] = useState('{}')
+  if (paramKey !== seenParams) {
+    setSeenParams(paramKey)
+    if (params.remix) { setMode('beitrag'); setKind('beitrag'); setRemixOf(params.remix); setCategory('cocktails') }
+    if (params.group) { setMode('beitrag'); setKind('beitrag'); setGroupId(params.group) }
+    if (params.tag) { setMode('beitrag'); setKind('beitrag'); setBody(b => b.includes(params.tag!) ? b : `${b} ${params.tag}`.trim()) }
+    if (params.checkin) { setMode('beitrag'); setKind('checkin') }
+  }
+  const remixPost = usePost(remixOf ?? '')
+  const group = useGroup(groupId ?? '')
   const player = useVideoPlayer(video?.uri ?? null, p => { p.loop = true; p.muted = true; p.play() })
 
   const isReel = mode === 'reel'
-  const needsTitle = !isReel && kind !== 'beitrag'
-  const canPost = isReel ? !!video : body.trim().length > 0 && (!needsTitle || title.trim().length > 0)
+  const isCheckin = !isReel && kind === 'checkin'
+  const isRecipe = !isReel && kind === 'rezept'
+  const needsTitle = !isReel && !['beitrag', 'checkin'].includes(kind)
+  const recipe = { ingredients: ingredients.filter(i => i.name.trim()).map(i => ({ name: i.name.trim(), amount: i.amount.trim() })), steps: steps.map(x => x.trim()).filter(Boolean) }
+  const canPost = isReel ? !!video
+    : isCheckin ? rating > 0
+    : isRecipe ? title.trim().length > 0 && recipe.ingredients.length > 0 && recipe.steps.length > 0
+    : (body.trim().length > 0 || !!template) && (!needsTitle || title.trim().length > 0)
 
   const addImages = async (camera: boolean) => {
     const picked = await pickMedia({ camera, multiple: !camera, edit: camera, aspect: [4, 5] })
@@ -78,10 +117,14 @@ export default function NewPost() {
 
   const reset = () => {
     setMode(null); setKind('beitrag'); setTitle(''); setBody(''); setLink(''); setVenueId(null); setImages([]); setVideo(null); setMusic(null)
+    setRating(0); setAromas([]); setProduct(null); setIngredients([{ name: '', amount: '' }]); setSteps(['']); setTemplate(null); setCollab(null); setUrgent(false); setGroupId(null); setRemixOf(null)
+    router.setParams({ remix: undefined, group: undefined, tag: undefined, checkin: undefined })
   }
 
   const submit = async () => {
     const url = link.trim()
+    // Stand vor dem Posten, um neue Abzeichen zu erkennen
+    const before = await api.getCheckinSummary(me).catch(() => undefined)
     let media: LocalFile[] = images
     if (isReel && video) {
       // Vorschaubild aus dem Video erzeugen (im Browser nicht verfügbar)
@@ -103,8 +146,22 @@ export default function NewPost() {
       media,
       video: isReel && video ? video : undefined,
       music: music ?? undefined,
+      rating: isCheckin ? rating : undefined,
+      aromas: isCheckin ? aromas : undefined,
+      product_id: isCheckin ? product?.id : undefined,
+      recipe: isRecipe ? recipe : undefined,
+      remix_of: remixOf ?? undefined,
+      collab_id: collab?.id,
+      group_id: groupId ?? undefined,
+      urgent: kind === 'job' && urgent,
+      template: !images.length && template ? template : undefined,
     }, {
-      onSuccess: () => { const toReels = isReel; reset(); scroll.current?.scrollTo({ y: 0, animated: false }); router.navigate(toReels ? '/reels' : '/') },
+      onSuccess: async () => {
+        const target = isReel ? '/reels' : groupId ? `/raum/${groupId}` : '/'
+        reset(); scroll.current?.scrollTo({ y: 0, animated: false }); router.navigate(target as '/')
+        const fresh = before ? newlyEarned(before, await api.getCheckinSummary(me)) : []
+        if (fresh.length) router.push({ pathname: '/abzeichen/[id]', params: { id: me, neu: fresh.map(b => b.id).join(',') } })
+      },
       onError: e => notify('Fehler beim Posten', e.message),
     })
   }
@@ -122,13 +179,15 @@ export default function NewPost() {
         </FadeIn>
         {([
           ['beitrag', 'Beitrag', 'Fotos, Galerie & Text', 'images-outline'],
+          ['checkin', 'Check-in', 'Drink bewerten, Ort und Flasche markieren', 'cheers-outline'],
           ['story', 'Story', '24 Stunden sichtbar, mit Stickern & Musik', 'water-outline'],
           ['reel', 'Reel', 'Hochformat-Video bis 60 Sekunden', 'film-outline'],
+          ['rezept', 'Rezept', 'Zutaten und Schritte zum Nachmixen', 'flask-outline'],
         ] as const).map(([k, label, hint, icon], i) => (
           <FadeIn key={k} delay={80 + i * 70}>
             <PressScale
               style={st.bigCard}
-              onPress={() => k === 'story' ? router.push('/story/neu') : start(k)}
+              onPress={() => k === 'story' ? router.push('/story/neu') : k === 'checkin' || k === 'rezept' ? start('beitrag', k) : start(k)}
               accessibilityRole="button"
               accessibilityLabel={label}
             >
@@ -142,7 +201,7 @@ export default function NewPost() {
           </FadeIn>
         ))}
         {kinds.length > 1 && (
-          <FadeIn delay={330}>
+          <FadeIn delay={430}>
             <Text style={st.groupLabel}>{business ? 'Für deinen Betrieb' : 'Für Gastro-Profis'}</Text>
             <View style={st.tiles}>
               {kinds.filter(k => k !== 'beitrag').map(k => (
@@ -159,7 +218,7 @@ export default function NewPost() {
     )
   }
 
-  const heading = isReel ? 'Neues Reel' : KIND_INFO[kind].title
+  const heading = isReel ? 'Neues Reel' : remixOf ? 'Nachgemixt' : KIND_INFO[kind].title
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
       <ScrollView ref={scroll} contentContainerStyle={st.content} keyboardShouldPersistTaps="handled">
@@ -172,6 +231,39 @@ export default function NewPost() {
         </View>
 
         <FadeIn distance={10} duration={380} style={{ gap: 14 }}>
+        {groupId && group.data && <Text style={st.context}>Beitrag im Raum {group.data.emoji} {group.data.name}</Text>}
+        {remixOf && remixPost.data && <Text style={st.context}>↻ Deine Version von „{remixPost.data.title ?? remixPost.data.body.slice(0, 40)}“ von {remixPost.data.author_name}</Text>}
+
+        {isCheckin && (
+          <View style={st.group}>
+            <View style={[st.row, { flexDirection: 'column', alignItems: 'flex-start', gap: 10 }]}>
+              <Text style={st.rowLabel}>Wie war’s?</Text>
+              <DropRating value={rating} size={34} onChange={setRating} />
+            </View>
+            <View style={st.sep} />
+            {product ? (
+              <Pressable style={st.row} onPress={() => setProduct(null)} accessibilityLabel={`Produkt entfernen: ${product.name}`}>
+                <Icon name="wine-outline" size={20} color={colors.accent} />
+                <View style={{ flex: 1 }}>
+                  <Text style={st.rowText} numberOfLines={1}>{product.name}</Text>
+                  {!!product.brand_name && <Text style={{ color: colors.muted, fontSize: 12 }}>{product.brand_name}</Text>}
+                </View>
+                <Icon name="close-circle-outline" size={20} color={colors.faint} />
+              </Pressable>
+            ) : (
+              <Pressable style={st.row} onPress={async () => { const pr = await productPicker.open(); if (pr) { setProduct(pr); setCategory(pr.category) } }} accessibilityRole="button">
+                <Icon name="wine-outline" size={20} color={colors.accent} />
+                <Text style={[st.rowText, { flex: 1 }]}>Flasche oder Drink markieren</Text>
+                <Icon name="chevron-forward" size={16} color={colors.faint} />
+              </Pressable>
+            )}
+            <View style={st.sep} />
+            <View style={[st.row, { flexDirection: 'column', alignItems: 'stretch', gap: 10 }]}>
+              <Text style={st.rowLabel}>Aromen</Text>
+              <AromaChips aromas={AROMAS} selected={aromas} onToggle={a => setAromas(x => x.includes(a) ? x.filter(y => y !== a) : [...x, a].slice(0, 6))} />
+            </View>
+          </View>
+        )}
         {isReel ? (
           video ? (
             <View style={st.videoBox}>
@@ -208,7 +300,7 @@ export default function NewPost() {
           <View style={st.pickBox}>
             <Icon name="images-outline" size={36} color={colors.accent} />
             <Text style={st.pickTitle}>Fotos hinzufügen</Text>
-            <Text style={st.pickText}>Bis zu 10 Bilder, mit Filtern{kind === 'beitrag' ? '' : ' (optional)'}</Text>
+            <Text style={st.pickText}>Bis zu 10 Bilder, mit Filtern{kind === 'beitrag' && !remixOf ? '' : ' (optional)'}</Text>
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
               {Platform.OS !== 'web' && <Button title="Kamera" icon="camera-outline" variant="secondary" onPress={() => addImages(true)} />}
               <Button title="Fotos (bis 10)" icon="images-outline" onPress={() => addImages(false)} />
@@ -216,10 +308,46 @@ export default function NewPost() {
           </View>
         )}
 
-        {!isReel && (kind !== 'beitrag' || title) ? <Field label={needsTitle ? 'Titel' : undefined} value={title} onChangeText={setTitle} placeholder={TITLE_HINT[kind]} maxLength={140} /> : null}
+        {!isReel && !images.length && ['neuheit', 'angebot', 'event'].includes(kind) && (
+          <View style={{ gap: 10 }}>
+            <Text style={st.rowLabel}>Ohne Foto? Als gestaltete Vorlage teilen</Text>
+            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+              {TEMPLATES.map(t => <Chip key={t.key} label={t.label} active={template === t.key} onPress={() => setTemplate(template === t.key ? null : t.key)} />)}
+            </View>
+            {template && <TemplateCard template={template} title={title || 'Dein Titel'} body={body || 'Dein Text erscheint hier.'} author={profile.name} />}
+          </View>
+        )}
+
+        {!isReel && (kind !== 'beitrag' || title) && kind !== 'checkin' ? <Field label={needsTitle ? 'Titel' : undefined} value={title} onChangeText={setTitle} placeholder={TITLE_HINT[kind]} maxLength={140} /> : null}
+
+        {isRecipe && (
+          <View style={st.group}>
+            <View style={[st.row, { flexDirection: 'column', alignItems: 'stretch', gap: 8 }]}>
+              <Text style={st.rowLabel}>Zutaten</Text>
+              {ingredients.map((ing, i) => (
+                <View key={i} style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                  <View style={{ flex: 2 }}><Field value={ing.name} onChangeText={t => setIngredients(x => x.map((y, j) => j === i ? { ...y, name: t } : y))} placeholder={i === 0 ? 'z. B. Gin' : 'Zutat'} /></View>
+                  <View style={{ flex: 1 }}><Field value={ing.amount} onChangeText={t => setIngredients(x => x.map((y, j) => j === i ? { ...y, amount: t } : y))} placeholder="30 ml" /></View>
+                </View>
+              ))}
+              <Pressable onPress={() => setIngredients(x => [...x, { name: '', amount: '' }])} style={st.addRow} accessibilityRole="button"><Icon name="add" size={18} color={colors.accent} /><Text style={st.addText}>Zutat hinzufügen</Text></Pressable>
+            </View>
+            <View style={st.sep} />
+            <View style={[st.row, { flexDirection: 'column', alignItems: 'stretch', gap: 8 }]}>
+              <Text style={st.rowLabel}>Schritte</Text>
+              {steps.map((stp, i) => (
+                <View key={i} style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                  <Text style={st.stepNo}>{i + 1}</Text>
+                  <View style={{ flex: 1 }}><Field value={stp} onChangeText={t => setSteps(x => x.map((y, j) => j === i ? t : y))} placeholder={i === 0 ? 'z. B. Auf Eis 20 Sekunden rühren' : 'Nächster Schritt'} /></View>
+                </View>
+              ))}
+              <Pressable onPress={() => setSteps(x => [...x, ''])} style={st.addRow} accessibilityRole="button"><Icon name="add" size={18} color={colors.accent} /><Text style={st.addText}>Schritt hinzufügen</Text></Pressable>
+            </View>
+          </View>
+        )}
 
         <View>
-          <Field value={body} onChangeText={setBody} multiline placeholder={isReel ? 'Bildunterschrift … #hashtags @erwähnen' : kind === 'job' ? 'Aufgaben, Anforderungen, wie man sich bewirbt …' : 'Schreib etwas dazu … #hashtags @erwähnen'} maxLength={3000} />
+          <Field value={body} onChangeText={setBody} multiline placeholder={isCheckin ? 'Wie schmeckt es? Mit wem, wo, warum …' : isReel ? 'Bildunterschrift … #hashtags @erwähnen' : kind === 'job' ? 'Aufgaben, Anforderungen, wie man sich bewirbt …' : 'Schreib etwas dazu … #hashtags @erwähnen'} maxLength={3000} />
           <MentionSuggest text={body} onChange={setBody} />
         </View>
 
@@ -254,6 +382,34 @@ export default function NewPost() {
               <Icon name="chevron-forward" size={16} color={colors.faint} />
             </Pressable>
           )}
+          {business && !isReel && !groupId && (
+            <>
+              <View style={st.sep} />
+              {collab ? (
+                <Pressable style={st.row} onPress={() => setCollab(null)} accessibilityLabel={`Kollaboration entfernen: ${collab.name}`}>
+                  <Icon name="people-outline" size={20} color={colors.accent} />
+                  <Text style={[st.rowText, { flex: 1 }]} numberOfLines={1}>Gemeinsam mit {collab.name}</Text>
+                  <Icon name="close-circle-outline" size={20} color={colors.faint} />
+                </Pressable>
+              ) : (
+                <Pressable style={st.row} onPress={async () => { const p = await personPicker.open(); if (p) setCollab(p) }} accessibilityRole="button">
+                  <Icon name="people-outline" size={20} color={colors.accent} />
+                  <Text style={[st.rowText, { flex: 1 }]}>Gemeinsam posten (Kollaboration)</Text>
+                  <Icon name="chevron-forward" size={16} color={colors.faint} />
+                </Pressable>
+              )}
+            </>
+          )}
+          {kind === 'job' && (
+            <>
+              <View style={st.sep} />
+              <Pressable style={st.row} onPress={() => { tap('select'); setUrgent(!urgent) }} accessibilityRole="switch" accessibilityState={{ checked: urgent }}>
+                <Icon name="time-outline" size={20} color={urgent ? colors.heart : colors.accent} />
+                <Text style={[st.rowText, { flex: 1 }]}>Dringend: Schichtvertretung für heute</Text>
+                <View style={[st.toggle, urgent && st.toggleOn]}><View style={[st.knob, urgent && { alignSelf: 'flex-end' }]} /></View>
+              </Pressable>
+            </>
+          )}
           <View style={st.sep} />
           <View style={[st.row, { flexDirection: 'column', alignItems: 'stretch', gap: 10 }]}>
             <Text style={st.rowLabel}>Kategorie</Text>
@@ -272,7 +428,7 @@ export default function NewPost() {
           )}
         </View>
 
-        <Button title={create.isPending ? 'Wird hochgeladen …' : isReel ? 'Reel teilen' : 'Teilen'} icon="send" onPress={submit} loading={create.isPending} disabled={!canPost} style={{ marginTop: 4 }} />
+        <Button title={create.isPending ? 'Wird hochgeladen …' : isReel ? 'Reel teilen' : isCheckin ? 'Einchecken' : 'Teilen'} icon="send" onPress={submit} loading={create.isPending} disabled={!canPost} style={{ marginTop: 4 }} />
         </FadeIn>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -301,6 +457,13 @@ const st = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 14 },
   rowText: { color: colors.text, fontSize: 15 },
   rowLabel: { color: colors.muted, fontSize: 13, fontWeight: '600' },
+  context: { color: colors.accentLight, fontSize: 13, fontWeight: '600', padding: 10, borderRadius: radius.md, backgroundColor: 'rgba(227,165,133,0.1)' },
+  addRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 },
+  addText: { color: colors.accent, fontWeight: '600' },
+  stepNo: { color: colors.accent, fontWeight: '800', width: 16, textAlign: 'center' },
+  toggle: { width: 44, height: 26, borderRadius: 13, backgroundColor: colors.surface2, padding: 3, borderWidth: 1, borderColor: colors.border },
+  toggleOn: { backgroundColor: colors.heart, borderColor: colors.heart },
+  knob: { width: 18, height: 18, borderRadius: 9, backgroundColor: '#fff' },
   sep: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginLeft: 46 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   thumb: { width: 110, height: 138, borderRadius: radius.md, backgroundColor: colors.surface2 },

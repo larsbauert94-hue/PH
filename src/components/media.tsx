@@ -26,7 +26,7 @@ export function DoubleTap({ onDoubleTap, onTap, children, style }: { onDoubleTap
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
       heart.setValue(0)
       Animated.sequence([
-        Animated.spring(heart, { toValue: 1, useNativeDriver: true, friction: 4 }),
+        Animated.spring(heart, { toValue: 1, useNativeDriver: true, friction: 5, tension: 60 }),
         Animated.timing(heart, { toValue: 0, duration: 250, delay: 350, useNativeDriver: true }),
       ]).start()
     } else {
@@ -38,8 +38,19 @@ export function DoubleTap({ onDoubleTap, onTap, children, style }: { onDoubleTap
   return (
     <Pressable onPressIn={e => { start.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY } }} onPress={press} style={style} accessibilityHint="Doppelt tippen, um den Beitrag zu liken" testID="doubletap">
       {children}
-      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, st.center, { opacity: heart, transform: [{ scale: heart.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1.15] }) }] }]}>
-        <Icon name="heart" size={110} color="#fff" />
+      {/* Anstoßen: zwei Gläser schwingen zusammen und klirren */}
+      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, st.center, { opacity: heart }]}>
+        <View style={{ flexDirection: 'row' }}>
+          <Animated.View style={{ transform: [{ translateX: heart.interpolate({ inputRange: [0, 1], outputRange: [-46, 10] }) }, { rotate: heart.interpolate({ inputRange: [0, 1], outputRange: ['-40deg', '14deg'] }) }] }}>
+            <Icon name="wine" size={88} color="#fff" />
+          </Animated.View>
+          <Animated.View style={{ transform: [{ translateX: heart.interpolate({ inputRange: [0, 1], outputRange: [46, -10] }) }, { rotate: heart.interpolate({ inputRange: [0, 1], outputRange: ['40deg', '-14deg'] }) }] }}>
+            <Icon name="wine" size={88} color="#fff" />
+          </Animated.View>
+        </View>
+        <Animated.View style={{ position: 'absolute', top: '26%', opacity: heart.interpolate({ inputRange: [0, 0.8, 1], outputRange: [0, 0, 1] }), transform: [{ scale: heart.interpolate({ inputRange: [0, 0.8, 1], outputRange: [0.4, 0.4, 1.2] }) }] }}>
+          <Icon name="sparkles" size={34} color={colors.roseLight} />
+        </Animated.View>
       </Animated.View>
     </Pressable>
   )

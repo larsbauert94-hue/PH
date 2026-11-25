@@ -9,10 +9,12 @@ import type { AppNotification } from '../lib/types'
 import { Avatar, Empty, ErrorView, IconName, Loading } from '../components/ui'
 
 const TEXT: Record<AppNotification['type'], { verb: string; icon: IconName; color: string }> = {
-  like: { verb: 'gefällt dein Beitrag', icon: 'heart', color: colors.heart },
+  like: { verb: 'hat mit dir angestoßen', icon: 'cheers', color: colors.accent },
   comment: { verb: 'hat deinen Beitrag kommentiert', icon: 'chatbubble', color: colors.lavender },
   follow: { verb: 'folgt dir jetzt', icon: 'person-add', color: colors.accent },
   mention: { verb: 'hat dich erwähnt', icon: 'at', color: colors.lavender },
+  venue_post: { verb: 'hat Neues an einem deiner gemerkten Orte', icon: 'location', color: colors.accentLight },
+  job_match: { verb: 'sucht jemanden in deiner Stadt', icon: 'briefcase', color: colors.heart },
 }
 
 export default function Notifications() {

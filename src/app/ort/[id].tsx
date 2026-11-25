@@ -1,9 +1,12 @@
-import { useState } from 'react'
+import { useState , useMemo } from 'react'
 import { Linking, Pressable, ScrollView, Share, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native'
 import { Link, Stack, router, useLocalSearchParams } from 'expo-router'
 import { Icon } from '../../components/Icon'
 import * as ExpoLinking from 'expo-linking'
 import { useFeed, useProfile, useVenue, useVenueSave, useVenueStories } from '../../lib/queries'
+import { useMe } from '../../lib/auth'
+import { VenueCard } from '../../components/VenueCard'
+import { DropRating } from '../../components/checkin'
 import { VENUE_TYPES } from '../../lib/labels'
 import { openRoute } from '../../lib/geo'
 import { colors, fonts, radius } from '../../lib/theme'
@@ -21,6 +24,21 @@ export default function VenueScreen() {
   const save = useVenueSave(id)
   const stories = useVenueStories(id)
   const [tab, setTab] = useState<Tab>('top')
+  const { me } = useMe()
+  const checkins = useFeed({ venueId: id, tab: 'checkins' })
+  // Top-Drinks: bestbewertete Produkte und Drinks aus den Check-ins hier
+  const topDrinks = useMemo(() => {
+    const m = new Map<string, { key: string; name: string; productId: string | null; sum: number; n: number }>()
+    for (const p of checkins.posts) {
+      if (p.rating == null) continue
+      const name = p.product_name ?? p.body.split(/[.!,]/)[0].slice(0, 40)
+      const key = p.product_id ?? name
+      const e = m.get(key) ?? { key, name, productId: p.product_id ?? null, sum: 0, n: 0 }
+      e.sum += p.rating; e.n++
+      m.set(key, e)
+    }
+    return [...m.values()].sort((a, b) => b.sum / b.n - a.sum / a.n || b.n - a.n).slice(0, 5)
+  }, [checkins.posts])
   const posts = useFeed(tab === 'top' ? { venueId: id, sort: 'top' } : tab === 'reels' ? { venueId: id, reels: true } : { venueId: id })
 
   if (venue.isPending) return <Loading />
@@ -63,6 +81,15 @@ export default function VenueScreen() {
           {v.description ? <Text style={st.desc}>{v.description}</Text> : null}
         </View>
 
+        {(v.opens || v.happy_hour || v.reservation_url) && <View style={{ paddingHorizontal: 16, paddingBottom: 14 }}><VenueCard venue={v} compact /></View>}
+        {v.owner_id === me && (
+          <Pressable style={st.edit} onPress={() => router.push({ pathname: '/ort/neu', params: { edit: v.id } })} accessibilityRole="button">
+            <Icon name="create-outline" size={18} color={colors.accent} />
+            <Text style={{ color: colors.text, fontWeight: '600', flex: 1 }}>Öffnungszeiten, Happy Hour & Reservierung bearbeiten</Text>
+            <Icon name="chevron-forward" size={16} color={colors.faint} />
+          </Pressable>
+        )}
+
         <View style={st.actions}>
           {actions.map(a => (
             <Pressable key={a.label} style={st.action} onPress={a.onPress} accessibilityRole="button" accessibilityLabel={a.label}>
@@ -99,6 +126,20 @@ export default function VenueScreen() {
           </View>
         )}
 
+        {topDrinks.length > 0 && (
+          <View style={{ gap: 8, paddingHorizontal: 16, paddingBottom: 16 }}>
+            <Text style={[st.section, { paddingHorizontal: 0 }]}>Top-Drinks hier</Text>
+            {topDrinks.map((d, i) => (
+              <Pressable key={d.key} style={st.drink} disabled={!d.productId} onPress={() => d.productId && router.push(`/produkt/${d.productId}`)}>
+                <Text style={st.rank}>{i + 1}</Text>
+                <Text style={st.drinkName} numberOfLines={1}>{d.name}</Text>
+                <DropRating value={d.sum / d.n} size={12} />
+                <Text style={st.drinkN}>{d.n}×</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
+
         <View style={st.tabs}>
           {([['top', 'Top'], ['neu', 'Neueste'], ['reels', 'Reels']] as const).map(([k, label]) => (
             <Pressable key={k} style={[st.tab, tab === k && st.tabActive]} onPress={() => setTab(k)} accessibilityRole="tab" accessibilityState={{ selected: tab === k }}>
@@ -125,6 +166,11 @@ const st = StyleSheet.create({
   actionIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.surface2, alignItems: 'center', justifyContent: 'center' },
   actionLabel: { color: colors.text, fontSize: 12 },
   owner: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 16, marginBottom: 14, padding: 12, borderRadius: radius.md, backgroundColor: colors.surface },
+  edit: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 16, marginBottom: 14, padding: 12, borderRadius: radius.md, backgroundColor: colors.surface },
+  drink: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: radius.md, backgroundColor: colors.surface },
+  rank: { color: colors.accent, fontWeight: '800', width: 16 },
+  drinkName: { color: colors.text, fontWeight: '600', flex: 1 },
+  drinkN: { color: colors.muted, fontSize: 12 },
   section: { color: colors.text, fontWeight: '700', fontSize: 15, paddingHorizontal: 16 },
   tabs: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1.5, borderBottomColor: 'transparent' },

@@ -4,7 +4,7 @@ export type BusinessType = 'bar' | 'restaurant' | 'haendler' | 'lieferant' | 'ma
 export type PersonType = 'gastro' | 'privat'
 export type AccountType = BusinessType | PersonType
 export type VenueType = 'bar' | 'cocktailbar' | 'weinbar' | 'restaurant' | 'hotelbar'
-export type PostKind = 'beitrag' | 'neuheit' | 'angebot' | 'event' | 'job'
+export type PostKind = 'beitrag' | 'neuheit' | 'angebot' | 'event' | 'job' | 'checkin' | 'rezept'
 export type Category = 'wein' | 'spirituosen' | 'bier' | 'cocktails' | 'alkoholfrei' | 'gastronomie'
 
 export interface Profile {
@@ -20,6 +20,12 @@ export interface Profile {
   avatar_url: string | null
   verified: boolean
   created_at: string
+  /** Lebenslauf (Gastro-Profis) */
+  certificates?: string[]
+  skills?: string[]
+  stations?: string[]
+  open_to_work?: boolean
+  available_from?: string | null
 }
 
 export interface ProfileStats {
@@ -44,6 +50,11 @@ export interface Venue {
   website: string | null
   phone: string | null
   created_at: string
+  /** Öffnungszeiten „HH:MM“ (schließt ggf. nach Mitternacht) */
+  opens?: string | null
+  closes?: string | null
+  happy_hour?: string
+  reservation_url?: string | null
   /** aus der View venue_feed */
   post_count?: number
   saved_by_me?: boolean
@@ -65,7 +76,27 @@ export interface Post {
   /** gesetzt = Reel */
   video_url: string | null
   music: Track | null
+  /** Check-in: Bewertung 1–5 Tropfen, Aromen, Produkt */
+  rating?: number | null
+  aromas?: string[]
+  product_id?: string | null
+  recipe?: Recipe | null
+  /** „Nachgemixt“: Original-Beitrag */
+  remix_of?: string | null
+  /** Gemeinsamer Beitrag mit einem zweiten Profil */
+  collab_id?: string | null
+  /** Beitrag in einem Raum */
+  group_id?: string | null
+  promoted?: boolean
+  /** Job: dringend (Schichtvertretung) */
+  urgent?: boolean
+  /** Gestaltete Vorlage ohne Foto */
+  template?: Template | null
+  event_at?: string | null
 }
+
+export type Template = 'karte' | 'plakat' | 'neuheit'
+export interface Recipe { ingredients: { name: string; amount: string }[]; steps: string[] }
 
 /** Zeile aus der View `feed` */
 export interface FeedPost extends Post {
@@ -81,6 +112,11 @@ export interface FeedPost extends Post {
   comment_count: number
   liked_by_me: boolean
   saved_by_me: boolean
+  product_name?: string | null
+  collab_name?: string | null
+  collab_handle?: string | null
+  group_name?: string | null
+  remix_count?: number
 }
 
 /** Zeile aus der View `comment_feed` */
@@ -98,7 +134,7 @@ export interface FeedComment {
   liked_by_me: boolean
 }
 
-export type FeedTab = 'alle' | 'folge' | 'neuheiten' | 'handel' | 'gastro' | 'jobs' | 'events'
+export type FeedTab = 'fuerdich' | 'alle' | 'folge' | 'neuheiten' | 'handel' | 'gastro' | 'jobs' | 'events' | 'checkins' | 'rezepte'
 
 export interface FeedQuery {
   tab?: FeedTab
@@ -114,6 +150,10 @@ export interface FeedQuery {
   search?: string
   /** 'top' = meiste Likes zuerst */
   sort?: 'top'
+  productId?: string
+  groupId?: string
+  /** Nachgemixte Versionen eines Rezepts */
+  remixOf?: string
 }
 
 export interface LocalFile { uri: string; mime?: string }
@@ -130,6 +170,16 @@ export interface NewPost {
   /** Video → Reel */
   video?: LocalFile
   music?: Track
+  rating?: number
+  aromas?: string[]
+  product_id?: string
+  recipe?: Recipe
+  remix_of?: string
+  collab_id?: string
+  group_id?: string
+  urgent?: boolean
+  template?: Template
+  event_at?: string
 }
 
 export interface NewVenue {
@@ -142,6 +192,10 @@ export interface NewVenue {
   description: string
   website?: string
   phone?: string
+  opens?: string
+  closes?: string
+  happy_hour?: string
+  reservation_url?: string
 }
 
 export interface SignUpData {
@@ -155,9 +209,9 @@ export interface SignUpData {
   city: string
 }
 
-export type ProfileUpdate = Partial<Pick<Profile, 'name' | 'headline' | 'workplace' | 'bio' | 'city' | 'website'>>
+export type ProfileUpdate = Partial<Pick<Profile, 'name' | 'headline' | 'workplace' | 'bio' | 'city' | 'website' | 'certificates' | 'skills' | 'stations' | 'open_to_work' | 'available_from'>>
 
-export type NotificationType = 'like' | 'comment' | 'follow' | 'mention'
+export type NotificationType = 'like' | 'comment' | 'follow' | 'mention' | 'venue_post' | 'job_match'
 
 /** Zeile aus der View `notification_feed` */
 export interface AppNotification {
@@ -260,7 +314,15 @@ export type StoryOverlay = { x: number; y: number } & (
   | { type: 'music'; track: Track }
   | { type: 'location'; venue_id: string; name: string }
   | { type: 'mention'; profile_id: string; handle: string }
+  | { type: 'poll'; question: string; options: string[] }
+  | { type: 'quiz'; question: string; options: string[]; correct: number }
+  | { type: 'countdown'; title: string; at: string }
+  | { type: 'link'; label: string; url: string }
+  | { type: 'code'; label: string; code: string }
 )
+
+/** Ergebnisse der Umfrage-/Quiz-Sticker einer Story, je Sticker-Index */
+export type StoryVotes = Record<number, { counts: number[]; mine: number | null }>
 
 export interface Highlight {
   id: string
@@ -268,4 +330,83 @@ export interface Highlight {
   title: string
   cover_url: string | null
   created_at: string
+}
+
+/** Produkt (Flasche, Wein, Spirituose) mit Bewertungen aus Check-ins */
+export interface Product {
+  id: string
+  name: string
+  brand_id: string | null
+  brand_name: string
+  category: Category
+  description: string
+  image_url: string | null
+  shop_url: string | null
+  created_at: string
+  checkin_count: number
+  avg_rating: number | null
+}
+export interface NewProduct { name: string; brand_name: string; category: Category; brand_id?: string }
+
+/** Raum (Gruppe) zum Austausch, optional als Live-Tasting mit Startzeit */
+export interface Group {
+  id: string
+  name: string
+  description: string
+  city: string
+  emoji: string
+  starts_at: string | null
+  created_by: string | null
+  created_at: string
+  member_count: number
+  joined_by_me: boolean
+}
+export interface NewGroup { name: string; description: string; city: string; emoji: string; starts_at?: string }
+
+/** Gemeinsame Sammlung (z. B. „Bars für Wien“) */
+export interface Collection {
+  id: string
+  owner_id: string
+  name: string
+  created_at: string
+  item_count: number
+  member_ids: string[]
+  cover_url: string | null
+}
+export type CollectionItem = { id: string; created_at: string } & ({ post: FeedPost; venue?: undefined } | { venue: Venue; post?: undefined })
+
+/** Kennzahlen für Betriebe (Pour Pro) */
+export interface BusinessStats {
+  views_7d: number
+  views_30d: number
+  followers: number
+  posts: number
+  likes: number
+  comments: number
+  saves: number
+  top_post: FeedPost | null
+  /** Beiträge je Wochentag (Mo–So) */
+  by_weekday: number[]
+}
+
+/** Was heute an einem Ort los ist (Karte „Heute“) */
+export interface VenueActivity {
+  venue_id: string
+  events: number
+  stories: number
+  checkins: number
+  /** Personen, denen ich folge, mit Check-in in den letzten 6 Stunden */
+  friends: string[]
+}
+
+/** Grundlage für Abzeichen: Check-ins einer Person */
+export interface CheckinSummary {
+  count: number
+  venues: number
+  cities: number
+  products: number
+  byCategory: Partial<Record<Category, number>>
+  topRated: number
+  recipes: number
+  remixes: number
 }

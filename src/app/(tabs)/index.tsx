@@ -10,6 +10,9 @@ import StoryBar from '../../components/StoryBar'
 import { Chip, Empty, ErrorView, Loading } from '../../components/ui'
 
 const EMPTY: Record<FeedTab, string> = {
+  fuerdich: 'Noch nichts für dich dabei. Folge Betrieben und Kolleg:innen, dann lernt der Feed dazu.',
+  checkins: 'Noch keine Check-ins. Teile deinen ersten Drink über „Posten“ → Check-in.',
+  rezepte: 'Noch keine Rezepte.',
   alle: 'Noch keine Beiträge. Sei die erste Person, die etwas teilt!',
   folge: 'Folge Betrieben und Kolleg:innen im Netzwerk, um hier ihre Beiträge zu sehen.',
   neuheiten: 'Noch keine Produktneuheiten.',
@@ -20,7 +23,7 @@ const EMPTY: Record<FeedTab, string> = {
 }
 
 export default function Feed() {
-  const [tab, setTab] = useState<FeedTab>('alle')
+  const [tab, setTab] = useState<FeedTab>('fuerdich')
   const feed = useFeed({ tab })
   const stories = useStories()
   // Erneutes Tippen auf „Feed“ scrollt nach oben

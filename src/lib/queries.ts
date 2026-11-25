@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query'
 import { api } from './api'
 import { useAuth, useMe } from './auth'
-import type { AccountType, FeedPost, FeedQuery, NewPost, NewStory, NewVenue } from './types'
+import type { AccountType, FeedPost, FeedQuery, NewGroup, NewPost, NewProduct, NewStory, NewVenue } from './types'
 import { FEED_PAGE_SIZE } from './types'
 
 export const keys = {
@@ -80,8 +80,7 @@ export function useCreatePost() {
   return useMutation({
     mutationFn: (p: NewPost) => api.createPost(me, p),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['feed'] })
-      qc.invalidateQueries({ queryKey: keys.stats(me) })
+      for (const k of [['feed'], keys.stats(me), ['checkinSummary'], ['products'], ['product'], ['venueActivity']]) qc.invalidateQueries({ queryKey: k })
     },
   })
 }
@@ -306,3 +305,88 @@ export function useVenueSave(venueId: string) {
 
 export const useSavedVenues = () => useQuery({ queryKey: ['savedVenues'], queryFn: api.getSavedVenues })
 export const useVenueStories = (venueId: string) => useQuery({ queryKey: ['venueStories', venueId], queryFn: () => api.getVenueStories(venueId) })
+
+// ---------------------------------------------------------------------------
+// Produkte, Check-ins, Räume, Sammlungen, Story-Sticker, Statistiken
+// ---------------------------------------------------------------------------
+export const useProducts = (search?: string) => useQuery({ queryKey: ['products', search ?? ''], queryFn: () => api.getProducts(search) })
+export const useProduct = (id: string) => useQuery({ queryKey: ['product', id], queryFn: () => api.getProduct(id), enabled: !!id })
+export const useCheckinSummary = (userId: string) => useQuery({ queryKey: ['checkinSummary', userId], queryFn: () => api.getCheckinSummary(userId), enabled: !!userId })
+
+export function useCreateProduct() {
+  const qc = useQueryClient()
+  const { me } = useMe()
+  return useMutation({
+    mutationFn: (p: NewProduct) => api.createProduct(me, p),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['products'] }),
+  })
+}
+
+export const useGroups = () => useQuery({ queryKey: ['groups'], queryFn: api.getGroups })
+export const useGroup = (id: string) => useQuery({ queryKey: ['group', id], queryFn: () => api.getGroup(id) })
+export function useCreateGroup() {
+  const qc = useQueryClient()
+  const { me } = useMe()
+  return useMutation({
+    mutationFn: (g: NewGroup) => api.createGroup(me, g),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['groups'] }),
+  })
+}
+export function useJoinGroup(id: string) {
+  const qc = useQueryClient()
+  const { me } = useMe()
+  return useMutation({
+    mutationFn: (join: boolean) => api.setGroupMember(me, id, join),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['group', id] }); qc.invalidateQueries({ queryKey: ['groups'] }) },
+  })
+}
+
+export const useCollections = () => useQuery({ queryKey: ['collections'], queryFn: api.getCollections })
+export const useCollection = (id: string) => useQuery({ queryKey: ['collection', id], queryFn: () => api.getCollection(id) })
+export const useCollectionItems = (id: string) => useQuery({ queryKey: ['collectionItems', id], queryFn: () => api.getCollectionItems(id) })
+export function useCollectionActions() {
+  const qc = useQueryClient()
+  const { me } = useMe()
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ['collections'] })
+    qc.invalidateQueries({ queryKey: ['collection'] })
+    qc.invalidateQueries({ queryKey: ['collectionItems'] })
+  }
+  return {
+    create: (name: string) => api.createCollection(me, name).then(id => { refresh(); return id }),
+    remove: (id: string) => api.deleteCollection(id).then(refresh),
+    add: (id: string, target: { postId?: string; venueId?: string }) => api.addToCollection(me, id, target).then(refresh),
+    removeItem: (itemId: string) => api.removeFromCollection(itemId).then(refresh),
+    addMember: (id: string, profileId: string) => api.addCollectionMember(id, profileId).then(refresh),
+  }
+}
+
+export const useStoryVotes = (storyId: string) => useQuery({ queryKey: ['storyVotes', storyId], queryFn: () => api.getStoryVotes(storyId) })
+export function useVoteStory(storyId: string) {
+  const qc = useQueryClient()
+  const { me } = useMe()
+  return useMutation({
+    mutationFn: (v: { sticker: number; option: number }) => api.voteStory(me, storyId, v.sticker, v.option),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['storyVotes', storyId] }),
+  })
+}
+
+export const useBusinessStats = (id: string) => useQuery({ queryKey: ['businessStats', id], queryFn: () => api.getBusinessStats(id) })
+export function usePromote() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (p: { id: string; promoted: boolean }) => api.setPromoted(p.id, p.promoted),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['feed'] }),
+  })
+}
+export function useVenueActivity() {
+  const { me } = useMe()
+  return useQuery({ queryKey: ['venueActivity'], queryFn: () => api.getVenueActivity(me), staleTime: 60_000 })
+}
+export function useUpdateVenue(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: Partial<NewVenue>) => api.updateVenue(id, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: keys.venue(id) }); qc.invalidateQueries({ queryKey: keys.venues }) },
+  })
+}

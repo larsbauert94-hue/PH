@@ -9,9 +9,9 @@ import Svg, { Circle, Path } from 'react-native-svg'
  * statt Papierflieger). Namen folgen Ionicons; was hier nicht gezeichnet ist, kommt als
  * Ionicons-Umriss.
  */
-export type IconName = ComponentProps<typeof Ionicons>['name']
+export type IconName = ComponentProps<typeof Ionicons>['name'] | 'cheers' | 'cheers-outline'
 
-type Shape = { d: string; fill?: boolean } | { c: [number, number, number]; fill?: boolean }
+type Shape = ({ d: string } | { c: [number, number, number] }) & { fill?: boolean; /** wird in der gefüllten Variante gefüllt */ body?: boolean }
 interface Def { shapes: Shape[]; /** Wird bei Namen ohne „-outline“ gefüllt */ solid?: boolean }
 
 const pin = 'M12 21.2s-6.6-6.1-6.6-11.1a6.6 6.6 0 0 1 13.2 0c0 5-6.6 11.1-6.6 11.1z'
@@ -38,6 +38,9 @@ const ICONS: Record<string, Def> = {
   navigate: { solid: true, shapes: [{ d: 'M4 11.2 20 4l-7.2 16-1.9-6.9z' }] },
   locate: { shapes: [{ c: [12, 12, 6.6] }, { c: [12, 12, 1.8], fill: true }, { d: 'M12 2.6v2.8M12 18.6v2.8M2.6 12h2.8M18.6 12h2.8' }] },
   heart: { solid: true, shapes: [{ d: heart }] },
+  /** Zwei anstoßende Gläser: „Prost“ statt Herz */
+  cheers: { solid: true, shapes: [{ d: 'M9.24 8.06 L13.99 9.61 L12.23 14.08 L10.78 15.29 L9.52 15.30 L8.50 14.55 L8.04 12.72 Z', body: true }, { d: 'M10.01 9.61 L14.76 8.06 L15.96 12.72 L15.50 14.55 L14.48 15.30 L13.22 15.29 L11.77 14.08 Z', body: true }, { d: 'M9.52 15.30 L7.66 21.01 M5.41 20.49 L9.79 21.91' }, { d: 'M14.48 15.30 L16.34 21.01 M14.21 21.91 L18.59 20.49' }, { d: 'M12 1.6v1.8M9.2 2.6l1.1 1.2M14.8 2.6l-1.1 1.2' }] },
+
   chatbubble: { solid: true, shapes: [{ d: bubble }] },
   'chatbubble-ellipses': { solid: true, shapes: [{ d: bubble }, { c: [8.4, 10.8, 0.9], fill: true }, { c: [12, 10.8, 0.9], fill: true }, { c: [15.6, 10.8, 0.9], fill: true }] },
   chatbubbles: { shapes: [{ d: 'M5 3.6h9.6a2 2 0 0 1 2 2v5.6a2 2 0 0 1-2 2H9l-3.4 2.6v-2.6H5a2 2 0 0 1-2-2V5.6a2 2 0 0 1 2-2z' }, { d: 'M19 8.8a2 2 0 0 1 2 2v5.6a2 2 0 0 1-2 2h-.6V21L15 18.4h-4.2a2 2 0 0 1-2-1.6' }] },
@@ -95,15 +98,15 @@ export function Icon({ name, size = 24, color = '#fff', style, accessibilityLabe
   const outline = name.endsWith('-outline')
   const base = outline ? name.slice(0, -'-outline'.length) : name
   const def = ICONS[name] ?? ICONS[base]
-  if (!def) return <Ionicons name={name} size={size} color={color} style={style} accessibilityLabel={accessibilityLabel} />
+  if (!def) return <Ionicons name={name as ComponentProps<typeof Ionicons>['name']} size={size} color={color} style={style} accessibilityLabel={accessibilityLabel} />
   const solid = !outline && def.solid
   const sw = 1.6
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" style={style} accessibilityLabel={accessibilityLabel} pointerEvents="none">
       {def.shapes.map((s, i) => {
         // Gefüllte Variante: erste Form gefüllt, Details darauf in Hintergrundfarbe ausgespart
-        const filled = s.fill || (solid && i === 0)
-        const detailOnSolid = solid && i > 0 && !s.fill
+        const filled = s.fill || (solid && (i === 0 || !!s.body))
+        const detailOnSolid = solid && i > 0 && !s.fill && !s.body && name !== 'cheers'
         const props = {
           fill: filled ? color : 'none',
           stroke: detailOnSolid ? 'rgba(11,16,41,0.9)' : color,

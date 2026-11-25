@@ -82,6 +82,16 @@ function Navigation() {
         <Stack.Screen name="auswahl/musik" options={{ title: 'Musik hinzufügen', presentation: 'modal' }} />
         <Stack.Screen name="auswahl/ort" options={{ title: 'Ort hinzufügen', presentation: 'modal' }} />
         <Stack.Screen name="auswahl/person" options={{ title: 'Person erwähnen', presentation: 'modal' }} />
+        <Stack.Screen name="auswahl/produkt" options={{ title: 'Flasche oder Drink', presentation: 'modal' }} />
+        <Stack.Screen name="produkt/[id]" options={{ title: '' }} />
+        <Stack.Screen name="sammlungen/index" options={{ title: 'Sammlungen' }} />
+        <Stack.Screen name="sammlungen/[id]" options={{ title: '' }} />
+        <Stack.Screen name="sammlungen/hinzufuegen" options={{ title: 'Zu Sammlung hinzufügen', presentation: 'modal' }} />
+        <Stack.Screen name="raum/[id]" options={{ title: '' }} />
+        <Stack.Screen name="raum/neu" options={{ title: 'Raum gründen', presentation: 'modal' }} />
+        <Stack.Screen name="statistik" options={{ title: 'Statistiken' }} />
+        <Stack.Screen name="lebenslauf" options={{ title: 'Lebenslauf', presentation: 'modal' }} />
+        <Stack.Screen name="abzeichen/[id]" options={{ title: 'Abzeichen' }} />
         <Stack.Screen name="highlight/[id]" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'fade', contentStyle: { backgroundColor: '#000' } }} />
         <Stack.Screen name="highlight/neu" options={{ title: 'Neues Highlight', presentation: 'modal' }} />
         <Stack.Screen name="teilen/[id]" options={{ title: 'Senden an', presentation: 'modal' }} />

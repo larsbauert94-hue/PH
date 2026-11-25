@@ -4,20 +4,23 @@ import * as ExpoLinking from 'expo-linking'
 import { Link, router } from 'expo-router'
 import { Icon } from './Icon'
 import type { FeedPost } from '../lib/types'
-import { POST_KINDS, subtitle, timeAgo } from '../lib/labels'
+import { POST_KINDS, subtitle, timeAgo , ACCOUNT_TYPES } from '../lib/labels'
 import { colors, fonts, radius } from '../lib/theme'
 import { useMe } from '../lib/auth'
-import { useDeletePost, useStartConversation, useToggleLike, useToggleSave } from '../lib/queries'
+import { useDeletePost, usePromote, useStartConversation, useToggleLike, useToggleSave } from '../lib/queries'
+import { CheckinBlock, RecipeBlock, TemplateCard } from './checkin'
+import { tap } from './motion'
 import { chooseAction, confirmAction, notify, reportFlow } from './report'
 import { MediaCarousel, ReelPlayer, ReelPreview, RichText } from './media'
 import { MusicLine } from './music'
 import { Avatar, Badge, IconName, Verified } from './ui'
 
-const KIND_COLORS = { beitrag: colors.muted, neuheit: colors.accent, angebot: '#7cc47f', event: colors.lavender, job: colors.heart }
+const KIND_COLORS = { beitrag: colors.muted, neuheit: colors.accent, angebot: '#7cc47f', event: colors.lavender, job: colors.heart, checkin: colors.accentLight, rezept: '#e8c36a' }
 const CTA: Partial<Record<FeedPost['kind'], string>> = { job: 'Jetzt bewerben', angebot: 'Angebot anfragen', neuheit: 'Mehr erfahren' }
 
 function PostCard({ post, detail = false }: { post: FeedPost; detail?: boolean }) {
-  const { me } = useMe()
+  const { me, profile } = useMe()
+  const promote = usePromote()
   const like = useToggleLike()
   const save = useToggleSave()
   const del = useDeletePost()
@@ -35,22 +38,48 @@ function PostCard({ post, detail = false }: { post: FeedPost; detail?: boolean }
     onError: e => notify('Nachricht', e.message),
   })
   const likeOnce = () => { if (!post.liked_by_me) like.mutate(post) }
+  const toCollection = () => router.push({ pathname: '/sammlungen/hinzufuegen', params: { post: post.id } })
+  const canPromote = mine && ACCOUNT_TYPES[profile.account_type].business
   const menu = () => chooseAction('Beitrag', mine ? [
+    ...(canPromote ? [{ label: post.promoted ? 'Nicht mehr hervorheben' : 'Hervorheben (Pro)', onPress: () => promote.mutate({ id: post.id, promoted: !post.promoted }) }] : []),
+    { label: 'Zu Sammlung hinzufügen', onPress: toCollection },
     { label: 'Teilen über …', onPress: share },
     { label: 'Löschen', destructive: true, onPress: () => confirmAction('Beitrag löschen?', 'Das kann nicht rückgängig gemacht werden.', 'Löschen',
       () => del.mutate(post.id, { onSuccess: () => { if (detail) router.back() } })) },
   ] : [
     { label: 'Per Nachricht senden', onPress: () => router.push(`/teilen/${post.id}`) },
+    { label: 'Zu Sammlung hinzufügen', onPress: toCollection },
     { label: 'Teilen über …', onPress: share },
     { label: `${post.author_name} schreiben`, onPress: contact },
     { label: 'Beitrag melden', destructive: true, onPress: () => reportFlow(me, { postId: post.id }) },
   ])
   const open = () => { if (!detail) router.push(`/post/${post.id}`) }
+  // Schnellaktionen per langem Drücken
+  const quick = () => {
+    tap('medium')
+    chooseAction(post.author_name, [
+      { label: post.saved_by_me ? 'Nicht mehr speichern' : 'Speichern', onPress: () => save.mutate(post) },
+      { label: 'Zu Sammlung hinzufügen', onPress: toCollection },
+      { label: 'Senden an …', onPress: () => router.push(`/teilen/${post.id}`) },
+      ...(post.venue_id ? [{ label: `Ort öffnen: ${post.venue_name}`, onPress: () => router.push(`/ort/${post.venue_id}`) }] : []),
+      { label: 'Profil ansehen', onPress: () => router.push(`/profil/${post.author_id}`) },
+    ])
+  }
 
-  const likes = post.like_count === 0 ? 'Sei die erste Person, der das gefällt' : post.like_count === 1 ? 'Gefällt 1 Mal' : `Gefällt ${post.like_count} Mal`
+  const likes = post.like_count === 0 ? 'Stoß als Erste:r an' : post.like_count === 1 ? '1 × angestoßen' : `${post.like_count} × angestoßen`
 
   return (
-    <View style={st.card}>
+    <Pressable style={st.card} onLongPress={quick} delayLongPress={450} accessibilityHint="Lange drücken für Schnellaktionen">
+      {(post.promoted || post.urgent || post.group_name || post.remix_of) && (
+        <View style={st.ribbonRow}>
+          {post.promoted && <Text style={st.ribbon}>✦ Hervorgehoben</Text>}
+          {post.urgent && <Text style={[st.ribbon, { color: colors.heart }]}>● Dringend · heute</Text>}
+          {post.group_name && <Text style={st.ribbon}>in {post.group_name}</Text>}
+          {post.remix_of && (
+            <Pressable onPress={() => router.push(`/post/${post.remix_of}`)}><Text style={st.ribbon}>↻ Nachgemixt · Original ansehen</Text></Pressable>
+          )}
+        </View>
+      )}
       <View style={st.header}>
         <Link href={`/profil/${post.author_id}`} asChild>
           <Pressable style={st.author}>
@@ -59,6 +88,11 @@ function PostCard({ post, detail = false }: { post: FeedPost; detail?: boolean }
               <View style={st.nameRow}>
                 <Text style={st.name} numberOfLines={1}>{post.author_name}</Text>
                 {post.author_verified && <Verified />}
+                {post.collab_name && (
+                  <Text style={st.name} numberOfLines={1} onPress={() => router.push(`/u/${post.collab_handle}`)}>
+                    <Text style={{ color: colors.accent }}> × </Text>{post.collab_name}
+                  </Text>
+                )}
               </View>
               {post.venue_name ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}><Icon name="location-outline" size={12} color={colors.accent} /><Text style={[st.meta, { flexShrink: 1 }]} numberOfLines={1}>{post.venue_name}, {post.venue_city}</Text></View>
@@ -77,7 +111,15 @@ function PostCard({ post, detail = false }: { post: FeedPost; detail?: boolean }
       {post.video_url ? (detail ? <ReelPlayer post={post} /> : <ReelPreview post={post} onDoubleTap={likeOnce} />)
         : post.media.length > 0 ? <MediaCarousel media={post.media} onDoubleTap={likeOnce} /> : null}
 
-      {!hasMedia && (
+      {!hasMedia && post.template && (
+        <Pressable onPress={open} disabled={detail}>
+          <TemplateCard template={post.template} title={post.title} body={post.body} author={post.author_name} />
+        </Pressable>
+      )}
+
+      <CheckinBlock post={post} />
+
+      {!hasMedia && !post.template && (
         <Pressable onPress={open} disabled={detail} style={st.textBlock}>
           {post.kind !== 'beitrag' && <Badge label={kind.label} icon={kind.icon as IconName} color={KIND_COLORS[post.kind]} />}
           {post.title && <Text style={st.title}>{post.title}</Text>}
@@ -85,9 +127,11 @@ function PostCard({ post, detail = false }: { post: FeedPost; detail?: boolean }
         </Pressable>
       )}
 
+      {post.recipe && (hasMedia || !post.template) && <RecipeBlock recipe={post.recipe} full={detail} post={post} />}
+
       <View style={st.actions}>
-        <Pressable onPress={() => like.mutate(post)} hitSlop={8} accessibilityLabel={post.liked_by_me ? 'Gefällt mir nicht mehr' : 'Gefällt mir'}>
-          <Icon name={post.liked_by_me ? 'heart' : 'heart-outline'} size={27} color={post.liked_by_me ? colors.heart : colors.text} />
+        <Pressable onPress={() => { tap(); like.mutate(post) }} hitSlop={8} accessibilityLabel={post.liked_by_me ? 'Gefällt mir nicht mehr' : 'Gefällt mir'}>
+          <Icon name={post.liked_by_me ? 'cheers' : 'cheers-outline'} size={28} color={post.liked_by_me ? colors.accent : colors.text} />
         </Pressable>
         <Pressable onPress={open} hitSlop={8} accessibilityLabel="Kommentieren">
           <Icon name="chatbubble-outline" size={24} color={colors.text} />
@@ -135,7 +179,7 @@ function PostCard({ post, detail = false }: { post: FeedPost; detail?: boolean }
         )}
         <Text style={st.time}>{timeAgo(post.created_at)}</Text>
       </View>
-    </View>
+    </Pressable>
   )
 }
 
@@ -161,5 +205,7 @@ const st = StyleSheet.create({
   cta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 42, borderRadius: radius.md, backgroundColor: colors.accent, marginTop: 4 },
   ctaText: { color: colors.onAccent, fontWeight: '700', fontSize: 15 },
   comments: { color: colors.muted, fontSize: 14 },
+  ribbonRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingHorizontal: 14, paddingTop: 10, marginBottom: -4 },
+  ribbon: { color: colors.accentLight, fontSize: 12, fontWeight: '700' },
   time: { color: colors.faint, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.4 },
 })

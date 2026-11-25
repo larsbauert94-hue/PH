@@ -24,6 +24,8 @@ export const POST_KINDS: Record<PostKind, { label: string; icon: string }> = {
   angebot: { label: 'Angebot', icon: 'pricetag' },
   event: { label: 'Event', icon: 'calendar' },
   job: { label: 'Job', icon: 'briefcase' },
+  checkin: { label: 'Check-in', icon: 'wine' },
+  rezept: { label: 'Rezept', icon: 'flask' },
 }
 
 export const CATEGORIES: Record<Category, string> = {
@@ -36,13 +38,16 @@ export const CATEGORIES: Record<Category, string> = {
 }
 
 export const FEED_TABS: { key: FeedTab; label: string }[] = [
-  { key: 'alle', label: 'Alle' },
+  { key: 'fuerdich', label: 'Für dich' },
+  { key: 'alle', label: 'Neueste' },
   { key: 'folge', label: 'Folge ich' },
   { key: 'neuheiten', label: 'Neuheiten' },
   { key: 'handel', label: 'Marken & Handel' },
   { key: 'gastro', label: 'Bars & Restaurants' },
   { key: 'jobs', label: 'Jobs' },
   { key: 'events', label: 'Events' },
+  { key: 'checkins', label: 'Check-ins' },
+  { key: 'rezepte', label: 'Rezepte' },
 ]
 
 export function timeAgo(iso: string) {
@@ -64,4 +69,16 @@ export function subtitle(p: { account_type: AccountType; headline?: string; work
     return job || ACCOUNT_TYPES[p.account_type].label
   }
   return [ACCOUNT_TYPES[p.account_type].label, p.city].filter(Boolean).join(' · ')
+}
+
+/** Aromen zur Auswahl beim Check-in */
+export const AROMAS = ['fruchtig', 'zitrisch', 'blumig', 'würzig', 'rauchig', 'harzig', 'mineralisch', 'Steinobst', 'Beeren', 'Honig', 'Vanille', 'Schokolade', 'bitter', 'süß', 'trocken', 'frisch', 'Orange', 'Kräuter', 'getreidig', 'Petrol']
+
+/** Ist ein Ort gerade geöffnet? Schließzeiten nach Mitternacht werden berücksichtigt. */
+export function isOpenNow(opens?: string | null, closes?: string | null, now = new Date()) {
+  if (!opens || !closes) return null
+  const m = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5))
+  const cur = now.getHours() * 60 + now.getMinutes()
+  const o = m(opens), c = m(closes)
+  return c > o ? cur >= o && cur < c : cur >= o || cur < c
 }

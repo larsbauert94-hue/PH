@@ -120,7 +120,7 @@ const Reel = memo(function Reel({ post, height, playing, muted, onToggleMute, on
       )}
 
       <View style={st.side}>
-        <SideButton icon={post.liked_by_me ? 'heart' : 'heart-outline'} color={post.liked_by_me ? colors.heart : '#fff'} label={String(post.like_count)} onPress={() => like.mutate(post)} a11y="Gefällt mir" />
+        <SideButton icon={post.liked_by_me ? 'cheers' : 'cheers-outline'} color={post.liked_by_me ? colors.accent : '#fff'} label={String(post.like_count)} onPress={() => like.mutate(post)} a11y="Gefällt mir" />
         <SideButton icon="chatbubble-outline" label={String(post.comment_count)} onPress={() => router.push(`/post/${post.id}`)} a11y="Kommentare" />
         <SideButton icon="paper-plane-outline" label="Senden" onPress={() => router.push(`/teilen/${post.id}`)} a11y="Senden an" />
         <SideButton icon={post.saved_by_me ? 'bookmark' : 'bookmark-outline'} color={post.saved_by_me ? colors.accent : '#fff'} label="" onPress={() => save.mutate(post)} a11y="Speichern" />

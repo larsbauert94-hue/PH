@@ -4,11 +4,11 @@ import { Link, useLocalSearchParams } from 'expo-router'
 import { Icon } from '../../components/Icon'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useMe } from '../../lib/auth'
-import { useAddComment, useCommentLike, useComments, usePost } from '../../lib/queries'
+import { useAddComment, useCommentLike, useComments, useFeed, usePost } from '../../lib/queries'
+import { PostGrid , RichText } from '../../components/media'
 import { timeAgo } from '../../lib/labels'
 import { colors, radius } from '../../lib/theme'
 import PostCard from '../../components/PostCard'
-import { RichText } from '../../components/media'
 import MentionSuggest from '../../components/MentionSuggest'
 import { Avatar, Empty, ErrorView, Loading } from '../../components/ui'
 import { notify } from '../../components/report'
@@ -24,6 +24,7 @@ export default function PostScreen() {
   const add = useAddComment(id)
   const likeComment = useCommentLike(id)
   const [text, setText] = useState('')
+  const remixes = useFeed({ remixOf: id })
 
   if (post.isPending) return <Loading />
   if (post.isError) return <ErrorView error={post.error} onRetry={post.refetch} />
@@ -39,7 +40,17 @@ export default function PostScreen() {
       <FlatList
         data={comments.data ?? []}
         keyExtractor={c => c.id}
-        ListHeaderComponent={<View style={{ marginBottom: 8 }}><PostCard post={post.data} detail /></View>}
+        ListHeaderComponent={
+          <View style={{ marginBottom: 8, gap: 14 }}>
+            <PostCard post={post.data} detail />
+            {remixes.posts.length > 0 && (
+              <View style={{ gap: 8 }}>
+                <Text style={st.remixTitle}>Nachgemixt von {remixes.posts.length} {remixes.posts.length === 1 ? 'Person' : 'Personen'}</Text>
+                <View style={{ borderRadius: radius.md, overflow: 'hidden' }}><PostGrid posts={remixes.posts} /></View>
+              </View>
+            )}
+          </View>
+        }
         contentContainerStyle={{ padding: 16, gap: 16, maxWidth: 680, width: '100%', alignSelf: 'center' }}
         ListEmptyComponent={comments.isPending ? undefined : <Text style={st.none}>Noch keine Kommentare. Schreib den ersten!</Text>}
         renderItem={({ item: c }) => (
@@ -56,7 +67,7 @@ export default function PostScreen() {
               </View>
             </View>
             <Pressable onPress={() => likeComment.mutate(c)} hitSlop={10} accessibilityLabel={c.liked_by_me ? 'Kommentar nicht mehr liken' : 'Kommentar liken'}>
-              <Icon name={c.liked_by_me ? 'heart' : 'heart-outline'} size={16} color={c.liked_by_me ? colors.heart : colors.faint} />
+              <Icon name={c.liked_by_me ? 'cheers' : 'cheers-outline'} size={17} color={c.liked_by_me ? colors.accent : colors.faint} />
             </Pressable>
           </View>
         )}
@@ -83,6 +94,7 @@ export default function PostScreen() {
 }
 
 const st = StyleSheet.create({
+  remixTitle: { color: colors.text, fontWeight: '700', fontSize: 15 },
   none: { color: colors.faint, textAlign: 'center', padding: 16 },
   comment: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
   author: { color: colors.text, fontWeight: '700', fontSize: 14 },
