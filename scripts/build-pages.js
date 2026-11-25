@@ -23,24 +23,29 @@ const head = `
     <meta name="apple-mobile-web-app-title" content="Pour">
     <script>
       window.__POUR_BASE__ = '${base}/';
-      // iPhone-Home-Bildschirm: Safari meldet hier ein um die Statusleiste zu kurzes Fenster.
-      // Daher die echte Bildschirmhöhe nehmen, sonst bleibt unten ein Streifen frei.
+      // iPhone-Home-Bildschirm: iOS meldet hier ein um die Statusleiste zu kurzes Fenster
+      // (innerHeight endet über dem unteren Rand). Dann die echte Bildschirmhöhe nehmen.
+      // Erkennung: als Web-App gestartet ODER die Lücke zur Bildschirmhöhe ist nur so groß wie die Statusleiste.
       (function () {
-        var standalone = navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches)
         function fit() {
-          var portrait = window.innerHeight > window.innerWidth
-          var h = standalone && portrait ? Math.max(window.innerHeight, screen.height) : window.innerHeight
+          var ih = window.innerHeight, sh = screen.height
+          var portrait = ih > window.innerWidth
+          var standalone = navigator.standalone === true || (window.matchMedia && (matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches))
+          var gap = sh - ih
+          var full = portrait && (standalone || (gap > 0 && gap <= 70))
+          var h = full ? Math.max(ih, sh) : ih
           document.documentElement.style.setProperty('--app-h', h + 'px')
+          window.__POUR_DIAG__ = 'Fenster ' + ih + ' · Bildschirm ' + sh + ' · App ' + h + ' · ' + (standalone ? 'Web-App' : 'Browser')
         }
-        fit(); window.addEventListener('resize', fit)
+        fit(); window.addEventListener('resize', fit); window.addEventListener('orientationchange', function () { setTimeout(fit, 300) })
       })();
       fetch('${base}/version.json?' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.json() }).then(function (j) {
         if (j.v !== '${build}' && location.search.indexOf('v=' + j.v) < 0) location.replace('${base}/?v=' + j.v)
       }).catch(function () {})
     </script>
     <style>
-      html, body { background: #0b1029; color-scheme: dark; }
-      /* iPhone-Home-Bildschirm: App fest an alle Ränder heften, sonst bleibt unten ein Streifen frei */
+      html, body { background: #0b1029; color-scheme: dark; height: var(--app-h, 100%) !important; min-height: var(--app-h, 100%); }
+      /* iPhone-Home-Bildschirm: App fest oben anheften und auf volle Bildschirmhöhe ziehen */
       #root { position: fixed; top: 0; right: 0; left: 0; bottom: auto; height: var(--app-h, 100%) !important; }
     </style>
 `

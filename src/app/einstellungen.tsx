@@ -91,6 +91,10 @@ export default function Settings() {
         <Button title="Abmelden" variant="secondary" icon="log-out-outline" onPress={signOut} />
         <Button title="Account löschen" variant="danger" icon="trash-outline" onPress={deleteAccount} loading={deleting} />
         {isDemo && <Text style={st.demo}>Demo-Modus: Änderungen gehen beim Neustart der App verloren.</Text>}
+        {/* Anzeige-Diagnose (nur Web-Version): hilft bei Problemen mit der Bildschirmhöhe auf dem iPhone */}
+        {typeof window !== 'undefined' && (window as { __POUR_DIAG__?: string }).__POUR_DIAG__ ? (
+          <Text style={[st.text, { fontSize: 11, opacity: 0.6 }]}>{(window as { __POUR_DIAG__?: string }).__POUR_DIAG__}</Text>
+        ) : null}
       </ScrollView>
     </KeyboardAvoidingView>
   )
