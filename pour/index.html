@@ -33,24 +33,29 @@
     <meta name="apple-mobile-web-app-title" content="Pour">
     <script>
       window.__POUR_BASE__ = '/PH/pour/';
-      // iPhone-Home-Bildschirm: Safari meldet hier ein um die Statusleiste zu kurzes Fenster.
-      // Daher die echte Bildschirmhöhe nehmen, sonst bleibt unten ein Streifen frei.
+      // iPhone-Home-Bildschirm: iOS meldet hier ein um die Statusleiste zu kurzes Fenster
+      // (innerHeight endet über dem unteren Rand). Dann die echte Bildschirmhöhe nehmen.
+      // Erkennung: als Web-App gestartet ODER die Lücke zur Bildschirmhöhe ist nur so groß wie die Statusleiste.
       (function () {
-        var standalone = navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches)
         function fit() {
-          var portrait = window.innerHeight > window.innerWidth
-          var h = standalone && portrait ? Math.max(window.innerHeight, screen.height) : window.innerHeight
+          var ih = window.innerHeight, sh = screen.height
+          var portrait = ih > window.innerWidth
+          var standalone = navigator.standalone === true || (window.matchMedia && (matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches))
+          var gap = sh - ih
+          var full = portrait && (standalone || (gap > 0 && gap <= 70))
+          var h = full ? Math.max(ih, sh) : ih
           document.documentElement.style.setProperty('--app-h', h + 'px')
+          window.__POUR_DIAG__ = 'Fenster ' + ih + ' · Bildschirm ' + sh + ' · App ' + h + ' · ' + (standalone ? 'Web-App' : 'Browser')
         }
-        fit(); window.addEventListener('resize', fit)
+        fit(); window.addEventListener('resize', fit); window.addEventListener('orientationchange', function () { setTimeout(fit, 300) })
       })();
       fetch('/PH/pour/version.json?' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.json() }).then(function (j) {
-        if (j.v !== 'mwvwmy1o' && location.search.indexOf('v=' + j.v) < 0) location.replace('/PH/pour/?v=' + j.v)
+        if (j.v !== 'mwvyn49u' && location.search.indexOf('v=' + j.v) < 0) location.replace('/PH/pour/?v=' + j.v)
       }).catch(function () {})
     </script>
     <style>
-      html, body { background: #0b1029; color-scheme: dark; }
-      /* iPhone-Home-Bildschirm: App fest an alle Ränder heften, sonst bleibt unten ein Streifen frei */
+      html, body { background: #0b1029; color-scheme: dark; height: var(--app-h, 100%) !important; min-height: var(--app-h, 100%); }
+      /* iPhone-Home-Bildschirm: App fest oben anheften und auf volle Bildschirmhöhe ziehen */
       #root { position: fixed; top: 0; right: 0; left: 0; bottom: auto; height: var(--app-h, 100%) !important; }
     </style>
 </head>
@@ -60,6 +65,6 @@
     <noscript> You need to enable JavaScript to run this app. </noscript>
     <!-- The root element for your Expo app. -->
     <div id="root"></div>
-  <script src="/PH/pour/_expo/static/js/web/__expo-metro-runtime-8c088df87a31e4e6accd81c554ec290d.js" defer></script><script src="/PH/pour/_expo/static/js/web/__common-0b10ad530438cb709de9d52136d1fdb0.js" defer></script><script src="/PH/pour/_expo/static/js/web/entry-3c484af66ff0d25ad49f9d583cea441d.js" defer></script>
+  <script src="/PH/pour/_expo/static/js/web/__expo-metro-runtime-8c088df87a31e4e6accd81c554ec290d.js" defer></script><script src="/PH/pour/_expo/static/js/web/__common-0b10ad530438cb709de9d52136d1fdb0.js" defer></script><script src="/PH/pour/_expo/static/js/web/entry-ba0d546d8d03d6dcdbcad675e17cf500.js" defer></script>
 </body>
 </html>
