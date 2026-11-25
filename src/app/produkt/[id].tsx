@@ -49,7 +49,7 @@ export default function ProductScreen() {
         </View>
         {!!p.description && <Text style={st.desc}>{p.description}</Text>}
         <View style={{ flexDirection: 'row', gap: 10, alignSelf: 'stretch' }}>
-          <Button title="Einchecken" icon="cheers-outline" style={{ flex: 1 }} onPress={() => router.push({ pathname: '/neu', params: { checkin: '1' } })} />
+          <Button title="Einchecken" icon="cheers-outline" style={{ flex: 1 }} onPress={() => router.push({ pathname: '/neu', params: { checkin: '1', t: String(Date.now()) } })} />
           {p.shop_url && <Button title="Bestellen" icon="cart-outline" variant="secondary" style={{ flex: 1 }} onPress={() => Linking.openURL(p.shop_url!)} />}
         </View>
       </LinearGradient>

@@ -229,6 +229,8 @@ export const seedStoryExtras: Record<string, { music?: Track; overlays?: StoryOv
   [id(503)]: { overlays: [{ type: 'mention', profile_id: P.nordlicht, handle: 'nordlicht.getraenke', x: 0.5, y: 0.78 }] },
   [id(502)]: { overlays: [{ type: 'location', venue_id: V.nachtschatten, name: 'Nachtschatten', x: 0.5, y: 0.15 }] },
   [id(504)]: { music: DEMO_TRACKS[2] },
+  [id(505)]: { overlays: [{ type: 'poll', question: 'Riesling oder Silvaner zum Wild?', options: ['Riesling', 'Silvaner'], x: 0.5, y: 0.4 }] },
+  [id(506)]: { overlays: [{ type: 'code', label: 'Freitag 10 % auf Schaumwein', code: 'PERLAGE10', x: 0.5, y: 0.7 }, { type: 'link', label: 'Tisch reservieren', url: 'https://example.com/rebe/reservieren', x: 0.5, y: 0.3 }] },
 }
 
 /** Ältere (abgelaufene) Storys, die in Highlights stecken */

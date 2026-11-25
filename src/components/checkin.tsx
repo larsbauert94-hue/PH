@@ -95,7 +95,7 @@ export function RecipeBlock({ recipe, full, post }: { recipe: Recipe; full: bool
             <Text style={st.recipeBtnGhostText}>Ganzes Rezept</Text>
           </Pressable>
         )}
-        <Pressable style={st.recipeBtn} onPress={() => router.push({ pathname: '/neu', params: { remix: post.id } })} accessibilityRole="button" accessibilityLabel="Nachmixen">
+        <Pressable style={st.recipeBtn} onPress={() => router.push({ pathname: '/neu', params: { remix: post.id, t: String(Date.now()) } })} accessibilityRole="button" accessibilityLabel="Nachmixen">
           <Icon name="repeat" size={16} color={colors.onAccent} />
           <Text style={st.recipeBtnText}>Nachmixen{post.remix_count ? ` · ${post.remix_count}` : ''}</Text>
         </Pressable>

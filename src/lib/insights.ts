@@ -1,12 +1,15 @@
 // Auswertungen, die Supabase- und Demo-Modus gemeinsam nutzen
 import type { BusinessStats, Category, CheckinSummary, FeedPost, StoryVotes, VenueActivity } from './types'
 
-export interface RankContext { following: Set<string>; city: string; liked: Category[] }
+export interface RankContext { me: string; following: Set<string>; city: string; liked: Category[] }
 
 /** „Für dich“: Hervorgehobenes, Gefolgte, eigene Stadt und Lieblingskategorien nach oben */
 export function rankPosts(list: FeedPost[], c: RankContext) {
+  const hours = (p: FeedPost) => (Date.now() - new Date(p.created_at).getTime()) / 3_600_000
   const score = (p: FeedPost) =>
-    (p.promoted ? 6 : 0) + (c.following.has(p.author_id) ? 3 : 0) + (c.city && p.venue_city === c.city ? 2 : 0)
+    // eigene, gerade geteilte Beiträge zuerst
+    (p.author_id === c.me && hours(p) < 2 ? 100 : 0)
+    + (p.promoted ? 6 : 0) + (c.following.has(p.author_id) ? 3 : 0) + (c.city && p.venue_city === c.city ? 2 : 0)
     + c.liked.filter(x => x === p.category).length * 0.3 + Math.min(p.like_count, 20) * 0.1
     - (Date.now() - new Date(p.created_at).getTime()) / 3_600_000 / 24
   return [...list].sort((a, b) => score(b) - score(a))

@@ -76,8 +76,9 @@ export default function NewPost() {
   const [remixOf, setRemixOf] = useState<string | null>(null)
   const scroll = useRef<ScrollViewInstance>(null)
 
-  // Aufruf mit Vorgaben: Nachmixen, Beitrag in einem Raum, Teilnahme an der Challenge
-  const params = useLocalSearchParams<{ remix?: string; group?: string; tag?: string; checkin?: string }>()
+  // Aufruf mit Vorgaben: Nachmixen, Beitrag in einem Raum, Teilnahme an der Challenge.
+  // Jeder Aufruf bringt einen eigenen Zeitstempel t mit, damit er auch wiederholt greift.
+  const params = useLocalSearchParams<{ remix?: string; group?: string; tag?: string; checkin?: string; t?: string }>()
   const paramKey = JSON.stringify(params)
   const [seenParams, setSeenParams] = useState('{}')
   if (paramKey !== seenParams) {
@@ -118,7 +119,6 @@ export default function NewPost() {
   const reset = () => {
     setMode(null); setKind('beitrag'); setTitle(''); setBody(''); setLink(''); setVenueId(null); setImages([]); setVideo(null); setMusic(null)
     setRating(0); setAromas([]); setProduct(null); setIngredients([{ name: '', amount: '' }]); setSteps(['']); setTemplate(null); setCollab(null); setUrgent(false); setGroupId(null); setRemixOf(null)
-    router.setParams({ remix: undefined, group: undefined, tag: undefined, checkin: undefined })
   }
 
   const submit = async () => {
@@ -157,8 +157,11 @@ export default function NewPost() {
       template: !images.length && template ? template : undefined,
     }, {
       onSuccess: async () => {
-        const target = isReel ? '/reels' : groupId ? `/raum/${groupId}` : '/'
-        reset(); scroll.current?.scrollTo({ y: 0, animated: false }); router.navigate(target as '/')
+        const target = isReel ? '/reels' : groupId ? `/raum/${groupId}` : null
+        reset(); scroll.current?.scrollTo({ y: 0, animated: false })
+        // Zurück zum Feed: dort steht der eigene Beitrag unter „Für dich“ ganz oben
+        if (target) router.navigate(target as '/')
+        else router.navigate({ pathname: '/', params: { posted: String(Date.now()) } })
         const fresh = before ? newlyEarned(before, await api.getCheckinSummary(me)) : []
         if (fresh.length) router.push({ pathname: '/abzeichen/[id]', params: { id: me, neu: fresh.map(b => b.id).join(',') } })
       },

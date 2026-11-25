@@ -55,6 +55,7 @@ export default function VenueScreen() {
     { icon: v.saved_by_me ? 'bookmark' : 'bookmark-outline', label: v.saved_by_me ? 'Gemerkt' : 'Merken', onPress: () => save.mutate(!v.saved_by_me), active: v.saved_by_me },
     { icon: 'navigate-outline', label: 'Route', onPress: () => openRoute(v, v.name) },
     { icon: 'paper-plane-outline', label: 'Senden', onPress: share },
+    { icon: 'albums-outline', label: 'Sammlung', onPress: () => router.push({ pathname: '/sammlungen/hinzufuegen', params: { venue: v.id } }) },
     ...(v.phone ? [{ icon: 'call-outline' as IconName, label: 'Anrufen', onPress: () => Linking.openURL(`tel:${v.phone}`) }] : []),
     ...(v.website ? [{ icon: 'globe-outline' as IconName, label: 'Website', onPress: () => Linking.openURL(v.website!) }] : []),
   ]

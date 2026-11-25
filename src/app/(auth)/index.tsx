@@ -153,7 +153,7 @@ function AuthSheet({ mode, onClose }: { mode: 'login' | 'register'; onClose: () 
           {isDemo && (
             <View style={st.demo}>
               <Icon name="sparkles-outline" size={14} color={colors.accent} />
-              <Text style={st.demoText}>Demo: Mit E-Mail demo@example.com und beliebigem Passwort ausprobieren.</Text>
+              <Text style={st.demoText}>Demo: E-Mail demo@example.com (Gastro-Profi) oder nachtschatten@example.com (Bar), Passwort beliebig.</Text>
             </View>
           )}
           <Text style={st.legal}>Nur für Personen ab 18 Jahren. Mit der Anmeldung akzeptierst du unsere</Text>

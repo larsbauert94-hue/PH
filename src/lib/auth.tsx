@@ -8,7 +8,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { isDemo, supabase } from './supabase'
 import { api } from './api'
 import { demoAuth } from './demo-api'
-import { DEMO_USER_ID } from './demo-data'
+import { DEMO_USER_ID, seedProfiles } from './demo-data'
 import type { Profile } from './types'
 
 WebBrowser.maybeCompleteAuthSession()
@@ -71,7 +71,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     suggestedName,
 
     async signInWithEmail(email, password) {
-      if (isDemo) return demoLogin(DEMO_USER_ID)
+      // Demo: Beispiel-Adressen (z. B. nachtschatten@example.com) melden das passende Profil an
+      if (isDemo) return demoLogin(seedProfiles.find(p => p.email === email.trim().toLowerCase())?.id ?? DEMO_USER_ID)
       const { error } = await supabase!.auth.signInWithPassword({ email: email.trim(), password })
       if (error) throw new Error(error.message === 'Invalid login credentials' ? 'E-Mail oder Passwort ist falsch.' : error.message)
     },

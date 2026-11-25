@@ -5,7 +5,7 @@ import { Icon } from '../../components/Icon'
 import * as Location from 'expo-location'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import VenueMap, { type VenueMapHandle } from '../../components/map/VenueMap'
-import { useVenues } from '../../lib/queries'
+import { useVenueActivity, useVenues } from '../../lib/queries'
 import { useMe } from '../../lib/auth'
 import { VENUE_TYPES } from '../../lib/labels'
 import { distanceKm, formatDistance, openRoute, type Coords } from '../../lib/geo'
@@ -22,6 +22,9 @@ export default function MapScreen() {
   const venues = useVenues()
   const map = useRef<VenueMapHandle>(null)
   const [type, setType] = useState<VenueType | null>(null)
+  const [today, setToday] = useState(false)
+  const activity = useVenueActivity()
+  const act = useMemo(() => new Map((activity.data ?? []).map(a => [a.venue_id, a])), [activity.data])
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<string | null>(null)
   const [mode, setMode] = useState<'karte' | 'liste'>('karte')
@@ -31,9 +34,10 @@ export default function MapScreen() {
     const s = search.trim().toLowerCase()
     const list = (venues.data ?? [])
       .filter(v => !type || v.type === type)
+      .filter(v => !today || act.has(v.id))
       .filter(v => !s || `${v.name} ${v.city} ${v.address}`.toLowerCase().includes(s))
     return me ? [...list].sort((a, b) => distanceKm(me, a) - distanceKm(me, b)) : list
-  }, [venues.data, type, search, me])
+  }, [venues.data, type, search, me, today, act])
 
   const sel = filtered.find(v => v.id === selected) ?? null
 
@@ -80,6 +84,7 @@ export default function MapScreen() {
           </Pressable>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}>
+          <Chip label="Heute los" icon="flame-outline" active={today} onPress={() => setToday(!today)} />
           <Chip label="Alle" active={!type} onPress={() => setType(null)} />
           {(Object.keys(VENUE_TYPES) as VenueType[]).map(t => (
             <Chip key={t} label={VENUE_TYPES[t].label} active={type === t} onPress={() => setType(type === t ? null : t)} />
@@ -132,6 +137,7 @@ export default function MapScreen() {
                   <View style={[st.dot, { backgroundColor: VENUE_TYPES[v.type].color }]} />
                   <Text style={st.miniName} numberOfLines={1}>{v.name}</Text>
                   <Text style={st.miniMeta} numberOfLines={1}>{v.city}{me ? ` · ${formatDistance(distanceKm(me, v))}` : ''}</Text>
+                  {act.get(v.id) && <Text style={st.live} numberOfLines={1}>{activityLabel(act.get(v.id)!)}</Text>}
                 </Pressable>
               ))}
             </ScrollView>
@@ -140,6 +146,13 @@ export default function MapScreen() {
       )}
     </View>
   )
+}
+
+/** Kurztext, was an einem Ort gerade los ist */
+function activityLabel(a: { events: number; stories: number; checkins: number; friends: string[] }) {
+  if (a.friends.length) return `● ${a.friends[0]}${a.friends.length > 1 ? ` +${a.friends.length - 1}` : ''} ist hier`
+  const parts = [a.events && 'Event heute', a.stories && `${a.stories} Storys`, a.checkins && `${a.checkins} Check-ins`].filter(Boolean)
+  return `● ${parts.join(' · ')}`
 }
 
 function VenueRow({ venue, me, onPress }: { venue: Venue; me: Coords | null; onPress: () => void }) {
@@ -178,6 +191,7 @@ const st = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4 },
   miniName: { color: colors.text, fontWeight: '600' },
   miniMeta: { color: colors.muted, fontSize: 12 },
+  live: { color: colors.accent, fontSize: 11, fontWeight: '700' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.surface, borderRadius: radius.lg, padding: 12, borderWidth: 1, borderColor: colors.border },
   rowIcon: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   rowName: { color: colors.text, fontSize: 16, fontWeight: '600' },

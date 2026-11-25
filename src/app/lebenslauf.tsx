@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { router } from 'expo-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../lib/auth'
 import { api } from '../lib/api'
 import { colors, radius } from '../lib/theme'
@@ -20,6 +21,7 @@ export default function CVScreen() {
   const [open, setOpen] = useState(!!profile?.open_to_work)
   const [from, setFrom] = useState(profile?.available_from ?? '')
   const [busy, setBusy] = useState(false)
+  const qc = useQueryClient()
   if (!profile) return null
 
   const save = async () => {
@@ -29,6 +31,7 @@ export default function CVScreen() {
     try {
       await api.updateProfile(profile.id, { stations: lines(stations), certificates: tags(certs), skills: tags(skills), open_to_work: open, available_from: date || null })
       await refreshProfile()
+      await qc.invalidateQueries({ queryKey: ['profile', profile.id] })
       router.back()
     } catch (e) { notify('Fehler', e instanceof Error ? e.message : String(e)) } finally { setBusy(false) }
   }

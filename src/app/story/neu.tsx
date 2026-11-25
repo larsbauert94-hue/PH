@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { KeyboardAvoidingView, ScrollView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { router } from 'expo-router'
 import { Image } from 'expo-image'
 import { useVideoPlayer, VideoView } from 'expo-video'
@@ -28,6 +28,7 @@ export default function NewStory() {
   const [draft, setDraft] = useState<TextDraft | null>(null)
   const [drag, setDrag] = useState({ active: false, overTrash: false })
   const [size, setSize] = useState({ w: 0, h: 0 })
+  const [sticker, setSticker] = useState<null | { type: StickerType; a: string; b: string; c: string; d: string; correct: number }>(null)
   const player = useVideoPlayer(file?.type === 'video' ? file.uri : null, p => { p.loop = true; p.muted = true; p.play() })
 
   const close = () => { if (router.canGoBack()) router.back(); else router.replace('/') }
@@ -103,7 +104,31 @@ export default function NewStory() {
     )
   }
 
+  const openSticker = () => setSticker({ type: 'poll', a: '', b: 'Ja', c: 'Nein', d: '', correct: 0 })
+  const addSticker = () => {
+    if (!sticker) return
+    const { type, a, b, c, d, correct } = sticker
+    const base = { x: 0.5, y: 0.5 }
+    let o: StoryOverlay | null = null
+    if (type === 'poll' && a.trim() && b.trim() && c.trim()) o = { ...base, type, question: a.trim(), options: [b.trim(), c.trim()] }
+    if (type === 'quiz' && a.trim() && b.trim() && c.trim()) {
+      const options = [b, c, d].map(x => x.trim()).filter(Boolean)
+      o = { ...base, type, question: a.trim(), options, correct: Math.min(correct, options.length - 1) }
+    }
+    if (type === 'countdown' && a.trim()) {
+      const at = new Date(`${b.trim()}T${(c.trim() || '20:00')}:00`)
+      if (isNaN(at.getTime())) { notify('Countdown', 'Bitte Datum als JJJJ-MM-TT und Uhrzeit als HH:MM eingeben.'); return }
+      o = { ...base, type, title: a.trim(), at: at.toISOString() }
+    }
+    if (type === 'link' && b.trim()) o = { ...base, type, label: a.trim() || 'Tisch reservieren', url: /^https?:\/\//.test(b.trim()) ? b.trim() : `https://${b.trim()}` }
+    if (type === 'code' && b.trim()) o = { ...base, type, label: a.trim() || 'Rabattcode', code: b.trim().toUpperCase() }
+    if (!o) { notify('Sticker', 'Bitte die Felder ausfüllen.'); return }
+    setOverlays(prev => [...prev, o!])
+    setSticker(null)
+  }
+
   const tools: { icon: IconName; label: string; onPress: () => void }[] = [
+    { icon: 'happy-outline', label: 'Sticker', onPress: openSticker },
     { icon: 'text', label: 'Text', onPress: () => setDraft({ index: null, text: '', color: '#ffffff', background: false }) },
     { icon: 'musical-notes', label: 'Musik', onPress: addMusic },
     { icon: 'location', label: 'Ort', onPress: addLocation },
@@ -153,6 +178,45 @@ export default function NewStory() {
         </>
       )}
 
+      {sticker && (
+        <View style={st.textEditor}>
+          <View style={[st.topRow, { paddingTop: insets.top + 12 }]}>
+            <Pressable onPress={() => setSticker(null)} hitSlop={10}><Text style={st.doneText}>Abbrechen</Text></Pressable>
+            <Pressable onPress={addSticker} hitSlop={10} accessibilityLabel="Sticker hinzufügen"><Text style={st.doneText}>Hinzufügen</Text></Pressable>
+          </View>
+          <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }} keyboardShouldPersistTaps="handled">
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {STICKERS.map(t => (
+                <Pressable key={t.type} onPress={() => setSticker({ ...t.defaults, type: t.type, correct: 0 })} style={[st.stickerTab, sticker.type === t.type && st.stickerTabOn]} accessibilityLabel={t.label}>
+                  <Text style={[st.stickerTabText, sticker.type === t.type && { color: colors.onAccent }]}>{t.label}</Text>
+                </Pressable>
+              ))}
+            </View>
+            {STICKERS.find(t => t.type === sticker.type)!.fields.map(([key, label]) => (
+              <TextInput
+                key={key}
+                value={sticker[key]}
+                onChangeText={v => setSticker({ ...sticker, [key]: v })}
+                placeholder={label}
+                placeholderTextColor="rgba(255,255,255,0.5)"
+                style={st.stickerInput}
+                autoCapitalize={key === 'b' && (sticker.type === 'link' || sticker.type === 'countdown') ? 'none' : 'sentences'}
+              />
+            ))}
+            {sticker.type === 'quiz' && (
+              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                <Text style={{ color: '#fff' }}>Richtig ist:</Text>
+                {[0, 1, 2].map(i => (
+                  <Pressable key={i} onPress={() => setSticker({ ...sticker, correct: i })} style={[st.stickerTab, sticker.correct === i && st.stickerTabOn]}>
+                    <Text style={[st.stickerTabText, sticker.correct === i && { color: colors.onAccent }]}>Antwort {i + 1}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </ScrollView>
+        </View>
+      )}
+
       {draft && (
         <View style={st.textEditor}>
           <View style={[st.topRow, { paddingTop: insets.top + 12 }]}>
@@ -184,7 +248,21 @@ export default function NewStory() {
   )
 }
 
+type StickerType = 'poll' | 'quiz' | 'countdown' | 'link' | 'code'
+type Field = 'a' | 'b' | 'c' | 'd'
+const STICKERS: { type: StickerType; label: string; fields: [Field, string][]; defaults: Record<Field, string> }[] = [
+  { type: 'poll', label: 'Umfrage', fields: [['a', 'Frage, z. B. Gin oder Rum?'], ['b', 'Antwort 1'], ['c', 'Antwort 2']], defaults: { a: '', b: 'Ja', c: 'Nein', d: '' } },
+  { type: 'quiz', label: 'Quiz', fields: [['a', 'Frage'], ['b', 'Antwort 1'], ['c', 'Antwort 2'], ['d', 'Antwort 3 (optional)']], defaults: { a: '', b: '', c: '', d: '' } },
+  { type: 'countdown', label: 'Countdown', fields: [['a', 'Titel, z. B. Tasting'], ['b', 'Datum JJJJ-MM-TT'], ['c', 'Uhrzeit HH:MM']], defaults: { a: '', b: '', c: '20:00', d: '' } },
+  { type: 'link', label: 'Reservieren', fields: [['a', 'Beschriftung'], ['b', 'Link, z. B. www.beispiel.de/reservieren']], defaults: { a: 'Tisch reservieren', b: '', c: '', d: '' } },
+  { type: 'code', label: 'Rabattcode', fields: [['a', 'Beschriftung'], ['b', 'Code, z. B. POUR10']], defaults: { a: 'Rabattcode', b: '', c: '', d: '' } },
+]
+
 const st = StyleSheet.create({
+  stickerTab: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.14)' },
+  stickerTabOn: { backgroundColor: colors.accent },
+  stickerTabText: { color: '#fff', fontWeight: '700' },
+  stickerInput: { color: '#fff', fontSize: 17, padding: 14, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.1)' },
   root: { flex: 1, backgroundColor: '#000' },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 },
   heading: { color: '#fff', fontSize: 18, fontWeight: '700' },

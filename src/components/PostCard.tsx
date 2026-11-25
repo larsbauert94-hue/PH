@@ -7,6 +7,7 @@ import type { FeedPost } from '../lib/types'
 import { POST_KINDS, subtitle, timeAgo , ACCOUNT_TYPES } from '../lib/labels'
 import { colors, fonts, radius } from '../lib/theme'
 import { useMe } from '../lib/auth'
+import { api } from '../lib/api'
 import { useDeletePost, usePromote, useStartConversation, useToggleLike, useToggleSave } from '../lib/queries'
 import { CheckinBlock, RecipeBlock, TemplateCard } from './checkin'
 import { tap } from './motion'
@@ -36,6 +37,22 @@ function PostCard({ post, detail = false }: { post: FeedPost; detail?: boolean }
   const contact = () => startChat.mutate(post.author_id, {
     onSuccess: id => router.push(`/chat/${id}`),
     onError: e => notify('Nachricht', e.message),
+  })
+  // Bewerben mit einem Tipp: Nachricht mit Kurz-Lebenslauf an den Betrieb
+  const apply = () => confirmAction('Bewerbung senden?', `${post.author_name} bekommt eine Nachricht mit deinem Lebenslauf aus dem Profil.`, 'Bewerbung senden', () => {
+    const cv = [
+      `Hallo, ich möchte mich auf „${post.title ?? 'eure Stelle'}“ bewerben.`,
+      profile.headline || profile.workplace ? `Aktuell: ${[profile.headline, profile.workplace].filter(Boolean).join(' @ ')}` : '',
+      profile.stations?.length ? `Stationen: ${profile.stations.join('; ')}` : '',
+      profile.certificates?.length ? `Zertifikate: ${profile.certificates.join(', ')}` : '',
+      profile.skills?.length ? `Stärken: ${profile.skills.join(', ')}` : '',
+      profile.available_from ? `Verfügbar ab ${new Date(profile.available_from).toLocaleDateString('de-DE')}` : '',
+      `Mein Profil: @${profile.handle}`,
+    ].filter(Boolean).join('\n')
+    startChat.mutate(post.author_id, {
+      onSuccess: id => api.sendMessage(me, id, cv).then(() => router.push(`/chat/${id}`)).catch(e => notify('Nachricht', e.message)),
+      onError: e => notify('Nachricht', e.message),
+    })
   })
   const likeOnce = () => { if (!post.liked_by_me) like.mutate(post) }
   const toCollection = () => router.push({ pathname: '/sammlungen/hinzufuegen', params: { post: post.id } })
@@ -168,7 +185,7 @@ function PostCard({ post, detail = false }: { post: FeedPost; detail?: boolean }
         )}
 
         {!mine && CTA[post.kind] && (
-          <Pressable style={st.cta} onPress={contact} disabled={startChat.isPending} accessibilityRole="button">
+          <Pressable style={st.cta} onPress={post.kind === 'job' && !ACCOUNT_TYPES[profile.account_type].business ? apply : contact} disabled={startChat.isPending} accessibilityRole="button">
             <Icon name="chatbubble-ellipses-outline" size={18} color={colors.onAccent} />
             <Text style={st.ctaText}>{CTA[post.kind]}</Text>
           </Pressable>

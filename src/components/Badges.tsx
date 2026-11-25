@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { router } from 'expo-router'
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg'
@@ -11,17 +12,18 @@ export function Medal({ badge, current, earned, size = 64 }: { badge: BadgeDef; 
   const r = size / 2 - 3
   const c = 2 * Math.PI * r
   const pct = Math.min(1, current / badge.target)
+  const gid = `m${badge.id.replace(/[^a-z]/g, '')}${useId().replace(/[^a-zA-Z0-9]/g, '')}`
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center', opacity: earned ? 1 : 0.55 }}>
       <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
         <Defs>
-          <LinearGradient id={`m${badge.id}`} x1="0" y1="0" x2="1" y2="1">
+          <LinearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
             <Stop offset="0" stopColor={colors.roseLight} />
             <Stop offset="1" stopColor={colors.roseDeep} />
           </LinearGradient>
         </Defs>
         <Circle cx={size / 2} cy={size / 2} r={r} stroke={colors.border} strokeWidth={3} fill={earned ? 'rgba(227,165,133,0.12)' : 'none'} />
-        <Circle cx={size / 2} cy={size / 2} r={r} stroke={`url(#m${badge.id})`} strokeWidth={3} fill="none"
+        <Circle cx={size / 2} cy={size / 2} r={r} stroke={`url(#${gid})`} strokeWidth={3} fill="none"
           strokeDasharray={`${c * pct} ${c}`} strokeLinecap="round" transform={`rotate(-90 ${size / 2} ${size / 2})`} />
       </Svg>
       <Icon name={badge.icon} size={size * 0.42} color={earned ? colors.accentLight : colors.faint} />

@@ -162,7 +162,7 @@ export default function StoryPlayer({ groups, startAuthor, highlightTitle }: { g
         </View>
       </View>
 
-      {screen.w > 0 && !!story.overlays?.length && <StoryOverlayLayer overlays={story.overlays} width={screen.w} height={screen.h} />}
+      {screen.w > 0 && !!story.overlays?.length && <StoryOverlayLayer overlays={story.overlays} width={screen.w} height={screen.h} storyId={story.id} />}
       {/* Bildunterschrift nur, wenn kein eigener Text-Sticker vorhanden ist */}
       {story.caption && !story.overlays?.some(o => o.type === 'text') ? (
         <View style={st.captionWrap} pointerEvents="none">

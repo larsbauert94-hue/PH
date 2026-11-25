@@ -2,12 +2,15 @@ import { useState } from 'react'
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Icon } from '../../components/Icon'
-import { useFeed, useProfiles, useVenues } from '../../lib/queries'
+import { useFeed, useGroups, useProducts, useProfiles, useVenues } from '../../lib/queries'
+import { LinearGradient } from 'expo-linear-gradient'
+import { DropRating } from '../../components/checkin'
+import { currentChallenge } from '../../lib/challenge'
 import { useMe } from '../../lib/auth'
 import { ACCOUNT_TYPES, VENUE_TYPES, subtitle } from '../../lib/labels'
 import { colors, radius } from '../../lib/theme'
 import type { AccountType, Profile, Venue } from '../../lib/types'
-import { Avatar, Chip, Empty, Loading, Verified } from '../../components/ui'
+import { Avatar, Button, Chip, Empty, Loading, Verified } from '../../components/ui'
 import { PostGrid } from '../../components/media'
 
 const FILTERS: { label: string; types?: AccountType[] }[] = [
@@ -31,7 +34,7 @@ const nearEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
 export default function Explore() {
   const params = useLocalSearchParams<{ q?: string; tab?: string }>()
   const [query, setQuery] = useState(params.q ?? '')
-  const [mode, setMode] = useState<'fuerdich' | 'personen' | 'orte'>(params.tab === 'personen' ? 'personen' : 'fuerdich')
+  const [mode, setMode] = useState<'fuerdich' | 'personen' | 'orte' | 'raeume'>(params.tab === 'personen' ? 'personen' : 'fuerdich')
   // Neue Parameter (z. B. Hashtag angetippt) übernehmen, ohne zusätzlichen Effekt
   const [seen, setSeen] = useState({ q: params.q, tab: params.tab })
   if (seen.q !== params.q || seen.tab !== params.tab) {
@@ -51,7 +54,7 @@ export default function Explore() {
         </View>
         {!q && (
           <View style={st.segment}>
-            {([['fuerdich', 'Für dich'], ['personen', 'Personen'], ['orte', 'Orte']] as const).map(([k, label]) => (
+            {([['fuerdich', 'Für dich'], ['personen', 'Personen'], ['orte', 'Orte'], ['raeume', 'Räume']] as const).map(([k, label]) => (
               <Pressable key={k} onPress={() => setMode(k)} style={[st.segItem, mode === k && st.segActive]}>
                 <Text style={[st.segText, mode === k && { color: colors.onAccent }]}>{label}</Text>
               </Pressable>
@@ -59,8 +62,73 @@ export default function Explore() {
           </View>
         )}
       </View>
-      {q ? <SearchResults q={q} /> : mode === 'fuerdich' ? <ForYou onTag={setQuery} /> : mode === 'orte' ? <Places /> : <People />}
+      {q ? <SearchResults q={q} /> : mode === 'fuerdich' ? <ForYou onTag={setQuery} /> : mode === 'orte' ? <Places /> : mode === 'raeume' ? <Rooms /> : <People />}
     </View>
+  )
+}
+
+/** Challenge der Woche: Beiträge mit dem Hashtag, die meisten „Prost“ gewinnen */
+function ChallengeBanner() {
+  const c = currentChallenge()
+  const top = useFeed({ search: c.tag, sort: 'top' })
+  const leader = top.posts[0]
+  return (
+    <LinearGradient colors={['#3a2350', '#1a2349']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.challenge}>
+      <Text style={st.chKicker}>CHALLENGE DER WOCHE · NOCH {c.daysLeft} {c.daysLeft === 1 ? 'TAG' : 'TAGE'}</Text>
+      <Text style={st.chTitle}>{c.title}</Text>
+      <Text style={st.chText}>{c.text} Teile deinen Beitrag mit <Text style={{ color: colors.accent, fontWeight: '700' }}>{c.tag}</Text>, die meisten „Prost“ landen ganz oben.</Text>
+      {leader && <Text style={st.chLead} onPress={() => router.push(`/post/${leader.id}`)}>🏆 Vorne: {leader.author_name} · {leader.like_count}× angestoßen</Text>}
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <Button title="Mitmachen" style={{ flex: 1, height: 40 }} onPress={() => router.push({ pathname: '/neu', params: { tag: c.tag, t: String(Date.now()) } })} />
+        <Button title="Beiträge" variant="secondary" style={{ flex: 1, height: 40 }} onPress={() => router.push({ pathname: '/entdecken', params: { q: c.tag } })} />
+      </View>
+    </LinearGradient>
+  )
+}
+
+function TopProducts() {
+  const products = useProducts()
+  const list = (products.data ?? []).filter(p => p.checkin_count > 0).slice(0, 10)
+  if (!list.length) return null
+  return (
+    <View style={{ gap: 8, paddingBottom: 14 }}>
+      <Text style={st.section}>Beliebte Flaschen</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: 16 }}>
+        {list.map(p => (
+          <Pressable key={p.id} style={st.product} onPress={() => router.push(`/produkt/${p.id}`)} accessibilityLabel={p.name}>
+            <Icon name="wine-outline" size={22} color={colors.accent} />
+            <Text style={st.productName} numberOfLines={2}>{p.name}</Text>
+            <Text style={st.productBrand} numberOfLines={1}>{p.brand_name}</Text>
+            {p.avg_rating != null && <DropRating value={p.avg_rating} size={11} />}
+          </Pressable>
+        ))}
+      </ScrollView>
+    </View>
+  )
+}
+
+function Rooms() {
+  const groups = useGroups()
+  return (
+    <FlatList
+      data={groups.data ?? []}
+      keyExtractor={g => g.id}
+      contentContainerStyle={{ padding: 16, gap: 10, maxWidth: 680, width: '100%', alignSelf: 'center' }}
+      ListHeaderComponent={<Button title="Raum gründen" icon="add" variant="secondary" style={{ marginBottom: 6 }} onPress={() => router.push('/raum/neu')} />}
+      ListEmptyComponent={groups.isPending ? <Loading /> : <Empty icon="people-outline" text="Noch keine Räume." />}
+      renderItem={({ item: g }) => (
+        <Pressable style={st.room} onPress={() => router.push(`/raum/${g.id}`)} accessibilityLabel={`Raum ${g.name}`}>
+          <Text style={{ fontSize: 30 }}>{g.emoji}</Text>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={st.roomName} numberOfLines={1}>{g.name}</Text>
+            <Text style={st.roomMeta} numberOfLines={1}>
+              {g.starts_at ? `Live-Tasting · ${new Date(g.starts_at).toLocaleString('de-DE', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · ` : ''}{g.member_count} Mitglieder{g.joined_by_me ? ' · beigetreten' : ''}
+            </Text>
+          </View>
+          <Icon name="chevron-forward" size={16} color={colors.faint} />
+        </Pressable>
+      )}
+    />
   )
 }
 
@@ -73,6 +141,8 @@ function ForYou({ onTag }: { onTag: (t: string) => void }) {
       refreshControl={<RefreshControl refreshing={feed.isRefetching} onRefresh={() => { feed.refetch() }} tintColor={colors.accent} />}
       contentContainerStyle={{ maxWidth: 680, width: '100%', alignSelf: 'center', paddingBottom: 24 }}
     >
+      <View style={{ paddingHorizontal: 16, paddingBottom: 14 }}><ChallengeBanner /></View>
+      <TopProducts />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingBottom: 12 }}>
         {TRENDS.map(t => <Chip key={t} label={t} onPress={() => onTag(t)} />)}
       </ScrollView>
@@ -90,6 +160,7 @@ function SearchResults({ q }: { q: string }) {
   const venues = useVenues()
   const n = q.toLowerCase()
   const places = isTag ? [] : (venues.data ?? []).filter(v => `${v.name} ${v.city}`.toLowerCase().includes(n)).slice(0, 12)
+  const products = useProducts(isTag ? '§' : q)
   return (
     <ScrollView onScroll={e => { if (nearEnd(e)) posts.loadMore() }} scrollEventThrottle={200} contentContainerStyle={{ maxWidth: 680, width: '100%', alignSelf: 'center', paddingBottom: 24, gap: 12 }} keyboardShouldPersistTaps="handled">
       {persons.length > 0 && (
@@ -104,6 +175,23 @@ function SearchResults({ q }: { q: string }) {
         <View style={{ gap: 8 }}>
           <Text style={st.section}>Orte</Text>
           <View style={{ paddingHorizontal: 16, gap: 8 }}>{places.map(v => <PlaceRow key={v.id} v={v} />)}</View>
+        </View>
+      )}
+      {!isTag && !!products.data?.length && (
+        <View style={{ gap: 8 }}>
+          <Text style={st.section}>Flaschen & Drinks</Text>
+          <View style={{ paddingHorizontal: 16, gap: 8 }}>
+            {products.data.slice(0, 6).map(p => (
+              <Pressable key={p.id} style={st.row} onPress={() => router.push(`/produkt/${p.id}`)}>
+                <Icon name="wine-outline" size={22} color={colors.accent} />
+                <View style={{ flex: 1 }}>
+                  <Text style={st.productName}>{p.name}</Text>
+                  <Text style={st.productBrand}>{p.brand_name}</Text>
+                </View>
+                {p.avg_rating != null && <DropRating value={p.avg_rating} size={12} />}
+              </Pressable>
+            ))}
+          </View>
         </View>
       )}
       <Text style={st.section}>{isTag ? q : 'Beiträge'}</Text>
@@ -206,6 +294,17 @@ function People() {
 }
 
 const st = StyleSheet.create({
+  challenge: { padding: 16, borderRadius: radius.xl, gap: 8, borderWidth: 1, borderColor: 'rgba(143,153,230,0.35)' },
+  chKicker: { color: colors.lavender, fontSize: 11, fontWeight: '800', letterSpacing: 1.4 },
+  chTitle: { color: colors.text, fontSize: 22, fontWeight: '800' },
+  chText: { color: colors.muted, fontSize: 14, lineHeight: 20 },
+  chLead: { color: colors.accentLight, fontSize: 13, fontWeight: '700' },
+  product: { width: 130, gap: 4, padding: 12, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  productName: { color: colors.text, fontWeight: '700', fontSize: 13 },
+  productBrand: { color: colors.muted, fontSize: 11 },
+  room: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  roomName: { color: colors.text, fontWeight: '700', fontSize: 15 },
+  roomMeta: { color: colors.muted, fontSize: 12 },
   searchWrap: { paddingHorizontal: 16, paddingTop: 6, paddingBottom: 12, gap: 12, maxWidth: 680, width: '100%', alignSelf: 'center' },
   search: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.surface2, borderRadius: radius.md, paddingHorizontal: 12, height: 44 },
   input: { flex: 1, color: colors.text, fontSize: 15, height: '100%' },

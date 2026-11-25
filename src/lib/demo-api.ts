@@ -227,7 +227,7 @@ export const demoApi: Api = {
     if (q.tab === 'fuerdich') {
       const meP = db.profiles.find(x => x.id === me)
       const liked = db.likes.filter(l => l.user_id === me).flatMap(l => db.posts.filter(x => x.id === l.post_id).map(x => x.category))
-      return wait(rankPosts(rows, { following, city: meP?.city ?? '', liked }))
+      return wait(rankPosts(rows, { me, following, city: meP?.city ?? '', liked }))
     }
     return wait(rows)
   },

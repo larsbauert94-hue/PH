@@ -495,6 +495,7 @@ async function rankForYou(me: string, list: FeedPost[]) {
     supabase!.from('feed').select('category').eq('liked_by_me', true).limit(100),
   ])
   return rankPosts(list, {
+    me,
     following: new Set(rows<{ following_id: string }>(f).map(x => x.following_id)),
     city: (p.data as { city?: string } | null)?.city ?? '',
     liked: rows<{ category: Category }>(l).map(x => x.category),

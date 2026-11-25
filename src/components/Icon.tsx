@@ -39,7 +39,7 @@ const ICONS: Record<string, Def> = {
   locate: { shapes: [{ c: [12, 12, 6.6] }, { c: [12, 12, 1.8], fill: true }, { d: 'M12 2.6v2.8M12 18.6v2.8M2.6 12h2.8M18.6 12h2.8' }] },
   heart: { solid: true, shapes: [{ d: heart }] },
   /** Zwei anstoßende Gläser: „Prost“ statt Herz */
-  cheers: { solid: true, shapes: [{ d: 'M9.24 8.06 L13.99 9.61 L12.23 14.08 L10.78 15.29 L9.52 15.30 L8.50 14.55 L8.04 12.72 Z', body: true }, { d: 'M10.01 9.61 L14.76 8.06 L15.96 12.72 L15.50 14.55 L14.48 15.30 L13.22 15.29 L11.77 14.08 Z', body: true }, { d: 'M9.52 15.30 L7.66 21.01 M5.41 20.49 L9.79 21.91' }, { d: 'M14.48 15.30 L16.34 21.01 M14.21 21.91 L18.59 20.49' }, { d: 'M12 1.6v1.8M9.2 2.6l1.1 1.2M14.8 2.6l-1.1 1.2' }] },
+  cheers: { solid: true, shapes: [{ d: 'M6.08 7.16 L12.14 8.45 L11.20 11.93 L9.94 13.50 L7.82 13.87 L6.03 12.67 L5.53 10.72 Z', body: true }, { d: 'M11.86 8.45 L17.92 7.16 L18.47 10.72 L17.97 12.67 L16.18 13.87 L14.06 13.50 L12.80 11.93 Z', body: true }, { d: 'M7.82 13.87 L6.20 21.50 M3.85 21.00 L8.55 22.00' }, { d: 'M16.18 13.87 L17.80 21.50 M15.45 22.00 L20.15 21.00' }, { d: 'M12 1.6v1.8M9.2 2.6l1.1 1.2M14.8 2.6l-1.1 1.2' }] },
 
   chatbubble: { solid: true, shapes: [{ d: bubble }] },
   'chatbubble-ellipses': { solid: true, shapes: [{ d: bubble }, { c: [8.4, 10.8, 0.9], fill: true }, { c: [12, 10.8, 0.9], fill: true }, { c: [15.6, 10.8, 0.9], fill: true }] },

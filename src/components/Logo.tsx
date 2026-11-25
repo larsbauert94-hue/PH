@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { Text, View, type TextStyle } from 'react-native'
 import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg'
 import { colors, fonts } from '../lib/theme'
@@ -8,16 +9,18 @@ export const LOGO_PATH =
 
 /** App-Icon: Roségold-P auf Nachtblau. `bare` zeigt nur das Zeichen ohne Hintergrund. */
 export function LogoMark({ size = 64, bare = false }: { size?: number; bare?: boolean }) {
+  // Eigene ID je Logo: im Browser greift ein Verlauf sonst nicht, wenn sein erstes Vorkommen verdeckt ist
+  const id = `pourRose${useId().replace(/[^a-zA-Z0-9]/g, '')}`
   return (
     <Svg width={size} height={size} viewBox="0 0 100 100" accessibilityLabel="Pour Logo">
       <Defs>
-        <LinearGradient id="pourRose" x1="0" y1="0" x2="1" y2="1">
+        <LinearGradient id={id} x1="0" y1="0" x2="1" y2="1">
           <Stop offset="0" stopColor={colors.roseLight} />
           <Stop offset="1" stopColor={colors.roseDeep} />
         </LinearGradient>
       </Defs>
       {!bare && <Rect width="100" height="100" rx="22" fill={colors.brandNavy} />}
-      <Path d={LOGO_PATH} fill="url(#pourRose)" fillRule="evenodd" />
+      <Path d={LOGO_PATH} fill={`url(#${id})`} fillRule="evenodd" />
     </Svg>
   )
 }
