@@ -40,6 +40,7 @@ copy('')
 
 const html = fs.readFileSync(path.join(src, 'index.html'), 'utf8')
 const scripts = [...html.matchAll(/<script src="\/([^"]+)"/g)].map(m => m[1].replace(/^_expo\//, 'app/'))
+const styles = [...html.matchAll(/<link rel="stylesheet" href="\/([^"]+)"/g)].map(m => m[1].replace(/^_expo\//, 'app/'))
 
 fs.writeFileSync(path.join(out, 'index.html'), `<title>Pour</title>
 <meta name="theme-color" content="#0b1029">
@@ -61,6 +62,9 @@ fs.writeFileSync(path.join(out, 'index.html'), `<title>Pour</title>
     window.__POUR_BASE__ = base
     // Die App-Navigation startet immer auf der Startseite
     try { history.replaceState(null, '', '/') } catch (e) {}
+    ${JSON.stringify(styles)}.forEach(function (f) {
+      var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = base + f; document.head.appendChild(l)
+    })
     var files = ${JSON.stringify(scripts)}
     files.forEach(function (f) {
       var s = document.createElement('script')

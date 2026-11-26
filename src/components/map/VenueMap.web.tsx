@@ -1,11 +1,12 @@
-import { forwardRef, useImperativeHandle, useState } from 'react'
-import { PanResponder, Pressable, StyleSheet, Text, View } from 'react-native'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { StyleSheet, Text, View } from 'react-native'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import { VENUE_TYPES } from '../../lib/labels'
 import { colors } from '../../lib/theme'
 import { GERMANY, type Coords } from '../../lib/geo'
 import type { Venue } from '../../lib/types'
 import type { VenueMapHandle } from './VenueMap'
-import { DropPin, TileLayer, toLatLng, toWorld } from './tiles'
 
 interface Props {
   venues: Venue[]
@@ -17,107 +18,144 @@ interface Props {
   radiusKm?: number
 }
 
-const TILE = 256
-const MIN_Z = 4
-const MAX_Z = 18
-const clampZ = (z: number) => Math.max(MIN_Z, Math.min(MAX_Z, z))
+// Kartenbilder: dunkel und elegant; lädt ein Anbieter nicht, kommt der nächste
+const LAYERS: { url: string; subdomains?: string; attribution: string; className?: string }[] = [
+  { url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', subdomains: 'abcd', attribution: '© OpenStreetMap · © CARTO' },
+  { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', attribution: '© Esri · HERE · OpenStreetMap' },
+  { url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '© OpenStreetMap', className: 'pour-dim' },
+  { url: 'https://tile.openstreetmap.de/{z}/{x}/{y}.png', attribution: '© OpenStreetMap Deutschland', className: 'pour-dim' },
+]
 
-/** Zoomstufe, bei der `spanDeg` Längengrade in `width` Pixel passen */
-const zoomForSpan = (spanDeg: number, width: number) => clampZ(Math.log2((360 * Math.max(width, 200)) / (TILE * spanDeg)))
+// Eigene Darstellung: Tropfen-Pins, Namensschild, abgedunkelte OSM-Kacheln, Leaflet-Bedienelemente passend zur App
+const CSS = `
+.pour-map { background: #0f1634; font-family: system-ui, -apple-system, sans-serif; }
+.pour-map .leaflet-control-attribution { background: rgba(11,16,41,0.6); color: rgba(255,255,255,0.6); font-size: 9px; border-radius: 4px 0 0 0; }
+.pour-map .leaflet-control-attribution a { color: #eeb999; }
+.pour-dim { filter: invert(1) hue-rotate(195deg) brightness(0.85) saturate(0.45) contrast(0.9); }
+.pour-pin { background: none; border: none; }
+.pour-pin .lbl { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 2px; white-space: nowrap; max-width: 160px; overflow: hidden; text-overflow: ellipsis;
+  padding: 3px 8px; border-radius: 999px; background: rgba(11,16,41,0.88); border: 1px solid rgba(227,165,133,0.35); color: #f3ede6; font: 700 11px system-ui, sans-serif; }
+.pour-pin.sel .lbl { background: #e3a585; border-color: #e3a585; color: #0b1029; }
+.pour-pin svg { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
+.pour-me { width: 16px; height: 16px; border-radius: 8px; background: #4f8cff; border: 3px solid #fff; box-shadow: 0 0 0 6px rgba(79,140,255,0.25); }
+`
+
+function pinIcon(v: Venue, selected: boolean, showLabel: boolean) {
+  const w = selected ? 38 : 30
+  const color = VENUE_TYPES[v.type].color
+  const name = v.name.replace(/[<>&"]/g, '')
+  return L.divIcon({
+    className: `pour-pin${selected ? ' sel' : ''}`,
+    iconSize: [w, w * 1.25],
+    iconAnchor: [w / 2, w * 1.25],
+    html: `<svg width="${w}" height="${w * 1.25}" viewBox="0 0 24 30" aria-label="${name}"><path d="M12 1.5C6.5 1.5 2.5 5.6 2.5 10.8c0 6.9 9.5 16.7 9.5 16.7s9.5-9.8 9.5-16.7C21.5 5.6 17.5 1.5 12 1.5z" fill="${color}" stroke="${selected ? '#f3ede6' : '#0b1029'}" stroke-width="${selected ? 2.2 : 1.6}"/><circle cx="12" cy="10.8" r="3.6" fill="#0b1029" opacity="0.85"/></svg>${showLabel ? `<div class="lbl">${name}</div>` : ''}`,
+  })
+}
 
 /**
- * Web-Karte: dunkle Kartenkacheln zum Verschieben und Zoomen (Ziehen, zwei Finger, Plus/Minus),
- * Tropfen-Pins je Ortsart. Ohne Kachelzugriff bleibt ein Raster sichtbar.
+ * Web-Karte mit Leaflet: dunkle Kartenbilder, Ziehen und Zwei-Finger-Zoom, Tropfen-Pins je Ortsart,
+ * Kreis um den eigenen Standort. Auf iPhone/Android zeigt die App Apple bzw. Google Maps.
  */
 const VenueMap = forwardRef<VenueMapHandle, Props>(function VenueMap({ venues, selectedId, onSelect, userLocation, radiusKm = 20 }, ref) {
-  const [size, setSize] = useState({ w: 0, h: 0 })
-  const [view, setView] = useState({ lat: GERMANY.latitude, lng: GERMANY.longitude, z: 6 })
-  const [fitted, setFitted] = useState(false)
+  // DOM-Knoten der Karte (react-native-web rendert View als div)
+  const host = useRef<HTMLDivElement | null>(null)
+  const map = useRef<L.Map | null>(null)
+  const markers = useRef<L.LayerGroup | null>(null)
+  const me = useRef<L.LayerGroup | null>(null)
+  const select = useRef(onSelect)
+  const [zoom, setZoom] = useState(6)
+  const [failed, setFailed] = useState(false)
+  useEffect(() => { select.current = onSelect })
 
-  // Beim ersten Messen Deutschland einpassen
-  if (size.w && !fitted) {
-    setFitted(true)
-    setView(v => ({ ...v, z: zoomForSpan(GERMANY.longitudeDelta * 1.15, size.w) }))
-  }
+  // Karte einmalig anlegen
+  useEffect(() => {
+    const el = host.current
+    if (!el || map.current) return
+    if (!document.getElementById('pour-map-css')) {
+      const style = document.createElement('style')
+      style.id = 'pour-map-css'
+      style.textContent = CSS
+      document.head.appendChild(style)
+    }
+    el.classList.add('pour-map')
+    const m = L.map(el, { zoomControl: false, attributionControl: true, center: [GERMANY.latitude, GERMANY.longitude], zoom: 6, minZoom: 4, maxZoom: 18, zoomSnap: 0.25 })
+    m.attributionControl.setPrefix(false)
+    map.current = m
+    markers.current = L.layerGroup().addTo(m)
+    me.current = L.layerGroup().addTo(m)
+    m.on('click', () => select.current(null))
+    m.on('zoomend', () => setZoom(m.getZoom()))
+
+    // Kartenbilder mit Ausweichen auf den nächsten Anbieter
+    let index = 0
+    let errors = 0
+    let loadedAny = false
+    let layer: L.TileLayer
+    const use = (i: number) => {
+      const cfg = LAYERS[i]
+      layer = L.tileLayer(cfg.url, { subdomains: cfg.subdomains ?? 'abc', attribution: cfg.attribution, className: cfg.className, maxZoom: 19, detectRetina: false, crossOrigin: false })
+      layer.on('tileload', () => { loadedAny = true; setFailed(false) })
+      layer.on('tileerror', () => {
+        errors++
+        if (!loadedAny && errors >= 4 && index < LAYERS.length - 1) {
+          m.removeLayer(layer); index++; errors = 0; use(index)
+        } else if (!loadedAny && index >= LAYERS.length - 1 && errors >= 4) setFailed(true)
+      })
+      layer.addTo(m)
+    }
+    use(0)
+    const timer = setTimeout(() => { if (!loadedAny) setFailed(true) }, 9000)
+    // Größe nach dem ersten Layout neu messen (Tab-Wechsel, Drehen)
+    const resize = new ResizeObserver(() => m.invalidateSize())
+    resize.observe(el)
+    return () => { clearTimeout(timer); resize.disconnect(); m.remove(); map.current = null }
+  }, [])
+
+  // Pins aktualisieren
+  const showLabels = zoom >= 12
+  useEffect(() => {
+    const g = markers.current
+    if (!g) return
+    g.clearLayers()
+    for (const v of venues) {
+      const sel = v.id === selectedId
+      L.marker([v.latitude, v.longitude], { icon: pinIcon(v, sel, showLabels || sel), zIndexOffset: sel ? 1000 : 0, keyboard: true, title: `${v.name}, ${v.city}` })
+        .on('click', e => { L.DomEvent.stopPropagation(e); select.current(v.id) })
+        .addTo(g)
+    }
+  }, [venues, selectedId, showLabels])
+
+  // Eigener Standort mit Umkreis
+  useEffect(() => {
+    const g = me.current
+    if (!g) return
+    g.clearLayers()
+    if (!userLocation) return
+    const ll: L.LatLngExpression = [userLocation.latitude, userLocation.longitude]
+    L.circle(ll, { radius: radiusKm * 1000, color: '#e3a585', weight: 1.5, opacity: 0.7, fillColor: '#e3a585', fillOpacity: 0.06, interactive: false }).addTo(g)
+    L.marker(ll, { icon: L.divIcon({ className: '', html: '<div class="pour-me"></div>', iconSize: [16, 16], iconAnchor: [8, 8] }), interactive: false }).addTo(g)
+  }, [userLocation, radiusKm])
 
   useImperativeHandle(ref, () => ({
-    // span = Nord-Süd-Ausdehnung in Grad (wie latitudeDelta)
-    focus: (c: Coords, span = 0.05) => setView({ lat: c.latitude, lng: c.longitude, z: zoomForSpan(span / Math.cos((c.latitude * Math.PI) / 180), size.w || 390) }),
-    zoomBy: (d: number) => setView(v => ({ ...v, z: clampZ(v.z + d) })),
+    // zoom = Nord-Süd-Ausdehnung in Grad
+    focus: (c: Coords, span = 0.05) => {
+      const half = span / 2
+      const lng = half / Math.cos((c.latitude * Math.PI) / 180)
+      map.current?.flyToBounds([[c.latitude - half, c.longitude - lng], [c.latitude + half, c.longitude + lng]], { duration: 0.6, padding: [8, 8] })
+    },
+    zoomBy: (d: number) => { if (d > 0) map.current?.zoomIn(); else map.current?.zoomOut() },
   }))
 
-  const center = toWorld(view.lat, view.lng, view.z)
-  const project = (lat: number, lng: number) => {
-    const p = toWorld(lat, lng, view.z)
-    return { x: p.x - center.x + size.w / 2, y: p.y - center.y + size.h / 2 }
-  }
-
-  // Ziehen verschiebt, zwei Finger zoomen
-  const [pan] = useState(() => {
-    let start = { x: 0, y: 0, z: 6, dist: 0 }
-    const dist = (t: readonly { pageX: number; pageY: number }[]) => t.length > 1 ? Math.hypot(t[0].pageX - t[1].pageX, t[0].pageY - t[1].pageY) : 0
-    return PanResponder.create({
-      onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dx) + Math.abs(g.dy) > 4,
-      onPanResponderGrant: e => {
-        setView(v => {
-          const w = toWorld(v.lat, v.lng, v.z)
-          start = { x: w.x, y: w.y, z: v.z, dist: dist(e.nativeEvent.touches) }
-          return v
-        })
-      },
-      onPanResponderMove: (e, g) => {
-        const touches = e.nativeEvent.touches
-        if (touches.length > 1) {
-          const d = dist(touches)
-          if (!start.dist) { start.dist = d; return }
-          const z = clampZ(start.z + Math.log2(d / start.dist))
-          const ll = toLatLng(start.x, start.y, start.z)
-          setView({ lat: ll.latitude, lng: ll.longitude, z })
-          return
-        }
-        const ll = toLatLng(start.x - g.dx, start.y - g.dy, start.z)
-        setView(v => ({ ...v, lat: Math.max(-80, Math.min(80, ll.latitude)), lng: ll.longitude }))
-      },
-    })
-  })
-
-  const mPerPx = (156543.03 * Math.cos((view.lat * Math.PI) / 180)) / 2 ** view.z
-  const me = userLocation ? project(userLocation.latitude, userLocation.longitude) : null
-  const ring = (radiusKm * 1000) / mPerPx
-  const close = view.z >= 11
-
   return (
-    <View style={[StyleSheet.absoluteFill, st.ground]} onLayout={e => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })} {...pan.panHandlers}>
-      {Array.from({ length: 9 }, (_, i) => <View key={`h${i}`} style={[st.gridH, { top: `${(i + 1) * 10}%` }]} />)}
-      {Array.from({ length: 6 }, (_, i) => <View key={`v${i}`} style={[st.gridV, { left: `${(i + 1) * 14}%` }]} />)}
-      <TileLayer lat={view.lat} lng={view.lng} z={view.z} width={size.w} height={size.h} />
-      <Pressable style={StyleSheet.absoluteFill} onPress={() => onSelect(null)} accessibilityLabel="Auswahl aufheben" />
-
-      {me && (
-        <>
-          <View pointerEvents="none" style={[st.ring, { left: me.x - ring, top: me.y - ring, width: ring * 2, height: ring * 2, borderRadius: ring }]} />
-          <View pointerEvents="none" style={[st.me, { left: me.x - 8, top: me.y - 8 }]} />
-        </>
+    <View style={[StyleSheet.absoluteFill, { zIndex: 0 }]}>
+      {/* eigene Ebene, damit Leaflets Ebenen nicht über Suche und Knöpfe liegen */}
+      <View ref={host as never} style={[StyleSheet.absoluteFill, { zIndex: 0 }]} />
+      {failed && (
+        <View style={st.notice} pointerEvents="none">
+          <Text style={st.noticeTitle}>Kartenbilder werden nicht geladen</Text>
+          <Text style={st.noticeText}>Die Kartenserver antworten nicht. Prüfe die Internetverbindung oder Inhaltsblocker in den Safari-Einstellungen.</Text>
+        </View>
       )}
-
-      {size.w > 0 && venues.map(v => {
-        const p = project(v.latitude, v.longitude)
-        if (p.x < -60 || p.y < -60 || p.x > size.w + 60 || p.y > size.h + 60) return null
-        const sel = v.id === selectedId
-        const w = sel ? 38 : close ? 30 : 22
-        return (
-          <View key={v.id} style={{ position: 'absolute', left: p.x - w / 2, top: p.y - w * 1.25, alignItems: 'center', zIndex: sel ? 2 : 1 }}>
-            <Pressable onPress={() => onSelect(v.id)} hitSlop={10} accessibilityLabel={`${v.name}, ${v.city}`}>
-              <DropPin color={VENUE_TYPES[v.type].color} size={w} selected={sel} />
-            </Pressable>
-            {(close || sel) && (
-              <View style={[st.label, sel && st.labelSel]} pointerEvents="none">
-                <Text style={[st.labelText, sel && { color: colors.onAccent }]} numberOfLines={1}>{v.name}</Text>
-              </View>
-            )}
-          </View>
-        )
-      })}
     </View>
   )
 })
@@ -125,12 +163,7 @@ const VenueMap = forwardRef<VenueMapHandle, Props>(function VenueMap({ venues, s
 export default VenueMap
 
 const st = StyleSheet.create({
-  ground: { backgroundColor: '#0f1634', overflow: 'hidden' },
-  gridH: { position: 'absolute', left: 0, right: 0, height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(143,153,230,0.14)' },
-  gridV: { position: 'absolute', top: 0, bottom: 0, width: StyleSheet.hairlineWidth, backgroundColor: 'rgba(143,153,230,0.14)' },
-  ring: { position: 'absolute', borderWidth: 1.5, borderColor: 'rgba(227,165,133,0.55)', backgroundColor: 'rgba(227,165,133,0.06)' },
-  me: { position: 'absolute', width: 16, height: 16, borderRadius: 8, backgroundColor: '#4f8cff', borderWidth: 3, borderColor: '#fff' },
-  label: { marginTop: 2, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: 'rgba(11,16,41,0.85)', borderWidth: 1, borderColor: 'rgba(227,165,133,0.35)', maxWidth: 160 },
-  labelSel: { backgroundColor: colors.accent, borderColor: colors.accent },
-  labelText: { color: colors.text, fontSize: 11, fontWeight: '700' },
+  notice: { position: 'absolute', left: 24, right: 24, top: '42%', padding: 14, borderRadius: 14, backgroundColor: 'rgba(11,16,41,0.92)', borderWidth: 1, borderColor: 'rgba(227,165,133,0.4)', gap: 4, zIndex: 1000 },
+  noticeTitle: { color: colors.text, fontWeight: '700', textAlign: 'center' },
+  noticeText: { color: colors.muted, fontSize: 12, textAlign: 'center' },
 })

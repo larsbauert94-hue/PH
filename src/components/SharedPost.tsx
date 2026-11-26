@@ -19,7 +19,7 @@ export default function SharedPost({ id }: { id: string }) {
   if (post.isPending) return <View style={[st.card, { height: 120 }]} />
   if (!p) return <View style={st.card}><Text style={st.gone}>Beitrag nicht mehr verfügbar</Text></View>
   return (
-    <Pressable style={st.card} onPress={() => p.video_url ? router.navigate({ pathname: '/reels', params: { start: p.id, t: String(Date.now()) } }) : router.push(`/post/${p.id}`)} accessibilityLabel={`Geteilter Beitrag von ${p.author_name}`}>
+    <Pressable style={st.card} onPress={() => router.push(`/post/${p.id}`)} accessibilityLabel={`Geteilter Beitrag von ${p.author_name}`}>
       <View style={st.head}>
         <Avatar name={p.author_name} url={p.author_avatar_url} type={p.author_type} size={24} />
         <Text style={st.name} numberOfLines={1}>{p.author_name}</Text>

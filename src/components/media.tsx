@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Animated, Pressable, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native'
 import { Image } from 'expo-image'
 import { router } from 'expo-router'
@@ -86,25 +86,44 @@ export function MediaCarousel({ media, onDoubleTap, aspect = 4 / 5 }: { media: s
   )
 }
 
-/** Reel im Feed: Vorschaubild mit Play-Symbol, öffnet die Reels-Ansicht */
+/** Video im Feed: spielt direkt im Beitrag (Tippen startet/pausiert, doppelt tippen stößt an) */
 export function ReelPreview({ post, onDoubleTap }: { post: FeedPost; onDoubleTap: () => void }) {
-  const open = () => router.navigate({ pathname: '/reels', params: { start: post.id, t: String(Date.now()) } })
+  const [started, setStarted] = useState(false)
+  const [paused, setPaused] = useState(false)
+  const [muted, setMuted] = useState(true)
+  const tapVideo = () => { if (!started) setStarted(true); else setPaused(x => !x) }
   return (
     <View style={{ width: '100%', aspectRatio: 4 / 5, backgroundColor: '#000' }}>
-      <DoubleTap onDoubleTap={onDoubleTap} onTap={open} style={StyleSheet.absoluteFill}>
+      <DoubleTap onDoubleTap={onDoubleTap} onTap={tapVideo} style={StyleSheet.absoluteFill}>
         {post.media[0]
           ? <Image source={{ uri: post.media[0] }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={200} />
           : <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.surface2 }]} />}
-        <View style={[StyleSheet.absoluteFill, st.center]} pointerEvents="none">
-          <View style={st.play}><Icon name="play" size={34} color="#fff" style={{ marginLeft: 4 }} /></View>
-        </View>
+        {started && post.video_url && <InlineVideo uri={post.video_url} paused={paused} muted={muted} />}
+        {(!started || paused) && (
+          <View style={[StyleSheet.absoluteFill, st.center]} pointerEvents="none">
+            <View style={st.play}><Icon name="play" size={34} color="#fff" style={{ marginLeft: 4 }} /></View>
+          </View>
+        )}
         <View style={st.reelBadge} pointerEvents="none">
           <Icon name="film-outline" size={14} color="#fff" />
           <Text style={st.reelText}>Reel</Text>
         </View>
       </DoubleTap>
+      {started && (
+        <Pressable onPress={() => setMuted(m => !m)} style={st.muteBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel={muted ? 'Ton an' : 'Ton aus'}>
+          <Icon name={muted ? 'volume-mute' : 'volume-high'} size={18} color="#fff" />
+        </Pressable>
+      )}
     </View>
   )
+}
+
+function InlineVideo({ uri, paused, muted }: { uri: string; paused: boolean; muted: boolean }) {
+  const player = useVideoPlayer(uri, p => { p.loop = true; p.muted = true })
+  // eslint-disable-next-line react-hooks/immutability
+  useEffect(() => { player.muted = muted }, [player, muted])
+  useEffect(() => { if (paused) player.pause(); else player.play() }, [player, paused])
+  return <VideoView player={player} playsInline style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} contentFit="cover" nativeControls={false} />
 }
 
 /** Reel in der Detailansicht: spielt direkt mit Steuerelementen */
@@ -142,7 +161,7 @@ export function PostGrid({ posts }: { posts: FeedPost[] }) {
         <Pressable
           key={p.id}
           style={[st.cell, { width: size, height: size * 1.25 }]}
-          onPress={() => p.video_url ? router.navigate({ pathname: '/reels', params: { start: p.id, t: String(Date.now()) } }) : router.push(`/post/${p.id}`)}
+          onPress={() => router.push(`/post/${p.id}`)}
           accessibilityLabel={p.title ?? p.body.slice(0, 60)}
         >
           {p.media[0] ? (
@@ -161,6 +180,7 @@ export function PostGrid({ posts }: { posts: FeedPost[] }) {
 }
 
 const st = StyleSheet.create({
+  muteBtn: { position: 'absolute', right: 10, bottom: 10, width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
   center: { alignItems: 'center', justifyContent: 'center' },
   heartShadow: { textShadowColor: 'rgba(0,0,0,0.35)', textShadowRadius: 18 },
   counter: { position: 'absolute', top: 12, right: 12, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: radius.pill, paddingHorizontal: 9, paddingVertical: 3 },
